@@ -1,0 +1,10 @@
+name = "siem-backend"
+main = "src/index.ts"
+compatibility_date = "2024-12-05"
+
+[observability]
+enabled = true
+
+# Enable CORS for frontend
+# [vars]
+# ALLOWED_ORIGINS = "http://localhost:5173,https://your-domain.com"
