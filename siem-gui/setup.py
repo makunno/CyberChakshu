@@ -1,91 +1,125 @@
 #!/usr/bin/env python3
 """
-Setup and run script for FreeKhana SIEM GUI Tool
+FreeKhana SIEM GUI Tool - Setup Script
 """
 
-import subprocess
 import sys
 import os
+import subprocess
 from pathlib import Path
 
 def check_python_version():
     """Check if Python version is compatible"""
     if sys.version_info < (3, 8):
-        print("❌ Python 3.8+ is required")
+        print("❌ ERROR: Python 3.8+ is required")
         sys.exit(1)
-    print(f"✅ Python {sys.version.split()[0]} detected")
+    print("✅ OK: Python 3.8+ detected")
+
+def check_dependencies():
+    """Check which dependencies are available"""
+    deps = {
+        'PySide6': 'PySide6.QtWidgets',
+        'pandas': 'pandas',
+        'numpy': 'numpy',
+        'scikit-learn': 'sklearn.ensemble',
+        'matplotlib': 'matplotlib.pyplot'
+    }
+
+    available = {}
+    for name, module in deps.items():
+        try:
+            __import__(module)
+            available[name] = True
+            print(f"✅ OK: {name} is available")
+        except ImportError:
+            available[name] = False
+            print(f"⚠️  MISSING: {name} - will use fallback mode")
+
+    return available
 
 def install_dependencies():
-    """Install Python dependencies"""
-    print("📦 Installing dependencies...")
+    """Attempt to install missing dependencies"""
+    print("\n📦 Attempting to install dependencies...")
 
     try:
-        # Upgrade pip first
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
+        # Upgrade pip
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], stdout=subprocess.DEVNULL)
 
-        # Install requirements
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+        # Install PySide6 first (most important)
+        print("Installing PySide6 (GUI framework)...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "PySide6"], stdout=subprocess.DEVNULL)
 
-        print("✅ Dependencies installed successfully")
+        # Install other dependencies
+        requirements = [
+            "pandas",
+            "numpy",
+            "scikit-learn",
+            "matplotlib",
+            "seaborn"
+        ]
+
+        for req in requirements:
+            print(f"Installing {req}...")
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", req], stdout=subprocess.DEVNULL)
+            except subprocess.CalledProcessError:
+                print(f"⚠️  Failed to install {req} - will use fallback mode")
+
+        print("✅ Dependencies installation completed")
         return True
+
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to install dependencies: {e}")
+        print("\n💡 Manual installation:")
+        print("   pip install PySide6 pandas numpy scikit-learn matplotlib seaborn")
         return False
-
-def run_application():
-    """Run the SIEM GUI application"""
-    print("🚀 Starting FreeKhana SIEM GUI...")
-
-    try:
-        # Add src to path and run
-        src_dir = Path(__file__).parent / "src"
-        env = os.environ.copy()
-        env["PYTHONPATH"] = str(src_dir)
-
-        subprocess.run([sys.executable, str(src_dir / "main.py")], env=env, check=True)
-
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Failed to run application: {e}")
-        return False
-    except KeyboardInterrupt:
-        print("\n👋 Application closed by user")
-        return True
-
-    return True
 
 def main():
+    """Main setup function"""
     print("🔍 FreeKhana SIEM GUI Tool Setup")
-    print("=" * 40)
+    print("=" * 50)
 
     # Check Python version
     check_python_version()
 
-    # Check if dependencies are installed
-    try:
-        import PySide6
-        import pandas
-        import numpy
-        import sklearn
-        print("✅ Dependencies already installed")
-        deps_installed = True
-    except ImportError:
-        print("⚠️  Dependencies not found")
-        deps_installed = False
+    # Check existing dependencies
+    deps_available = check_dependencies()
 
-    # Install dependencies if needed
-    if not deps_installed:
-        if not install_dependencies():
-            print("\n💡 To install manually: pip install -r requirements.txt")
-            sys.exit(1)
+    # Check if we can run
+    if not deps_available.get('PySide6', False):
+        print("\n⚠️  PySide6 (GUI framework) is required but not installed.")
+        choice = input("Install dependencies automatically? (y/N): ").lower().strip()
 
-    # Run the application
-    print("\n" + "=" * 40)
-    success = run_application()
+        if choice == 'y':
+            if not install_dependencies():
+                print("\n❌ Setup failed. Please install dependencies manually.")
+                sys.exit(1)
+        else:
+            print("\n💡 To install manually:")
+            print("   pip install PySide6 pandas numpy scikit-learn matplotlib seaborn")
+            print("   Then run: python run.py")
+            sys.exit(0)
 
-    if success:
-        print("👋 Thank you for using FreeKhana SIEM!")
+    # Re-check dependencies
+    deps_available = check_dependencies()
+
+    if deps_available.get('PySide6', False):
+        print("\n🚀 Ready to run!")
+        print("   python run.py")
+        print("\nOr run directly:")
+        print("   python src/main.py")
+
+        # Test import
+        try:
+            from src.main import ML_AVAILABLE
+            print(f"\n🤖 ML Features: {'Available' if ML_AVAILABLE else 'Limited (install scikit-learn)'}")
+        except ImportError as e:
+            print(f"\n⚠️  Import test failed: {e}")
+
     else:
-        print("❌ Application exited with errors")
+        print("\n❌ Cannot run without PySide6 GUI framework.")
+        print("   pip install PySide6")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

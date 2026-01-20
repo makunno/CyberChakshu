@@ -1,28 +1,111 @@
-# FreeKhana SIEM GUI Tool
+# 🔍 FreeKhana SIEM GUI Tool
 
-A comprehensive Security Information and Event Management tool built with PySide6, featuring log parsing, correlation analysis, ML-based anomaly detection, and interactive visualizations.
+A modern, beautiful Security Information and Event Management tool built with PySide6, featuring a sleek dark theme, advanced log parsing, ML-powered correlation analysis, and interactive visualizations. Inspired by modern web applications with professional styling.
 
-## Features
+## ✨ Features
 
-### 🔍 **Log Parsing**
+### 🎨 **Modern Multi-View UI Design**
+- **Welcome Screen**: Clean starting point with upload options and recent history
+- **Analysis Dashboard**: Full-featured analysis view with live statistics header
+- **Sleek dark theme** with gradient backgrounds and glowing effects
+- **Card-based layout** similar to modern web applications
+- **Smooth animations** and hover effects
+- **Professional typography** and spacing
+- **Responsive design** that adapts to window size
+
+### 🔍 **Advanced Log Parsing**
 - **56+ log formats supported** including Apache, SSH, firewall logs, and more
 - **Dynamic parser** for unknown log formats with automatic field detection
-- **Real-time parsing** with progress tracking
+- **Drag & drop interface** for easy file uploads
+- **Real-time parsing** with animated progress tracking
+- **Multi-file correlation** analysis
 
-### 🤖 **ML-Powered Analysis**
-- **Anomaly detection** using Isolation Forest algorithm
+### 🤖 **ML-Powered Security Analysis**
+- **Isolation Forest anomaly detection** algorithm
 - **Attack chain correlation** across multiple log sources
-- **Risk scoring** and threat assessment
-- **MITRE ATT&CK framework** mapping
+- **Risk scoring dashboard** with visual indicators
+- **MITRE ATT&CK framework** mapping and recommendations
+- **False positive filtering** with confidence scores
+- **Real-time threat assessment**
 
-### 📊 **Interactive Dashboard**
-- **Tabbed interface** for different analysis views
-- **Real-time filtering** by severity and search terms
-- **Attack chain visualization** with confidence scores
+### 📊 **Interactive Visualizations & History**
+- **Real-time statistics header** with live updates
+- **Advanced filtering** with search and dropdown controls
+- **Attack chain visualization** with detailed analysis
 - **Timeline analysis** with anomaly highlighting
-- **Analytics charts** and statistics
+- **Comprehensive analytics** with charts and insights
+- **Analysis history** with persistent storage
+- **Export capabilities** (CSV/JSON)
 
-### 🎯 **Supported Log Types**
+### 🛡️ **Security Features**
+- **Local processing only** - no data sent to external servers
+- **No telemetry** - privacy-focused design
+- **Open source** - fully auditable codebase
+
+## 🚀 How to Run:
+
+### **First Time Setup (Recommended)**
+```bash
+cd siem-gui
+
+# Production setup with configuration and shortcuts
+python setup_production.py
+
+# This will:
+# - Install dependencies automatically
+# - Create desktop shortcuts
+# - Set up configuration directory
+# - Configure user preferences
+```
+
+### **Quick Start**
+```bash
+cd siem-gui
+
+# If dependencies are already installed
+python run.py
+
+# Or direct run
+python src/main.py
+```
+
+### **Manual Installation**
+```bash
+# Install dependencies
+pip install PySide6 pandas numpy scikit-learn matplotlib seaborn
+
+# Run the application
+python run.py
+```
+
+## 🎨 Modern UI Highlights:
+
+### **Header Dashboard**
+- **Gradient background** with live statistics cards
+- **Real-time updates** showing risk scores, attack chains, and log counts
+- **Color-coded indicators** for different severity levels
+
+### **Upload Interface**
+- **Drag & drop zone** with animated hover effects
+- **Modern card design** with glowing borders
+- **File list** with icons and size indicators
+- **Mode selection** with radio buttons for single/multi analysis
+
+### **Logs Table**
+- **Fixed width maintenance** (no more layout shifts!)
+- **Color-coded severity badges** with icons
+- **Advanced filtering** with search and dropdown controls
+- **Responsive design** with proper column sizing
+
+### **Dark Theme Features**
+- **CSS Variables** for consistent theming
+- **Gradient backgrounds** and subtle animations
+- **Glowing effects** on interactive elements
+- **Professional typography** and spacing
+- **Smooth transitions** between states
+
+## 📋 Supported Log Types
+
 - **Web Servers**: Apache, Nginx, IIS, Django, Flask, Express
 - **Authentication**: SSH, PAM, FTP, SMTP auth
 - **Firewalls**: iptables, ufw, firewalld, Cisco ASA, Palo Alto
@@ -32,112 +115,95 @@ A comprehensive Security Information and Event Management tool built with PySide
 - **Mail**: Postfix, Sendmail, Dovecot, Exchange
 - **Cloud**: AWS VPC Flow, Azure NSG, GCP VPC
 
-## Installation
-
-### Prerequisites
-- Python 3.8+
-- pip package manager
-
-### Install Dependencies
-```bash
-cd siem-gui
-pip install -r requirements.txt
-```
-
-### Run the Application
-```bash
-python src/main.py
-```
-
-## Usage
-
-### 1. **File Upload**
-- **Single Mode**: Upload one log file for analysis
-- **Multi-Log Correlation**: Upload multiple log types for cross-correlation analysis
-
-### 2. **Analysis Modes**
-- **Single Log**: Parse and analyze individual log files
-- **Correlation**: Analyze relationships between multiple log sources
-
-### 3. **Navigation Tabs**
-- **📁 Upload**: File selection and analysis configuration
-- **📋 Logs**: Parsed log entries with filtering
-- **🚨 Alerts**: Security alerts and high-severity events
-- **🎯 Attack Chains**: Detected attack patterns
-- **⏰ Timeline**: Event timeline with anomalies
-- **📊 Analytics**: Charts and statistics
-
-## Architecture
+## 🏗️ Architecture
 
 ```
 siem-gui/
 ├── src/
-│   ├── main.py              # Main application with PySide6 GUI
-│   ├── parsers/             # Log parsing modules
-│   ├── ml/                  # ML analysis modules
-│   └── utils/               # Utility functions
-├── resources/               # Icons, styles, etc.
-├── tests/                   # Unit tests
-├── requirements.txt         # Python dependencies
-└── README.md               # This file
+│   └── main.py              # Complete PySide6 GUI application
+├── tests/
+│   ├── test_core.py         # Core logic tests (PASSING ✓)
+│   └── test_basic.py        # Full application tests
+├── resources/
+│   └── modern_styles.qss   # Modern dark theme CSS
+├── requirements.txt         # All Python dependencies
+├── setup.py                 # Installation and run script
+├── run.py                   # Simple run script
+├── README.md               # This file
+├── sample-apache.log       # Test Apache logs
+└── sample-ssh.log          # Test SSH logs
 ```
 
-## Key Components
-
-### **LogParserManager**
-Manages all log parsers and coordinates parsing operations.
-
-### **CorrelationAnalyzer**
-Performs ML-based correlation analysis using:
-- Isolation Forest for anomaly detection
-- Time-window analysis for attack chains
-- Pattern recognition for known attack types
-
-### **MainWindow**
-PySide6-based GUI with tabbed interface and interactive components.
-
-## Dependencies
-
-- **PySide6**: Qt6 Python bindings for GUI
-- **pandas**: Data manipulation and analysis
-- **scikit-learn**: Machine learning algorithms
-- **matplotlib**: Plotting and visualization
-- **numpy**: Numerical computing
-- **requests**: HTTP client (for future API integration)
-
-## Development
+## 🛠️ Development & Distribution
 
 ### Running Tests
 ```bash
-python -m pytest tests/
+python tests/test_core.py    # Test core functionality
 ```
 
 ### Building for Distribution
 ```bash
-# Create executable with PyInstaller
+# Install PyInstaller
 pip install pyinstaller
-pyinstaller --onefile --windowed src/main.py
+
+# Create standalone executable
+pyinstaller --onefile --windowed src/main.py --name "FreeKhana-SIEM"
+
+# The executable will be in the 'dist' folder
 ```
 
-## Security Features
+### GitHub Release Setup
+For GitHub releases, include:
+- `setup_production.py` - Production installer
+- `requirements.txt` - Dependencies
+- Sample log files
+- This README
 
-- **Local Processing**: All analysis happens locally, no data sent to external servers
-- **No Telemetry**: No data collection or tracking
-- **Open Source**: Fully auditable codebase
+Users can then run:
+```bash
+python setup_production.py  # Complete setup with shortcuts
+```
 
-## Performance
+## 📈 Performance
 
-- **Multi-threaded**: Analysis runs in background threads
-- **Memory Efficient**: Processes large log files without excessive memory usage
-- **Scalable**: Handles thousands of log entries efficiently
+- **Multi-threaded analysis** - UI remains responsive during processing
+- **Memory efficient** - Handles large log files without excessive memory usage
+- **Scalable parsing** - Processes thousands of log entries efficiently
+- **Fast filtering** - Real-time table updates with advanced search
 
-## Contributing
+## 🎯 Usage Example
+
+### **Welcome Screen Flow**
+1. **Launch**: `python setup_production.py` (first time) or `python run.py`
+2. **Welcome Screen**: Clean interface with upload options
+3. **Add Files**: Click "📂 Select Files" or drag & drop log files
+4. **View Files**: Selected files appear in the list with sizes
+5. **Analyze**: Click "⚡ Analyze File" or "🚀 Analyze X Files"
+
+### **Analysis Dashboard**
+6. **Switch to Analysis**: Automatic transition to full dashboard
+7. **Explore Tabs**: Logs, Alerts, Attack Chains, Timeline, Analytics, History
+8. **Interactive Filtering**: Search, severity filters, real-time updates
+9. **Export Options**: CSV/JSON export with one click
+
+### **Persistent History**
+10. **Auto-Save**: All analyses saved automatically
+11. **Quick Access**: Recent analyses available from welcome screen
+12. **Load Previous**: Double-click history items to reload analyses
+5. **Export**: Download results as CSV or JSON
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Add tests for new functionality
-4. Submit a pull request
+4. Ensure modern UI standards are maintained
+5. Submit a pull request
 
-## License
+## 📄 License
 
 This project is part of the FreeKhana SIEM suite and follows the same open-source licensing terms.
+
+---
+
+**Experience the future of log analysis with a modern, beautiful interface!** ✨

@@ -7,20 +7,37 @@ Includes log parsing, correlation analysis, ML-based anomaly detection, and visu
 
 import sys
 import os
-import json
 import re
+import json
+from pathlib import Path
 import datetime
 import uuid
 from typing import List, Dict, Any, Optional, Tuple
-from pathlib import Path
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-import matplotlib.pyplot as plt
-import seaborn as sns
-from collections import defaultdict, Counter
-import warnings
+
+# Optional imports with fallbacks
+try:
+    import pandas as pd
+    import numpy as np
+    from sklearn.ensemble import IsolationForest
+    from sklearn.preprocessing import StandardScaler
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from collections import defaultdict, Counter
+    import warnings
+    warnings.filterwarnings('ignore')
+    plt.style.use('default')
+    ML_AVAILABLE = True
+except ImportError:
+    # Fallback when ML libraries not available
+    pd = None
+    np = None
+    IsolationForest = None
+    StandardScaler = None
+    plt = None
+    sns = None
+    defaultdict = dict
+    Counter = dict
+    ML_AVAILABLE = False
 
 # PySide6 imports
 from PySide6.QtWidgets import (
@@ -31,7 +48,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QScrollArea, QFrame, QStatusBar, QMenuBar, QMenu,
     QCheckBox, QSpinBox, QListWidget, QListWidgetItem, QTextBrowser,
     QDialog, QFormLayout, QDialogButtonBox, QDateTimeEdit, QPlainTextEdit,
-    QRadioButton, QHeaderView
+    QRadioButton, QHeaderView, QStackedWidget
 )
 from PySide6.QtCore import (
     Qt, QThread, Signal, QTimer, QDateTime, QSize, QPointF, QRectF
@@ -40,8 +57,28 @@ from PySide6.QtGui import (
     QFont, QPalette, QColor, QIcon, QPixmap, QPainter, QBrush, QPen,
     QAction, QKeySequence
 )
+
+# PySide6 imports
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QTabWidget, QPushButton, QLabel, QTextEdit, QTableWidget,
+    QTableWidgetItem, QFileDialog, QProgressBar, QMessageBox,
+    QSplitter, QTreeWidget, QTreeWidgetItem, QComboBox, QLineEdit,
+    QGroupBox, QScrollArea, QFrame, QStatusBar, QMenuBar, QMenu,
+    QCheckBox, QSpinBox, QListWidget, QListWidgetItem, QTextBrowser,
+    QDialog, QFormLayout, QDialogButtonBox, QDateTimeEdit, QPlainTextEdit,
+    QRadioButton, QHeaderView, QStackedWidget
+)
 from PySide6.QtCore import (
     Qt, QThread, Signal, QTimer, QDateTime, QSize, QPointF, QRectF
+)
+from PySide6.QtGui import (
+    QFont, QPalette, QColor, QIcon, QPixmap, QPainter, QBrush, QPen,
+    QAction, QKeySequence
+)
+from PySide6.QtCharts import (
+    QChart, QChartView, QLineSeries, QBarSeries, QBarSet, QPieSeries,
+    QValueAxis, QBarCategoryAxis, QDateTimeAxis
 )
 from PySide6.QtGui import (
     QFont, QPalette, QColor, QIcon, QPixmap, QPainter, QBrush, QPen,
@@ -406,8 +443,12 @@ class LogParserManager:
 class CorrelationAnalyzer:
     """Analyzes correlations between log entries"""
     def __init__(self):
-        self.scaler = StandardScaler()
-        self.isolation_forest = IsolationForest(contamination=0.1, random_state=42)
+        if ML_AVAILABLE:
+            self.scaler = StandardScaler()
+            self.isolation_forest = IsolationForest(contamination=0.1, random_state=42)
+        else:
+            self.scaler = None
+            self.isolation_forest = None
 
     def analyze_correlations(self, entries: List[LogEntry]) -> Dict[str, Any]:
         """Perform correlation analysis on log entries"""
@@ -463,7 +504,7 @@ class CorrelationAnalyzer:
 
     def _detect_anomalies(self, entries: List[LogEntry]) -> List[LogEntry]:
         """Detect anomalous log entries using ML"""
-        if len(entries) < 10:
+        if len(entries) < 10 or not ML_AVAILABLE:
             return []
 
         # Create features
@@ -479,17 +520,19 @@ class CorrelationAnalyzer:
             features.append(feature_vector)
 
         try:
-            features_scaled = self.scaler.fit_transform(features)
-            anomaly_scores = self.isolation_forest.fit_predict(features_scaled)
+            if self.scaler and self.isolation_forest:
+                features_scaled = self.scaler.fit_transform(features)
+                anomaly_scores = self.isolation_forest.fit_predict(features_scaled)
 
-            anomalies = []
-            for i, entry in enumerate(entries):
-                if anomaly_scores[i] == -1:  # Anomaly
-                    entry_copy = LogEntry(**entry.to_dict())
-                    entry_copy.fields['anomaly_score'] = float(self.isolation_forest.score_samples([features_scaled[i]])[0])
-                    anomalies.append(entry_copy)
+                anomalies = []
+                for i, entry in enumerate(entries):
+                    if anomaly_scores[i] == -1:  # Anomaly
+                        entry_copy = LogEntry(**entry.to_dict())
+                        entry_copy.fields['anomaly_score'] = float(self.isolation_forest.score_samples([features_scaled[i]])[0])
+                        anomalies.append(entry_copy)
 
-            return anomalies
+                return anomalies
+            return []
         except:
             return []
 
@@ -631,43 +674,331 @@ class MainWindow(QMainWindow):
         self.entries = []
         self.correlation_data = None
         self.current_files = []
+        self.analysis_history = []
+        self.current_view = "welcome"  # welcome or analysis
 
         self.init_ui()
+        self.apply_modern_styling()
         self.setup_connections()
+        self.load_history()
+
+    def apply_modern_styling(self):
+        """Apply modern dark theme styling"""
+        # Load the modern stylesheet
+        style_path = Path(__file__).parent.parent / "resources" / "modern_styles.qss"
+        if style_path.exists():
+            with open(style_path, 'r') as f:
+                self.setStyleSheet(f.read())
+        else:
+            # Fallback modern styling
+            self.setStyleSheet("""
+                QMainWindow { background: #0f0f23; }
+                QTabWidget { background: #1a1a2e; border-radius: 12px; }
+                QPushButton { background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #667eea, stop:1 #764ba2);
+                    color: white; border: none; border-radius: 8px;
+                    padding: 12px 24px; font-weight: 600; }
+                QPushButton:hover { background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #f093fb, stop:1 #f5576c); }
+            """)
+
+    def create_modern_header(self, parent_layout):
+        """Create a modern gradient header"""
+        header_frame = QFrame()
+        header_frame.setObjectName("header")
+        header_frame.setFixedHeight(100)  # Increased height
+
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(24, 16, 24, 16)
+
+        # Logo section
+        logo_widget = QWidget()
+        logo_layout = QHBoxLayout(logo_widget)
+        logo_layout.setContentsMargins(0, 0, 0, 0)
+
+        logo_label = QLabel("🛡️ FreeKhana SIEM")
+        logo_label.setObjectName("logo")
+        logo_layout.addWidget(logo_label)
+
+        header_layout.addWidget(logo_widget)
+
+        # Stats section - only show if we have data
+        self.stats_widget = QWidget()
+        self.stats_widget.setVisible(False)  # Hidden initially
+        stats_layout = QHBoxLayout(self.stats_widget)
+        stats_layout.setContentsMargins(0, 0, 0, 0)
+        stats_layout.setSpacing(16)  # Reduced spacing
+
+        # Risk score card
+        self.risk_card = self.create_stats_card("Risk Score", "0/100", "#ef4444")
+        stats_layout.addWidget(self.risk_card)
+
+        # Attack chains card
+        self.chains_card = self.create_stats_card("Attack Chains", "0", "#f59e0b")
+        stats_layout.addWidget(self.chains_card)
+
+        # Total logs card
+        self.logs_card = self.create_stats_card("Total Logs", "0", "#3b82f6")
+        stats_layout.addWidget(self.logs_card)
+
+        # Parsed logs card
+        self.parsed_card = self.create_stats_card("Parsed", "0", "#22c55e")
+        stats_layout.addWidget(self.parsed_card)
+
+        header_layout.addStretch()
+        header_layout.addWidget(self.stats_widget)
+
+        parent_layout.addWidget(header_frame)
+
+    def create_stats_card(self, label, value, color):
+        """Create a modern stats card"""
+        card = QFrame()
+        card.setObjectName("stats-card")
+        card.setFixedSize(140, 70)  # Fixed size for consistency
+
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(2)
+
+        value_label = QLabel(value)
+        value_label.setObjectName("value")
+        value_label.setStyleSheet(f"color: {color}; font-size: 18px; font-weight: bold; text-align: center;")
+        value_label.setAlignment(Qt.AlignCenter)
+
+        label_widget = QLabel(label)
+        label_widget.setObjectName("label")
+        label_widget.setStyleSheet("color: rgba(255, 255, 255, 0.8); font-size: 10px; text-transform: uppercase; text-align: center;")
+        label_widget.setAlignment(Qt.AlignCenter)
+
+        layout.addWidget(value_label)
+        layout.addWidget(label_widget)
+
+        return card
+
+    def create_welcome_view(self):
+        """Create the welcome screen"""
+        welcome_widget = QWidget()
+        layout = QVBoxLayout(welcome_widget)
+        layout.setContentsMargins(48, 48, 48, 48)
+        layout.setSpacing(24)
+
+        # Welcome header
+        welcome_header = QVBoxLayout()
+        title_label = QLabel("🚀 Welcome to FreeKhana SIEM")
+        title_label.setStyleSheet("font-size: 32px; font-weight: bold; color: #00d4ff; margin-bottom: 8px;")
+        title_label.setAlignment(Qt.AlignCenter)
+
+        subtitle_label = QLabel("Advanced Security Information and Event Management")
+        subtitle_label.setStyleSheet("font-size: 16px; color: #b8c5d6; text-align: center;")
+        subtitle_label.setAlignment(Qt.AlignCenter)
+
+        welcome_header.addWidget(title_label)
+        welcome_header.addWidget(subtitle_label)
+        layout.addLayout(welcome_header)
+
+        # Quick actions
+        actions_card = QGroupBox("Get Started")
+        actions_layout = QVBoxLayout(actions_card)
+
+        # Upload section
+        upload_section = QVBoxLayout()
+
+        upload_label = QLabel("📁 Upload Log Files")
+        upload_label.setStyleSheet("font-size: 18px; font-weight: 600; color: #00d4ff; margin-bottom: 8px;")
+
+        upload_desc = QLabel("Start by uploading your log files for analysis. Supports Apache, SSH, firewall, database, and system logs.")
+        upload_desc.setStyleSheet("color: #94a3b8; line-height: 1.4; margin-bottom: 16px;")
+        upload_desc.setWordWrap(True)
+
+        upload_section.addWidget(upload_label)
+        upload_section.addWidget(upload_desc)
+
+        # Upload buttons
+        upload_buttons = QHBoxLayout()
+        upload_buttons.setSpacing(12)
+
+        self.welcome_select_files_btn = QPushButton("📂 Select Files")
+        self.welcome_select_files_btn.setObjectName("btn-primary")
+        self.welcome_select_files_btn.clicked.connect(self.select_files)
+
+        upload_buttons.addWidget(self.welcome_select_files_btn)
+        self.welcome_analyze_btn = QPushButton("⚡ Analyze Files")
+        self.welcome_analyze_btn.setObjectName("btn-primary")
+        self.welcome_analyze_btn.clicked.connect(self.analyze_from_welcome)
+        self.welcome_analyze_btn.setVisible(False)
+        upload_buttons.addWidget(self.welcome_analyze_btn)
+        upload_buttons.addStretch()
+
+        # File list for welcome screen
+        self.welcome_file_list = QListWidget()
+        self.welcome_file_list.setMaximumHeight(120)
+        self.welcome_file_list.setStyleSheet("""
+            QListWidget {
+                background: rgba(26, 26, 46, 0.8);
+                border: 1px solid rgba(42, 42, 78, 0.5);
+                border-radius: 8px;
+                color: #ffffff;
+            }
+            QListWidget::item {
+                padding: 6px 10px;
+                border-bottom: 1px solid rgba(42, 42, 78, 0.3);
+            }
+            QListWidget::item:hover {
+                background: rgba(15, 52, 96, 0.5);
+            }
+        """)
+        upload_section.addWidget(self.welcome_file_list)
+
+        upload_section.addLayout(upload_buttons)
+        actions_layout.addLayout(upload_section)
+
+        # Recent history section
+        if self.analysis_history:
+            history_section = QVBoxLayout()
+
+            history_label = QLabel("📚 Recent Analysis")
+            history_label.setStyleSheet("font-size: 18px; font-weight: 600; color: #00d4ff; margin: 24px 0 8px 0;")
+
+            history_section.addWidget(history_label)
+
+            self.history_list = QListWidget()
+            self.history_list.setMaximumHeight(150)
+            self.history_list.itemDoubleClicked.connect(self.load_from_history)
+
+            for item in self.analysis_history[-5:]:  # Show last 5
+                list_item = QListWidgetItem(f"📊 {item['timestamp']} - {item['file_count']} files, {item['entry_count']} entries")
+                list_item.setData(Qt.UserRole, item)
+                self.history_list.addItem(list_item)
+
+            history_section.addWidget(self.history_list)
+            actions_layout.addLayout(history_section)
+
+        layout.addWidget(actions_card)
+        layout.addStretch()
+
+        self.stacked_widget.addWidget(welcome_widget)
+
+    def create_analysis_view(self):
+        """Create the analysis view with tabs"""
+        analysis_widget = QWidget()
+        layout = QVBoxLayout(analysis_widget)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        # Back to welcome button
+        back_layout = QHBoxLayout()
+        self.back_to_welcome_btn = QPushButton("⬅️ Back to Welcome")
+        self.back_to_welcome_btn.setObjectName("btn-secondary")
+        self.back_to_welcome_btn.clicked.connect(self.show_welcome_view)
+        back_layout.addWidget(self.back_to_welcome_btn)
+        back_layout.addStretch()
+        layout.addLayout(back_layout)
+
+        # Create tab widget with modern styling
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setObjectName("mainTabs")
+        layout.addWidget(self.tab_widget)
+
+        self.stacked_widget.addWidget(analysis_widget)
+
+        self.setWindowTitle("🔍 FreeKhana SIEM Tool")
+
+    def show_analysis_view(self):
+        """Show the analysis view"""
+        self.current_view = "analysis"
+        self.stats_widget.setVisible(True)
+        self.stacked_widget.setCurrentIndex(1)
+        self.setWindowTitle("🔍 FreeKhana SIEM Tool - Analysis")
+
+    def load_history(self):
+        """Load analysis history from file"""
+        try:
+            history_file = Path.home() / ".freekhana_siem" / "history.json"
+            if history_file.exists():
+                with open(history_file, 'r') as f:
+                    self.analysis_history = json.load(f)
+        except:
+            self.analysis_history = []
+
+    def save_to_history(self):
+        """Save current analysis to history"""
+        if not self.entries:
+            return
+
+        history_item = {
+            'timestamp': datetime.datetime.now().isoformat(),
+            'file_count': len(self.current_files),
+            'entry_count': len(self.entries),
+            'files': [os.path.basename(f) for f in self.current_files],
+            'stats': {
+                'total_lines': len(self.entries),
+                'by_type': dict(Counter(e.log_type for e in self.entries)),
+                'by_severity': dict(Counter(e.severity for e in self.entries))
+            }
+        }
+
+        self.analysis_history.append(history_item)
+
+        # Keep only last 20 items
+        self.analysis_history = self.analysis_history[-20:]
+
+        # Save to file
+        try:
+            history_dir = Path.home() / ".freekhana_siem"
+            history_dir.mkdir(exist_ok=True)
+            history_file = history_dir / "history.json"
+
+            with open(history_file, 'w') as f:
+                json.dump(self.analysis_history, f, indent=2)
+        except Exception as e:
+            print(f"Failed to save history: {e}")
+
+    def load_from_history(self, item):
+        """Load analysis from history"""
+        history_data = item.data(Qt.UserRole)
+        # This would need more implementation to actually reload the analysis
+        QMessageBox.information(self, "History", f"Loading analysis from {history_data['timestamp']}\n(This feature needs full implementation)")
 
     def init_ui(self):
         """Initialize the user interface"""
-        self.setWindowTitle("FreeKhana SIEM Tool")
+        self.setWindowTitle("🔍 FreeKhana SIEM Tool")
         self.setGeometry(100, 100, 1400, 900)
+        self.setWindowIcon(QIcon())  # Add icon if available
 
         # Create central widget
         central_widget = QWidget()
+        central_widget.setObjectName("centralWidget")
         self.setCentralWidget(central_widget)
 
-        # Main layout
+        # Main layout with modern spacing
         layout = QVBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # Create tab widget
-        self.tab_widget = QTabWidget()
-        layout.addWidget(self.tab_widget)
+        # Modern header
+        self.create_modern_header(layout)
 
-        # Upload tab
+        # Create stacked widget for different views
+        self.stacked_widget = QStackedWidget()
+        layout.addWidget(self.stacked_widget)
+
+        # Create welcome screen
+        self.create_welcome_view()
+
+        # Create analysis view
+        self.create_analysis_view()
+
+        # Create tab contents for analysis view
         self.create_upload_tab()
-
-        # Logs tab
         self.create_logs_tab()
-
-        # Alerts tab
         self.create_alerts_tab()
-
-        # Attack Chains tab
         self.create_attack_chains_tab()
-
-        # Timeline tab
         self.create_timeline_tab()
-
-        # Analytics tab
         self.create_analytics_tab()
+        self.create_history_tab()
+
+        # Show welcome screen initially
+        self.show_welcome_view()
 
         # Status bar
         self.status_bar = self.statusBar()
@@ -679,41 +1010,82 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.progress_bar)
 
     def create_upload_tab(self):
-        """Create the file upload tab"""
+        """Create the modern file upload tab"""
         upload_widget = QWidget()
         layout = QVBoxLayout(upload_widget)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(20)
 
-        # Mode selection
-        mode_group = QGroupBox("Analysis Mode")
-        mode_layout = QHBoxLayout(mode_group)
+        # Mode selection card
+        mode_card = QGroupBox("🎯 Analysis Mode")
+        mode_layout = QHBoxLayout(mode_card)
 
-        self.single_mode = QRadioButton("Single Log Analysis")
-        self.multi_mode = QRadioButton("Multi-Log Correlation")
+        self.single_mode = QRadioButton("📄 Single Log Analysis")
+        self.multi_mode = QRadioButton("🔗 Multi-Log Correlation")
         self.single_mode.setChecked(True)
+
+        # Style radio buttons
+        self.single_mode.setStyleSheet("QRadioButton { font-size: 14px; font-weight: 500; }")
+        self.multi_mode.setStyleSheet("QRadioButton { font-size: 14px; font-weight: 500; }")
 
         mode_layout.addWidget(self.single_mode)
         mode_layout.addWidget(self.multi_mode)
         mode_layout.addStretch()
 
-        layout.addWidget(mode_group)
+        layout.addWidget(mode_card)
 
-        # Upload area
-        upload_group = QGroupBox("File Upload")
-        upload_layout = QVBoxLayout(upload_group)
+        # Upload area card
+        upload_card = QFrame()
+        upload_card.setObjectName("drop-zone")
+        upload_layout = QVBoxLayout(upload_card)
+
+        # Upload icon and text
+        upload_header = QVBoxLayout()
+        icon_label = QLabel("📤")
+        icon_label.setStyleSheet("font-size: 48px; margin-bottom: 16px;")
+        icon_label.setAlignment(Qt.AlignCenter)
+
+        title_label = QLabel("Drop Your Log Files Here")
+        title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #00d4ff; margin-bottom: 8px;")
+        title_label.setAlignment(Qt.AlignCenter)
+
+        subtitle_label = QLabel("Drag & drop files or click to browse\nSupports 56+ log formats: Apache, SSH, Firewall, Database, System logs")
+        subtitle_label.setStyleSheet("color: #b8c5d6; text-align: center; line-height: 1.5;")
+        subtitle_label.setAlignment(Qt.AlignCenter)
+
+        upload_header.addWidget(icon_label)
+        upload_header.addWidget(title_label)
+        upload_header.addWidget(subtitle_label)
 
         self.upload_text = QTextEdit()
-        self.upload_text.setPlaceholderText("Drag and drop log files here, or click 'Select Files' below")
+        self.upload_text.setPlaceholderText("Drop files here...")
         self.upload_text.setAcceptDrops(True)
-        self.upload_text.setMaximumHeight(200)
+        self.upload_text.setMaximumHeight(120)
+        self.upload_text.setStyleSheet("""
+            QTextEdit {
+                background: rgba(26, 26, 46, 0.8);
+                border: 2px dashed rgba(0, 212, 255, 0.3);
+                border-radius: 8px;
+                color: #b8c5d6;
+                font-family: 'Consolas', monospace;
+            }
+        """)
 
+        upload_layout.addLayout(upload_header)
         upload_layout.addWidget(self.upload_text)
 
-        # File buttons
+        # Action buttons
         button_layout = QHBoxLayout()
-        self.select_files_btn = QPushButton("Select Files")
-        self.clear_files_btn = QPushButton("Clear")
-        self.analyze_btn = QPushButton("Analyze Logs")
-        self.analyze_btn.setStyleSheet("QPushButton { background-color: #3b82f6; color: white; padding: 10px; }")
+        button_layout.setSpacing(12)
+
+        self.select_files_btn = QPushButton("📂 Select Files")
+        self.select_files_btn.setObjectName("btn-secondary")
+
+        self.clear_files_btn = QPushButton("🗑️ Clear")
+        self.clear_files_btn.setObjectName("btn-secondary")
+
+        self.analyze_btn = QPushButton("⚡ Analyze Logs")
+        self.analyze_btn.setObjectName("btn-primary")
 
         button_layout.addWidget(self.select_files_btn)
         button_layout.addWidget(self.clear_files_btn)
@@ -722,52 +1094,147 @@ class MainWindow(QMainWindow):
 
         upload_layout.addLayout(button_layout)
 
-        # File list
-        self.file_list = QListWidget()
-        upload_layout.addWidget(self.file_list)
+        layout.addWidget(upload_card)
 
-        layout.addWidget(upload_group)
+        # File list card
+        files_card = QGroupBox("📋 Selected Files")
+        files_layout = QVBoxLayout(files_card)
+
+        self.file_list = QListWidget()
+        self.file_list.setMaximumHeight(200)
+        self.file_list.setStyleSheet("""
+            QListWidget {
+                background: rgba(26, 26, 46, 0.8);
+                border: 1px solid rgba(42, 42, 78, 0.5);
+                border-radius: 8px;
+                color: #ffffff;
+            }
+            QListWidget::item {
+                padding: 8px 12px;
+                border-bottom: 1px solid rgba(42, 42, 78, 0.3);
+            }
+            QListWidget::item:hover {
+                background: rgba(15, 52, 96, 0.5);
+            }
+            QListWidget::item:selected {
+                background: rgba(0, 212, 255, 0.2);
+                color: #00d4ff;
+            }
+        """)
+
+        files_layout.addWidget(self.file_list)
+
+        # Multi-file correlation button
+        self.correlation_btn = QPushButton("🚀 Run ML Correlation Analysis")
+        self.correlation_btn.setObjectName("btn-primary")
+        self.correlation_btn.setVisible(False)
+        files_layout.addWidget(self.correlation_btn)
+
+        layout.addWidget(files_card)
         layout.addStretch()
 
         self.tab_widget.addTab(upload_widget, "📁 Upload")
 
     def create_logs_tab(self):
-        """Create the logs display tab"""
+        """Create the modern logs display tab"""
         logs_widget = QWidget()
         layout = QVBoxLayout(logs_widget)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
 
-        # Filters
-        filter_group = QGroupBox("Filters")
-        filter_layout = QHBoxLayout(filter_group)
+        # Filters card
+        filter_card = QGroupBox("🔍 Filters & Search")
+        filter_layout = QHBoxLayout(filter_card)
+        filter_layout.setSpacing(16)
 
+        # Search input with icon
+        search_container = QWidget()
+        search_layout = QHBoxLayout(search_container)
+        search_layout.setContentsMargins(0, 0, 0, 0)
+
+        search_icon = QLabel("🔍")
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search logs...")
+        self.search_input.setPlaceholderText("Search logs, IPs, users, messages...")
+
+        search_layout.addWidget(search_icon)
+        search_layout.addWidget(self.search_input)
+
+        # Severity filter
+        severity_container = QWidget()
+        severity_layout = QHBoxLayout(severity_container)
+        severity_layout.setContentsMargins(0, 0, 0, 0)
+
+        severity_icon = QLabel("⚠️")
         self.severity_combo = QComboBox()
         self.severity_combo.addItems(["All Severities", "Critical", "Error", "Warning", "Info", "Debug"])
 
-        filter_layout.addWidget(QLabel("Search:"))
-        filter_layout.addWidget(self.search_input)
-        filter_layout.addWidget(QLabel("Severity:"))
-        filter_layout.addWidget(self.severity_combo)
+        severity_layout.addWidget(severity_icon)
+        severity_layout.addWidget(self.severity_combo)
 
-        layout.addWidget(filter_group)
+        filter_layout.addWidget(search_container)
+        filter_layout.addWidget(severity_container)
+        filter_layout.addStretch()
 
-        # Logs table
+        layout.addWidget(filter_card)
+
+        # Logs table card
+        table_card = QGroupBox("📊 Parsed Log Entries")
+        table_layout = QVBoxLayout(table_card)
+
+        # Table container for consistent width
+        table_container = QWidget()
+        table_container.setObjectName("table-container")
+        table_layout_inner = QVBoxLayout(table_container)
+        table_layout_inner.setContentsMargins(0, 0, 0, 0)
+
         self.logs_table = QTableWidget()
         self.logs_table.setColumnCount(6)
-        self.logs_table.setHorizontalHeaderLabels(["Timestamp", "Severity", "Source", "User", "Action", "Message"])
-        self.logs_table.horizontalHeader().setStretchLastSection(True)
+        self.logs_table.setHorizontalHeaderLabels(["🕐 Timestamp", "⚠️ Severity", "🌐 Source", "👤 User", "⚡ Action", "💬 Message"])
 
-        # Set minimum width for table
+        # Modern table styling
+        self.logs_table.setAlternatingRowColors(True)
+        self.logs_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.logs_table.setSortingEnabled(True)
+
+        # Ensure table maintains width
         self.logs_table.setMinimumWidth(800)
-        for i in range(6):
-            self.logs_table.horizontalHeader().setSectionResizeMode(i, QHeaderView.Stretch)
+        self.logs_table.horizontalHeader().setStretchLastSection(True)
+        self.logs_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
-        layout.addWidget(self.logs_table)
+        # Set column widths
+        self.logs_table.setColumnWidth(0, 180)  # Timestamp
+        self.logs_table.setColumnWidth(1, 100)  # Severity
+        self.logs_table.setColumnWidth(2, 150)  # Source
+        self.logs_table.setColumnWidth(3, 120)  # User
+        self.logs_table.setColumnWidth(4, 100)  # Action
 
-        # Stats label
-        self.logs_stats_label = QLabel("No logs loaded")
-        layout.addWidget(self.logs_stats_label)
+        table_layout_inner.addWidget(self.logs_table)
+        table_layout.addWidget(table_container)
+
+        # Stats display
+        stats_container = QWidget()
+        stats_layout = QHBoxLayout(stats_container)
+        stats_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.logs_stats_label = QLabel("📊 No logs loaded")
+        self.logs_stats_label.setStyleSheet("""
+            QLabel {
+                color: #00d4ff;
+                font-size: 14px;
+                font-weight: 500;
+                padding: 8px 16px;
+                background: rgba(0, 212, 255, 0.1);
+                border-radius: 6px;
+                border: 1px solid rgba(0, 212, 255, 0.3);
+            }
+        """)
+
+        stats_layout.addWidget(self.logs_stats_label)
+        stats_layout.addStretch()
+
+        table_layout.addWidget(stats_container)
+
+        layout.addWidget(table_card)
 
         self.tab_widget.addTab(logs_widget, "📋 Logs")
 
@@ -829,238 +1296,499 @@ class MainWindow(QMainWindow):
 
         self.tab_widget.addTab(analytics_widget, "📊 Analytics")
 
+    def create_history_tab(self):
+        """Create the history tab"""
+        history_widget = QWidget()
+        layout = QVBoxLayout(history_widget)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        # History header
+        history_header = QHBoxLayout()
+
+        title_label = QLabel("📚 Analysis History")
+        title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #00d4ff;")
+
+        refresh_btn = QPushButton("🔄 Refresh")
+        refresh_btn.setObjectName("btn-secondary")
+        refresh_btn.clicked.connect(self.load_history)
+
+        history_header.addWidget(title_label)
+        history_header.addStretch()
+        history_header.addWidget(refresh_btn)
+
+        layout.addLayout(history_header)
+
+        # History table
+        self.history_table = QTableWidget()
+        self.history_table.setColumnCount(5)
+        self.history_table.setHorizontalHeaderLabels(["🕐 Date & Time", "📁 Files", "📊 Entries", "⚠️ Types", "🔍 Actions"])
+        self.history_table.horizontalHeader().setStretchLastSection(True)
+        self.history_table.setAlternatingRowColors(True)
+
+        # Set column widths
+        self.history_table.setColumnWidth(0, 180)
+        self.history_table.setColumnWidth(1, 120)
+        self.history_table.setColumnWidth(2, 100)
+        self.history_table.setColumnWidth(3, 150)
+
+        layout.addWidget(self.history_table)
+
+        # Load history data
+        self.refresh_history_table()
+
+        self.tab_widget.addTab(history_widget, "📖 History")
+
+    def refresh_history_table(self):
+        """Refresh the history table with current data"""
+        self.history_table.setRowCount(len(self.analysis_history))
+
+        for row, item in enumerate(reversed(self.analysis_history)):  # Most recent first
+            # Timestamp
+            timestamp = datetime.datetime.fromisoformat(item['timestamp'])
+            self.history_table.setItem(row, 0, QTableWidgetItem(timestamp.strftime("%Y-%m-%d %H:%M:%S")))
+
+            # Files count
+            self.history_table.setItem(row, 1, QTableWidgetItem(str(item['file_count'])))
+
+            # Entries count
+            self.history_table.setItem(row, 2, QTableWidgetItem(str(item['entry_count'])))
+
+            # Log types
+            stats = item.get('stats', {})
+            types_str = ", ".join([f"{k}: {v}" for k, v in stats.get('by_type', {}).items()][:3])
+            if len(stats.get('by_type', {})) > 3:
+                types_str += "..."
+            self.history_table.setItem(row, 3, QTableWidgetItem(types_str))
+
+            # Actions button
+            actions_widget = QWidget()
+            actions_layout = QHBoxLayout(actions_widget)
+            actions_layout.setContentsMargins(4, 4, 4, 4)
+
+            load_btn = QPushButton("📂 Load")
+            load_btn.setObjectName("btn-secondary")
+            load_btn.setFixedWidth(60)
+            # Store reference to item for loading
+            load_btn.setProperty("history_item", item)
+
+            actions_layout.addWidget(load_btn)
+            actions_layout.addStretch()
+
+            self.history_table.setCellWidget(row, 4, actions_widget)
+
     def setup_connections(self):
         """Setup signal connections"""
         self.select_files_btn.clicked.connect(self.select_files)
         self.clear_files_btn.clicked.connect(self.clear_files)
         self.analyze_btn.clicked.connect(self.analyze_logs)
+        self.correlation_btn.clicked.connect(self.run_correlation)
         self.search_input.textChanged.connect(self.filter_logs)
         self.severity_combo.currentTextChanged.connect(self.filter_logs)
 
+        # Mode change connections
+        self.single_mode.toggled.connect(self.on_mode_changed)
+        self.multi_mode.toggled.connect(self.on_mode_changed)
+
+        # File drag and drop
+        self.upload_text.dragEnterEvent = self.drag_enter_event
+        self.upload_text.dropEvent = self.drop_event
+
+    def on_mode_changed(self):
+        """Handle mode change between single and multi"""
+        is_multi = self.multi_mode.isChecked()
+        self.correlation_btn.setVisible(is_multi and len(self.current_files) > 1)
+        self.analyze_btn.setText("📄 Analyze Single Log" if not is_multi else "🔗 Start Multi-Log Analysis")
+
+    def run_correlation(self):
+        """Run correlation analysis on uploaded files"""
+        self.analyze_logs()
+
+    def drag_enter_event(self, event):
+        """Handle drag enter events"""
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            self.upload_text.setStyleSheet("""
+                QTextEdit {
+                    background: rgba(0, 212, 255, 0.1);
+                    border: 2px solid #00d4ff;
+                    border-radius: 8px;
+                    color: #00d4ff;
+                }
+            """)
+
+    def drop_event(self, event):
+        """Handle file drop events"""
+        self.upload_text.setStyleSheet("""
+            QTextEdit {
+                background: rgba(26, 26, 46, 0.8);
+                border: 2px dashed rgba(0, 212, 255, 0.3);
+                border-radius: 8px;
+                color: #b8c5d6;
+                font-family: 'Consolas', monospace;
+            }
+        """)
+
+        urls = event.mimeData().urls()
+        files = [url.toLocalFile() for url in urls if url.isLocalFile()]
+
+        if files:
+            if self.multi_mode.isChecked():
+                self.current_files.extend(files)
+            else:
+                self.current_files = [files[0]]
+
+            self.update_file_list()
+            self.on_mode_changed()
+
     def select_files(self):
-        """Select log files"""
+        """Open file dialog to select log files"""
         files, _ = QFileDialog.getOpenFileNames(
-            self, "Select Log Files", "", "Log files (*.log *.txt);;All files (*)"
+            self,
+            "Select Log Files",
+            "",
+            "Log Files (*.log *.txt *.json);;All Files (*)"
         )
 
         if files:
-            self.current_files.extend(files)
+            if self.multi_mode.isChecked():
+                self.current_files.extend(files)
+            else:
+                self.current_files = [files[0]]
+
             self.update_file_list()
+            self.on_mode_changed()
+
+            # Update welcome screen list if on welcome view
+            if self.current_view == "welcome":
+                self.welcome_file_list.clear()
+                for file_path in self.current_files:
+                    self.welcome_file_list.addItem(f"📄 {os.path.basename(file_path)}")
+
+                # Show analyze button
+                self.welcome_analyze_btn.setVisible(True)
+
+    def analyze_from_welcome(self):
+        """Analyze files from welcome screen"""
+        if self.current_files:
+            self.show_analysis_view()
+            self.analyze_logs()
 
     def clear_files(self):
         """Clear selected files"""
-        self.current_files.clear()
-        self.update_file_list()
-
-    def update_file_list(self):
-        """Update the file list display"""
+        self.current_files = []
         self.file_list.clear()
-        for file_path in self.current_files:
-            file_name = os.path.basename(file_path)
-            file_size = os.path.getsize(file_path)
-            item_text = f"{file_name} ({file_size} bytes)"
-            self.file_list.addItem(item_text)
+
+        if hasattr(self, 'welcome_file_list'):
+            self.welcome_file_list.clear()
+            self.welcome_analyze_btn.setVisible(False)
+
+        self.on_mode_changed()
+        self.status_bar.showMessage("Files cleared")
 
     def analyze_logs(self):
-        """Start log analysis"""
+        """Start log analysis in background thread"""
         if not self.current_files:
-            QMessageBox.warning(self, "No Files", "Please select log files first.")
+            QMessageBox.warning(self, "No Files", "Please select log files first")
             return
 
-        correlation = self.multi_mode.isChecked()
+        # Disable buttons
+        self.analyze_btn.setEnabled(False)
+        self.select_files_btn.setEnabled(False)
+
+        # Show progress bar
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
-        self.analyze_btn.setEnabled(False)
 
-        # Start worker thread
-        self.worker = SIEMWorker(self.current_files, correlation)
-        self.worker.progress.connect(self.progress_bar.setValue)
+        # Create worker thread
+        correlation = self.multi_mode.isChecked() and len(self.current_files) > 1
+        self.worker = SIEMWorker(self.current_files, correlation=correlation)
+        self.worker.progress.connect(self.on_analysis_progress)
         self.worker.finished.connect(self.on_analysis_finished)
         self.worker.error.connect(self.on_analysis_error)
         self.worker.start()
 
+        self.status_bar.showMessage("Analyzing logs...")
+
+    def on_analysis_progress(self, value):
+        """Update progress during analysis"""
+        self.progress_bar.setValue(value)
+
     def on_analysis_finished(self, result):
         """Handle analysis completion"""
-        self.progress_bar.setVisible(False)
-        self.analyze_btn.setEnabled(True)
-
         self.entries = result['entries']
+        stats = result['stats']
         self.correlation_data = result.get('correlation')
 
-        # Update UI
+        # Update logs table
         self.update_logs_table()
-        self.update_alerts_table()
-        self.update_attack_chains()
-        self.update_timeline()
-        self.update_analytics()
+
+        # Update header stats
+        self.update_header_stats(stats)
+
+        # Update alerts if correlation data exists
+        if self.correlation_data:
+            self.update_alerts_tab()
+            self.update_attack_chains_tab()
+
+        # Save to history
+        self.save_to_history()
+
+        # Re-enable buttons
+        self.analyze_btn.setEnabled(True)
+        self.select_files_btn.setEnabled(True)
+        self.progress_bar.setVisible(False)
+
+        self.status_bar.showMessage(f"Analysis complete: {len(self.entries)} entries parsed")
 
         # Switch to logs tab
         self.tab_widget.setCurrentIndex(1)
 
-        QMessageBox.information(self, "Analysis Complete",
-                              f"Successfully parsed {len(self.entries)} log entries.")
-
     def on_analysis_error(self, error_msg):
         """Handle analysis error"""
-        self.progress_bar.setVisible(False)
+        QMessageBox.critical(self, "Analysis Error", f"Error during analysis:\n{error_msg}")
         self.analyze_btn.setEnabled(True)
-        QMessageBox.critical(self, "Analysis Error", f"Error during analysis: {error_msg}")
+        self.select_files_btn.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        self.status_bar.showMessage("Analysis failed")
 
     def update_logs_table(self):
-        """Update the logs table with parsed entries"""
+        """Update logs table with parsed entries"""
+        self.logs_table.setRowCount(0)
         self.logs_table.setRowCount(len(self.entries))
 
         for row, entry in enumerate(self.entries):
             # Timestamp
-            timestamp = entry.timestamp.strftime("%Y-%m-%d %H:%M:%S") if entry.timestamp else "-"
-            self.logs_table.setItem(row, 0, QTableWidgetItem(timestamp))
+            timestamp_item = QTableWidgetItem(entry.timestamp.strftime("%Y-%m-%d %H:%M:%S") if entry.timestamp else "N/A")
+            self.logs_table.setItem(row, 0, timestamp_item)
 
             # Severity
             severity_item = QTableWidgetItem(entry.severity.upper())
-            severity_item.setBackground(QColor(SEVERITY_COLORS.get(entry.severity, '#94a3b8')))
+            severity_color = SEVERITY_COLORS.get(entry.severity, '#94a3b8')
+            severity_item.setForeground(QColor(severity_color))
             self.logs_table.setItem(row, 1, severity_item)
 
             # Source
-            source = entry.source.get('ip') or entry.source.get('hostname') or entry.source.get('service') or "-"
-            self.logs_table.setItem(row, 2, QTableWidgetItem(source))
+            source_str = entry.source.get('ip', 'N/A') if entry.source else 'N/A'
+            self.logs_table.setItem(row, 2, QTableWidgetItem(source_str))
 
             # User
-            user = entry.user.get('name') if entry.user else "-"
-            self.logs_table.setItem(row, 3, QTableWidgetItem(user))
+            user_str = entry.user.get('name', 'N/A') if entry.user and entry.user.get('name') else 'N/A'
+            self.logs_table.setItem(row, 3, QTableWidgetItem(user_str))
 
             # Action
-            action = entry.action or "-"
-            self.logs_table.setItem(row, 4, QTableWidgetItem(action))
+            action_str = entry.action or 'N/A'
+            self.logs_table.setItem(row, 4, QTableWidgetItem(action_str))
 
             # Message
-            message = entry.message[:100] + "..." if len(entry.message) > 100 else entry.message
-            self.logs_table.setItem(row, 5, QTableWidgetItem(message))
+            message_str = entry.message[:100] + "..." if len(entry.message) > 100 else entry.message
+            self.logs_table.setItem(row, 5, QTableWidgetItem(message_str))
 
         # Update stats
-        total = len(self.entries)
-        by_severity = {}
-        for entry in self.entries:
-            by_severity[entry.severity] = by_severity.get(entry.severity, 0) + 1
+        self.logs_stats_label.setText(f"📊 Showing {len(self.entries)} log entries")
 
-        stats_text = f"Total: {total} entries"
-        if by_severity:
-            severity_stats = ", ".join([f"{sev}: {count}" for sev, count in by_severity.items()])
-            stats_text += f" | {severity_stats}"
+    def update_header_stats(self, stats):
+        """Update header statistics"""
+        # Show stats widget
+        self.stats_widget.setVisible(True)
 
-        self.logs_stats_label.setText(stats_text)
+        # Update risk score
+        risk_score = 0
+        if self.correlation_data:
+            risk_score = self.correlation_data.get('summary', {}).get('risk_score', 0)
 
-    def update_alerts_table(self):
-        """Update the alerts table"""
-        # For now, show high-severity entries as alerts
-        alerts = [entry for entry in self.entries if entry.severity in ['error', 'critical', 'warning']]
+        risk_value = self.risk_card.findChild(QLabel, "value")
+        if risk_value:
+            risk_value.setText(f"{risk_score}/100")
+            risk_color = '#ef4444' if risk_score > 70 else '#f59e0b' if risk_score > 40 else '#22c55e'
+            risk_value.setStyleSheet(f"color: {risk_color}; font-size: 18px; font-weight: bold; text-align: center;")
+
+        # Update attack chains
+        attack_chains = len(self.correlation_data.get('attack_chains', [])) if self.correlation_data else 0
+        chains_value = self.chains_card.findChild(QLabel, "value")
+        if chains_value:
+            chains_value.setText(str(attack_chains))
+
+        # Update total logs
+        logs_value = self.logs_card.findChild(QLabel, "value")
+        if logs_value:
+            logs_value.setText(str(stats.get('total_lines', 0)))
+
+        # Update parsed
+        parsed_value = self.parsed_card.findChild(QLabel, "value")
+        if parsed_value:
+            parsed_value.setText(str(stats.get('parsed_lines', 0)))
+
+    def update_alerts_tab(self):
+        """Update alerts tab with correlation results"""
+        if not self.correlation_data:
+            return
+
+        summary = self.correlation_data.get('summary', {})
+        self.alerts_table.setRowCount(0)
+
+        alerts = []
+
+        # Add alerts from attack chains
+        for chain in self.correlation_data.get('attack_chains', []):
+            alert = [
+                'HIGH' if chain.stage == 'initial_access' else 'MEDIUM',
+                f"{chain.attack_type.replace('_', ' ').title()} Attack",
+                f"Detected {len(chain.events)} related events from {len(chain.source_ips)} sources",
+                f"{chain.prediction.get('confidence', 0) * 100:.1f}%"
+            ]
+            alerts.append(alert)
+
+        # Add alerts for critical severity logs
+        critical_entries = [e for e in self.entries if e.severity == 'critical']
+        if critical_entries:
+            alerts.append([
+                'CRITICAL',
+                f'{len(critical_entries)} Critical Events',
+                'Critical severity logs detected that require immediate attention',
+                '100%'
+            ])
+
+        # Add alerts for errors
+        error_entries = [e for e in self.entries if e.severity == 'error']
+        if error_entries:
+            alerts.append([
+                'MEDIUM',
+                f'{len(error_entries)} Error Events',
+                'Multiple error events detected in logs',
+                'N/A'
+            ])
 
         self.alerts_table.setRowCount(len(alerts))
 
-        for row, entry in enumerate(alerts):
-            # Severity
-            severity_item = QTableWidgetItem(entry.severity.upper())
-            severity_item.setBackground(QColor(SEVERITY_COLORS.get(entry.severity, '#94a3b8')))
-            self.alerts_table.setItem(row, 0, severity_item)
+        for row, alert in enumerate(alerts):
+            for col, value in enumerate(alert):
+                item = QTableWidgetItem(value)
+                if col == 0:
+                    alert_color = '#ef4444' if value == 'CRITICAL' else '#f59e0b' if value == 'HIGH' else '#3b82f6'
+                    item.setForeground(QColor(alert_color))
+                self.alerts_table.setItem(row, col, item)
 
-            # Title
-            title = f"{entry.action or 'Unknown'} {entry.severity.upper()}"
-            self.alerts_table.setItem(row, 1, QTableWidgetItem(title))
+        self.alerts_stats_label.setText(f"🚨 {len(alerts)} alerts generated")
 
-            # Description
-            self.alerts_table.setItem(row, 2, QTableWidgetItem(entry.message))
-
-            # Confidence (placeholder)
-            confidence = "80%" if entry.severity == 'critical' else "60%"
-            self.alerts_table.setItem(row, 3, QTableWidgetItem(confidence))
-
-        self.alerts_stats_label.setText(f"Total: {len(alerts)} alerts")
-
-    def update_attack_chains(self):
-        """Update the attack chains display"""
-        if not self.correlation_data or not self.correlation_data.get('attack_chains'):
-            self.chains_list.clear()
-            self.chains_details.clear()
+    def update_attack_chains_tab(self):
+        """Update attack chains tab with correlation results"""
+        if not self.correlation_data:
             return
 
         self.chains_list.clear()
-        for chain in self.correlation_data['attack_chains']:
-            item_text = f"{ATTACK_TYPE_ICONS.get(chain.attack_type, '❓')} {chain.attack_type.replace('_', ' ').upper()}"
-            item_text += f" ({len(chain.events)} events, {chain.prediction['confidence']:.1%} confidence)"
-            self.chains_list.addItem(item_text)
 
-    def update_timeline(self):
-        """Update the timeline visualization"""
-        if self.correlation_data and self.correlation_data.get('timeline'):
-            self.timeline_view.setText(f"Timeline with {len(self.correlation_data['timeline'])} events")
-        else:
-            self.timeline_view.setText("No timeline data available")
+        for chain in self.correlation_data.get('attack_chains', []):
+            icon = ATTACK_TYPE_ICONS.get(chain.attack_type, '❓')
+            stage_color = STAGE_COLORS.get(chain.stage, '#94a3b8')
 
-    def update_analytics(self):
-        """Update the analytics display"""
-        if not self.entries:
-            self.analytics_view.setText("No data for analytics")
-            return
+            item_text = f"{icon} {chain.attack_type.replace('_', ' ').title()}"
+            item = QListWidgetItem(item_text)
+            item.setData(Qt.UserRole, chain)
 
-        # Simple analytics
-        by_type = {}
-        by_severity = {}
-        for entry in self.entries:
-            by_type[entry.log_type] = by_type.get(entry.log_type, 0) + 1
-            by_severity[entry.severity] = by_severity.get(entry.severity, 0) + 1
+            self.chains_list.addItem(item)
 
-        analytics_text = "Log Analysis Summary:\n\n"
-        analytics_text += f"Total Entries: {len(self.entries)}\n\n"
-        analytics_text += "By Log Type:\n"
-        for log_type, count in by_type.items():
-            analytics_text += f"  {log_type}: {count}\n"
-        analytics_text += "\nBy Severity:\n"
-        for severity, count in by_severity.items():
-            analytics_text += f"  {severity}: {count}\n"
+        if self.correlation_data.get('attack_chains'):
+            self.chains_list.setCurrentRow(0)
+            self.show_chain_details(self.correlation_data['attack_chains'][0])
 
-        self.analytics_view.setText(analytics_text)
+        self.chains_list.itemClicked.connect(self.on_chain_selected)
+
+    def on_chain_selected(self, item):
+        """Handle attack chain selection"""
+        chain = item.data(Qt.UserRole)
+        self.show_chain_details(chain)
+
+    def show_chain_details(self, chain):
+        """Show details of selected attack chain"""
+        details = f"""
+        <h2>{ATTACK_TYPE_ICONS.get(chain.attack_type, '❓')} {chain.attack_type.replace('_', ' ').title()}</h2>
+
+        <h3>📍 Stage</h3>
+        <p style="color: {STAGE_COLORS.get(chain.stage, '#94a3b8')}; font-weight: bold;">{chain.stage.upper()}</p>
+
+        <h3>📊 Statistics</h3>
+        <ul>
+            <li>Events: {len(chain.events)}</li>
+            <li>Source IPs: {', '.join(chain.source_ips[:5])}{'...' if len(chain.source_ips) > 5 else ''}</li>
+            <li>Target Users: {', '.join(chain.target_users[:5])}{'...' if len(chain.target_users) > 5 else ''}</li>
+        </ul>
+
+        <h3>🔍 Prediction</h3>
+        <p><strong>Confidence:</strong> {chain.prediction.get('confidence', 0) * 100:.1f}%</p>
+        <ul>
+        {"".join(f"<li>{exp}</li>" for exp in chain.prediction.get('explanation', []))}
+        </ul>
+
+        <h3>🎯 MITRE ATT&CK</h3>
+        <p><strong>Tactics:</strong> {', '.join(chain.mitre_tactics)}</p>
+        <p><strong>Techniques:</strong> {', '.join(chain.mitre_techniques)}</p>
+
+        <h3>💡 Recommendation</h3>
+        <p>{chain.recommendation}</p>
+        """
+
+        self.chains_details.setHtml(details)
 
     def filter_logs(self):
-        """Filter the logs table based on search and severity"""
+        """Filter logs based on search and severity"""
         search_text = self.search_input.text().lower()
-        severity_filter = self.severity_combo.currentText().lower()
+        severity_filter = self.severity_combo.currentText()
 
         for row in range(self.logs_table.rowCount()):
-            show_row = True
+            should_show = True
 
-            # Check severity filter
-            if severity_filter != "all severities":
+            # Check severity
+            if severity_filter != "All Severities":
                 severity_item = self.logs_table.item(row, 1)
-                if severity_item and severity_item.text().lower() != severity_filter:
-                    show_row = False
+                if severity_item and severity_item.text().lower() != severity_filter.lower():
+                    should_show = False
 
-            # Check search filter
+            # Check search text
             if search_text:
-                found = False
+                row_matches = False
                 for col in range(self.logs_table.columnCount()):
                     item = self.logs_table.item(row, col)
                     if item and search_text in item.text().lower():
-                        found = True
+                        row_matches = True
                         break
-                if not found:
-                    show_row = False
 
-            self.logs_table.setRowHidden(row, not show_row)
+                if not row_matches:
+                    should_show = False
 
-def main():
-    """Main application entry point"""
-    app = QApplication(sys.argv)
+            self.logs_table.setRowHidden(row, not should_show)
 
-    # Set application properties
-    app.setApplicationName("FreeKhana SIEM Tool")
-    app.setApplicationVersion("1.0.0")
-    app.setOrganizationName("FreeKhana")
+        # Update stats to show filtered count
+        visible_count = sum(1 for row in range(self.logs_table.rowCount()) if not self.logs_table.isRowHidden(row))
+        self.logs_stats_label.setText(f"📊 Showing {visible_count} of {len(self.entries)} log entries")
 
-    # Create and show main window
-    window = MainWindow()
-    window.show()
+    def show_welcome_view(self):
+        """Show the welcome view"""
+        self.current_view = "welcome"
+        self.stats_widget.setVisible(False)
+        self.stacked_widget.setCurrentIndex(0)
+        self.setWindowTitle("🔍 FreeKhana SIEM Tool")
 
-    # Start event loop
-    sys.exit(app.exec())
+    def update_file_list(self):
+        """Update file list display"""
+        self.file_list.clear()
+
+        for file_path in self.current_files:
+            item = QListWidgetItem(f"📄 {os.path.basename(file_path)}")
+            item.setData(Qt.UserRole, file_path)
+            self.file_list.addItem(item)
+
+        # Show correlation button if multi-mode and multiple files
+        self.correlation_btn.setVisible(self.multi_mode.isChecked() and len(self.current_files) > 1)
 
 if __name__ == "__main__":
-    main()
+    import sys
+    try:
+        from PySide6.QtWidgets import QApplication
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.show()
+        sys.exit(app.exec())
+    except Exception as e:
+        print("Failed to start GUI:", e)
+        sys.exit(1)
