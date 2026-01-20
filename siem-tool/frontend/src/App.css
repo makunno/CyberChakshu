@@ -298,6 +298,22 @@
   font-size: 13px;
 }
 
+/* Table Container - Maintains consistent width */
+.table-container {
+  width: 100%;
+  min-width: 800px;
+  overflow-x: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.table-container table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
+}
+
 /* Alerts Section */
 .alerts-section {
   display: flex;

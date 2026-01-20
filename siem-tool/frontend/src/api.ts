@@ -2,7 +2,7 @@
 
 import type { ParseResponse, CorrelateResponse } from './types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const API_URL = import.meta.env.VITE_API_URL || 'https://siem-backend.tanubhavj.workers.dev';
 
 export async function parseLogsFromFile(file: File): Promise<ParseResponse> {
   const formData = new FormData();
