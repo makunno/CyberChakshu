@@ -58,37 +58,6 @@ from PySide6.QtGui import (
     QAction, QKeySequence
 )
 
-# PySide6 imports
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QTabWidget, QPushButton, QLabel, QTextEdit, QTableWidget,
-    QTableWidgetItem, QFileDialog, QProgressBar, QMessageBox,
-    QSplitter, QTreeWidget, QTreeWidgetItem, QComboBox, QLineEdit,
-    QGroupBox, QScrollArea, QFrame, QStatusBar, QMenuBar, QMenu,
-    QCheckBox, QSpinBox, QListWidget, QListWidgetItem, QTextBrowser,
-    QDialog, QFormLayout, QDialogButtonBox, QDateTimeEdit, QPlainTextEdit,
-    QRadioButton, QHeaderView, QStackedWidget
-)
-from PySide6.QtCore import (
-    Qt, QThread, Signal, QTimer, QDateTime, QSize, QPointF, QRectF
-)
-from PySide6.QtGui import (
-    QFont, QPalette, QColor, QIcon, QPixmap, QPainter, QBrush, QPen,
-    QAction, QKeySequence
-)
-from PySide6.QtCharts import (
-    QChart, QChartView, QLineSeries, QBarSeries, QBarSet, QPieSeries,
-    QValueAxis, QBarCategoryAxis, QDateTimeAxis
-)
-from PySide6.QtGui import (
-    QFont, QPalette, QColor, QIcon, QPixmap, QPainter, QBrush, QPen,
-    QAction, QKeySequence
-)
-from PySide6.QtCharts import (
-    QChart, QChartView, QLineSeries, QBarSeries, QBarSet, QPieSeries,
-    QValueAxis, QBarCategoryAxis, QDateTimeAxis
-)
-
 # Suppress warnings
 warnings.filterwarnings('ignore')
 plt.style.use('default')
