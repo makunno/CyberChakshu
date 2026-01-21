@@ -1,25 +1,118 @@
-# FreeKhana SIEM Desktop Applications
+# FreeKhana SIEM Desktop Application
 
-This repository contains two different desktop implementations of the FreeKhana SIEM tool. Choose the appropriate implementation based on your needs:
+**Modern desktop SIEM tool with PySide6 GUI and embedded WebView, featuring all 56+ log parsers and ML-powered analysis.**
 
-## 🚀 Recommended: WebView + Flask Implementation
+## 🚀 Quick Start
 
-**Location**: `webview-gui/` (Recommended)
-**Technology**: PyWebView + Flask + React
-**Status**: ✅ Active, Full Featured
-
-### Why Choose This?
-- **Modern UI**: Same React interface as the web application
-- **Complete Features**: All 56+ log parsers, ML analysis, attack chains
-- **Cross-Platform**: Works on Windows, macOS, Linux
-- **Active Development**: Regularly maintained and updated
-
-### Quick Start
+### Installation
 ```bash
 cd webview-gui
-python setup.py    # Install dependencies
-python run.py      # Launch application
+pip install -r requirements.txt
 ```
+
+### Launch
+```bash
+python run.py
+```
+
+## ✨ Features
+
+### 🎨 **Modern PySide6 GUI**
+- **Native desktop interface** with dark theme
+- **Real-time backend switching** between local and online
+- **Embedded WebView** for seamless React UI integration
+- **Backend status monitoring** and automatic detection
+
+### 🔍 **Complete Log Analysis Engine**
+- **56+ log format parsers** from web application
+- **ML-powered anomaly detection** with Isolation Forest
+- **Attack chain correlation** across multiple sources
+- **MITRE ATT&CK framework** mapping
+
+### 🌐 **Flexible Backend Options**
+- **Automatic detection**: Local → Online fallback
+- **Manual switching**: Choose between backends anytime
+- **Local backend**: Start/stop Flask server from GUI
+- **Online backend**: Always available at `https://freekhana-frontend.pages.dev`
+
+### 📊 **Interactive Features**
+- **Real-time status updates** for backend availability
+- **One-click backend switching** without restart
+- **Progress indicators** and error handling
+- **Modern dark theme** matching the web app
+
+## 🏗️ Architecture
+
+```
+FreeKhana SIEM Desktop
+├── PySide6 GUI (Native Interface)
+│   ├── Backend Selection Panel
+│   ├── Status Monitoring
+│   └── WebView Container
+│
+├── Embedded WebView (React Frontend)
+│   ├── Same UI as web app
+│   ├── Interactive visualizations
+│   └── Real-time updates
+│
+└── Backend System
+    ├── Local Flask API (optional)
+    └── Online API (always available)
+```
+
+## 📋 Supported Log Formats
+
+### Database (14 parsers)
+MySQL, PostgreSQL, Oracle, SQL Server, MongoDB
+
+### Web Servers (10 parsers)
+Apache, Nginx, IIS, Django, Flask, Laravel, Express, Gunicorn, Uvicorn, Rails
+
+### Authentication (8 parsers)
+SSH, PAM, sudo, su, FTP, vsftpd
+
+### Firewalls (12 parsers)
+iptables, UFW, nftables, firewalld, Windows Firewall, Palo Alto, FortiGate, Cisco ASA, Check Point, AWS VPC, Azure NSG, GCP VPC
+
+### Mail (5 parsers)
+Postfix, Sendmail, Exim, Dovecot, Exchange
+
+### System (7 parsers)
+syslog, systemd, kernel, audit, package, cron, daemon
+
+## 🎯 How It Works
+
+1. **Launch Application**: PySide6 GUI starts and checks backend availability
+2. **Backend Selection**: Automatically selects best available backend
+3. **WebView Loading**: React frontend loads in embedded container
+4. **Real-time Switching**: Change backends without restarting app
+5. **Clean Operation**: Proper thread management prevents QThread warnings
+6. **Full Functionality**: All web app features available in desktop
+
+## 🔧 Technical Details
+
+- **GUI Framework**: PySide6 (Qt for Python)
+- **Web Engine**: PyWebView with embedded browser
+- **Backend API**: Flask with CORS support
+- **Frontend**: React + TypeScript (same as web app)
+- **ML Engine**: scikit-learn for anomaly detection
+- **Platform**: Windows (cross-platform with Qt)
+
+## 📝 Requirements
+
+- Python 3.8+
+- PySide6
+- PyWebView
+- Flask + Flask-CORS
+- NumPy + scikit-learn
+
+## 🎉 Benefits
+
+- **Native Desktop Experience**: No browser window, proper desktop integration
+- **Always Available**: Online backend ensures app works anywhere
+- **Modern UI**: Same beautiful interface as web application
+- **Full Feature Set**: All 56 parsers and ML analysis included
+- **Real-time Switching**: Change backends on the fly
 
 ## ⚠️ Legacy: PySide6 Implementation
 
@@ -37,25 +130,22 @@ python run.py      # Launch application
 
 ```
 siem-gui/
-├── webview-gui/          # ⭐ RECOMMENDED - Modern desktop app
-│   ├── main.py           # PyWebView launcher
-│   ├── api/              # Flask backend
-│   ├── parsers/          # 56+ log parsers
-│   ├── ml/               # ML analysis engine
-│   ├── static/           # React frontend
-│   └── README.md         # Detailed documentation
-│
-├── pyside6-gui/          # ❌ DEPRECATED - Legacy Qt app
-│   ├── src/              # PySide6 application
-│   ├── resources/        # Qt stylesheets
-│   └── README.md         # Migration guide
-│
-└── README.md             # This file
+├── README.md             # This file
+└── webview-gui/          # ⭐ MAIN APPLICATION - PySide6 GUI with embedded WebView
+    ├── main.py           # PySide6 GUI with embedded WebView
+    ├── run.py            # Launcher script
+    ├── api/              # Flask backend (auto-managed)
+    ├── parsers/          # 56+ log parsers
+    ├── ml/               # ML correlation engine
+    ├── detectors/        # Security alerts
+    ├── static/           # React frontend assets
+    ├── requirements.txt  # Python dependencies
+    └── README.md         # Detailed documentation
 ```
 
 ## 📊 Feature Comparison
 
-| Feature | WebView + Flask | PySide6 |
+| Feature | PySide6 + WebView | Legacy PySide6 |
 |---------|----------------|---------|
 | **UI Modernity** | ⭐⭐⭐⭐⭐ React, responsive | ⭐⭐ Basic Qt interface |
 | **Log Parsers** | ⭐⭐⭐⭐⭐ 56+ complete | ⭐⭐ Limited (basic) |
@@ -80,9 +170,9 @@ siem-gui/
 
 ## 🔧 System Requirements
 
-### WebView + Flask (Recommended)
+### PySide6 + WebView (Current)
 - Python 3.8+
-- PyWebView, Flask, Flask-CORS
+- PySide6, PyWebView, Flask, Flask-CORS
 - NumPy, scikit-learn (for ML features)
 - Works on Windows, macOS, Linux
 

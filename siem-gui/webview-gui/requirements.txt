@@ -1,3 +1,5 @@
+PySide6>=6.0.0
+PySide6>=6.0.0
 PyWebView>=4.0
 Flask>=3.0.0
 Flask-CORS>=4.0.0

@@ -1,29 +1,26 @@
-"""FreeKhana SIEM Desktop - PySide6 GUI with Embedded WebView"""
+#!/usr/bin/env python3
+"""Alternative FreeKhana SIEM Desktop - Browser-based fallback"""
 
 import sys
 import os
 import requests
 import threading
 import time
+import webbrowser
 from pathlib import Path
 
 # Add current directory to path
 current_dir = Path(__file__).parent
 sys.path.insert(0, str(current_dir))
 
-# PySide6 imports
+# PySide6 imports (without WebEngine)
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QComboBox, QGroupBox, QStatusBar,
-    QMessageBox, QProgressBar, QFrame, QSplitter
+    QMessageBox, QProgressBar, QFrame, QTextEdit
 )
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QFont, QPalette, QColor, QIcon
-
-# WebView imports - using Qt WebEngine instead of pywebview for better integration
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWebEngineCore import QWebEngineSettings
-WEBVIEW_AVAILABLE = True  # Qt WebEngine is built into PySide6
 
 # Flask API imports (for local backend) - lazy loading
 FLASK_AVAILABLE = True  # Assume available, check at runtime
@@ -127,12 +124,11 @@ class FlaskServer(QThread):
 
 
 class FreeKhanaMainWindow(QMainWindow):
-    """Main application window with PySide6 controls and embedded WebView"""
+    """Main application window with browser-based fallback"""
 
     def __init__(self):
         super().__init__()
         self.current_backend = None
-        self.webview_widget = None  # QWebEngineView widget instead of separate window
         self.flask_thread = None
         self.flask_server_running = False  # Track server state independently
         self.backend_checkers = []  # Track active checker threads
@@ -144,9 +140,9 @@ class FreeKhanaMainWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize the user interface"""
-        self.setWindowTitle("FreeKhana SIEM Desktop")
-        self.setGeometry(100, 100, 1400, 900)
-        self.setMinimumSize(1200, 700)
+        self.setWindowTitle("FreeKhana SIEM Desktop (Browser Mode)")
+        self.setGeometry(100, 100, 1000, 700)
+        self.setMinimumSize(800, 600)
 
         # Create central widget
         central_widget = QWidget()
@@ -159,9 +155,9 @@ class FreeKhanaMainWindow(QMainWindow):
         self.create_backend_panel()
         main_layout.addWidget(self.backend_panel)
 
-        # WebView container (bottom, takes most space)
-        self.create_webview_container()
-        main_layout.addWidget(self.webview_container, 1)  # Stretch factor 1
+        # Browser info panel (middle)
+        self.create_browser_panel()
+        main_layout.addWidget(self.browser_panel, 1)  # Stretch factor 1
 
         # Status bar
         self.status_bar = QStatusBar()
@@ -170,21 +166,6 @@ class FreeKhanaMainWindow(QMainWindow):
 
         # Apply modern styling
         self.apply_modern_style()
-
-    def cleanup_checker_threads(self):
-        """Clean up any running checker threads"""
-        for checker in self.backend_checkers[:]:  # Copy list to avoid modification issues
-            if checker.isRunning():
-                checker.stop()  # Signal thread to stop
-                if not checker.wait(2000):  # Wait 2 seconds for graceful stop
-                    checker.terminate()  # Force terminate if needed
-                    checker.wait(1000)  # Wait 1 more second
-            self.backend_checkers.remove(checker)
-
-    def remove_checker(self, checker):
-        """Remove a finished checker from the list"""
-        if checker in self.backend_checkers:
-            self.backend_checkers.remove(checker)
 
     def create_backend_panel(self):
         """Create the backend selection panel"""
@@ -198,7 +179,7 @@ class FreeKhanaMainWindow(QMainWindow):
         self.backend_combo = QComboBox()
         self.backend_combo.addItem("Auto-Detect", "auto")
         self.backend_combo.addItem("Offline (Local)", "localhost")
-        self.backend_combo.addItem("Online (https://freekhana-frontend.pages.dev)", "online")
+        self.backend_combo.addItem("Online (Cloud)", "online")
         self.backend_combo.currentTextChanged.connect(self.on_backend_changed)
         layout.addWidget(self.backend_combo)
 
@@ -228,99 +209,127 @@ class FreeKhanaMainWindow(QMainWindow):
 
         layout.addStretch()
 
-    def start_local_backend(self):
-        """Start the local Flask backend"""
-        if not FLASK_AVAILABLE:
-            QMessageBox.critical(self, "Error", "Flask backend is not available.")
-            return
+    def create_browser_panel(self):
+        """Create the browser info panel"""
+        self.browser_panel = QFrame()
+        self.browser_panel.setFrameStyle(QFrame.Shape.Box)
+        self.browser_panel.setLineWidth(1)
 
-        self.flask_server_running = True  # Set flag immediately when starting
-        self.status_bar.showMessage("Starting offline backend...")
-        self.start_local_btn.setEnabled(False)
+        layout = QVBoxLayout(self.browser_panel)
 
-        # Start Flask server in background thread
-        self.flask_thread = FlaskServer()
-        self.flask_thread.server_started.connect(self.on_flask_started)
-        self.flask_thread.server_error.connect(self.on_flask_error)
-        self.flask_thread.finished.connect(self.on_flask_finished)
-        self.flask_thread.start()
+        # Info label
+        info_label = QLabel("Browser-Based Mode")
+        info_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6;")
+        layout.addWidget(info_label)
 
-    def stop_local_backend(self):
-        """Stop the local Flask backend"""
-        if not self.flask_server_running:
-            QMessageBox.information(self, "Info", "Local backend is not running.")
-            return
+        # Description
+        desc_text = QTextEdit()
+        desc_text.setPlainText("""
+FreeKhana SIEM Desktop is running in Browser Mode due to graphics compatibility issues.
 
-        self.status_bar.showMessage("Switching to online backend and stopping local server...")
-        self.stop_local_btn.setEnabled(False)
+The application will open your system's default web browser to access the SIEM interface.
 
-        # Switch to online backend first
-        self.backend_combo.setCurrentText("Online (Cloud)")
-        self.switch_to_online_backend()
+Features:
+• Automatic backend detection and switching
+• Real-time status monitoring
+• Seamless browser integration
+• Full SIEM functionality through web interface
 
-        # Then stop the Flask server
-        self.stop_flask_server()
-
-    def on_backend_changed(self):
-        """Handle backend selection change"""
-        backend_choice = self.backend_combo.currentData()
-
-        if backend_choice == 'auto':
-            self.auto_select_backend()
-            return
-
-        if backend_choice == 'localhost':
-            if "✓ Available" in self.local_status.text():
-                self.switch_to_offline_backend()
-            else:
-                QMessageBox.warning(self, "Local Backend Unavailable",
-                                  "Local backend is not running. Click 'Start Local Backend' to start it.")
-                return
-        elif backend_choice == 'online':
-            if "✓ Available" in self.online_status.text():
-                self.switch_to_online_backend()
-            else:
-                QMessageBox.warning(self, "Online Backend Unavailable",
-                                  "Online backend is not accessible. Please check your internet connection.")
-                return
-
-    def create_webview_container(self):
-        """Create container for WebView"""
-        self.webview_container = QFrame()
-        self.webview_container.setFrameStyle(QFrame.Shape.Box)
-        self.webview_container.setLineWidth(1)
-
-        layout = QVBoxLayout(self.webview_container)
-        layout.setContentsMargins(0, 0, 0, 0)  # Remove margins for full embedding
-
-        # Create QWebEngineView widget
-        self.webview_widget = QWebEngineView()
-        self.webview_widget.setMinimumSize(800, 600)
-
-        # Configure web settings for better performance and compatibility
-        settings = self.webview_widget.settings()
-        settings.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
-        settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
-        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
-        # Disable GPU acceleration for WebEngine to avoid graphics issues
-        settings.setAttribute(QWebEngineSettings.WebAttribute.WebGLEnabled, False)
-        settings.setAttribute(QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled, False)
-
-        # Initial placeholder content
-        self.webview_widget.setHtml("""
-            <html>
-            <body style="background-color: #1e293b; color: #94a3b8; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
-                <div style="text-align: center;">
-                    <h2>FreeKhana SIEM Desktop</h2>
-                    <p>WebView will load here...<br>Select a backend above to begin.</p>
-                </div>
-            </body>
-            </html>
+Click "Open in Browser" to launch the SIEM interface.
         """)
+        desc_text.setReadOnly(True)
+        desc_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e293b;
+                color: #e2e8f0;
+                border: none;
+                font-family: 'Segoe UI', sans-serif;
+            }
+        """)
+        layout.addWidget(desc_text)
 
-        layout.addWidget(self.webview_widget)
+        # Open browser button
+        self.open_browser_btn = QPushButton("Open in Browser")
+        self.open_browser_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #2563eb;
+            }
+            QPushButton:pressed {
+                background-color: #1d4ed8;
+            }
+        """)
+        self.open_browser_btn.clicked.connect(self.open_in_browser)
+        self.open_browser_btn.setEnabled(False)
+        layout.addWidget(self.open_browser_btn)
+
+        layout.addStretch()
 
     def apply_modern_style(self):
+        """Apply modern styling"""
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #0f172a;
+                color: #e2e8f0;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #374151;
+                border-radius: 8px;
+                margin-top: 1ex;
+                background-color: #1e293b;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 10px 0 10px;
+                color: #3b82f6;
+            }
+            QLabel {
+                color: #e2e8f0;
+            }
+            QComboBox {
+                background-color: #374151;
+                color: #e2e8f0;
+                border: 1px solid #4b5563;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 4px solid #e2e8f0;
+                margin-right: 8px;
+            }
+            QPushButton {
+                background-color: #374151;
+                color: #e2e8f0;
+                border: 1px solid #4b5563;
+                border-radius: 4px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #4b5563;
+            }
+            QPushButton:disabled {
+                background-color: #1f2937;
+                color: #6b7280;
+            }
+        """)
+
+    def cleanup_checker_threads(self):
         """Clean up any running checker threads"""
         for checker in self.backend_checkers[:]:  # Copy list to avoid modification issues
             if checker.isRunning():
@@ -328,6 +337,11 @@ class FreeKhanaMainWindow(QMainWindow):
                 if not checker.wait(2000):  # Wait 2 seconds for graceful stop
                     checker.terminate()  # Force terminate if needed
                     checker.wait(1000)  # Wait 1 more second
+            self.backend_checkers.remove(checker)
+
+    def remove_checker(self, checker):
+        """Remove a finished checker from the list"""
+        if checker in self.backend_checkers:
             self.backend_checkers.remove(checker)
 
     def check_backends(self):
@@ -349,7 +363,7 @@ class FreeKhanaMainWindow(QMainWindow):
         self.backend_checkers.append(localhost_checker)
         localhost_checker.start()
 
-        # Check online (check backend API availability, but load frontend in WebView)
+        # Check online (check backend API availability, but load frontend in browser)
         online_checker = BackendChecker('online', 'https://siem-backend.tanubhavj.workers.dev')
         online_checker.result_ready.connect(self.on_backend_check_result)
         online_checker.finished.connect(lambda: self.remove_checker(online_checker))
@@ -403,6 +417,62 @@ class FreeKhanaMainWindow(QMainWindow):
         else:
             self.status_bar.showMessage("No backends available - please check your connection")
 
+    def on_backend_changed(self):
+        """Handle backend selection change"""
+        backend_choice = self.backend_combo.currentData()
+
+        if backend_choice == 'auto':
+            self.auto_select_backend()
+            return
+
+        if backend_choice == 'localhost':
+            if "✓ Available" in self.local_status.text():
+                self.switch_to_offline_backend()
+            else:
+                QMessageBox.warning(self, "Local Backend Unavailable",
+                                  "Local backend is not running. Click 'Start Local Backend' to start it.")
+                return
+        elif backend_choice == 'online':
+            if "✓ Available" in self.online_status.text():
+                self.switch_to_online_backend()
+            else:
+                QMessageBox.warning(self, "Online Backend Unavailable",
+                                  "Online backend is not accessible. Please check your internet connection.")
+                return
+
+    def start_local_backend(self):
+        """Start the local Flask backend"""
+        if not FLASK_AVAILABLE:
+            QMessageBox.critical(self, "Error", "Flask backend is not available.")
+            return
+
+        self.flask_server_running = True  # Set flag immediately when starting
+        self.status_bar.showMessage("Starting offline backend...")
+        self.start_local_btn.setEnabled(False)
+
+        # Start Flask server in background thread
+        self.flask_thread = FlaskServer()
+        self.flask_thread.server_started.connect(self.on_flask_started)
+        self.flask_thread.server_error.connect(self.on_flask_error)
+        self.flask_thread.finished.connect(self.on_flask_finished)
+        self.flask_thread.start()
+
+    def stop_local_backend(self):
+        """Stop the local Flask backend"""
+        if not self.flask_server_running:
+            QMessageBox.information(self, "Info", "Local backend is not running.")
+            return
+
+        self.status_bar.showMessage("Switching to online backend and stopping local server...")
+        self.stop_local_btn.setEnabled(False)
+
+        # Switch to online backend first
+        self.backend_combo.setCurrentText("Online (Cloud)")
+        self.switch_to_online_backend()
+
+        # Then stop the Flask server
+        self.stop_flask_server()
+
     def switch_to_offline_backend(self):
         """Switch to offline (local) backend"""
         # Stop any existing Flask server
@@ -411,40 +481,29 @@ class FreeKhanaMainWindow(QMainWindow):
         # Start Flask server
         self.start_flask_server()
 
-        # Switch WebView to localhost
-        self.switch_webview_backend('http://127.0.0.1:5000')
+        # Update UI for local backend
+        self.current_backend = 'http://127.0.0.1:5000'
+        self.status_bar.showMessage("Offline backend ready - click 'Open in Browser'")
+        self.open_browser_btn.setEnabled(True)
 
     def switch_to_online_backend(self):
         """Switch to online backend"""
-        # Switch WebView to online frontend (which will connect to online backend API)
-        self.switch_webview_backend('https://freekhana-frontend.pages.dev')
+        # Update UI for online backend
+        self.current_backend = 'https://freekhana-frontend.pages.dev'
+        self.status_bar.showMessage("Online backend ready - click 'Open in Browser'")
+        self.open_browser_btn.setEnabled(True)
 
-    def on_webview_load_finished(self, success):
-        """Handle WebView load finished"""
-        if success:
-            backend_name = "Offline" if self.current_backend and "127.0.0.1" in self.current_backend else "Online"
-            self.status_bar.showMessage(f"Connected to {backend_name} backend")
-            print(f"WebView loaded successfully: {self.current_backend}")
+    def open_in_browser(self):
+        """Open the current backend URL in system browser"""
+        if self.current_backend:
+            try:
+                webbrowser.open(self.current_backend)
+                backend_name = "Offline" if "127.0.0.1" in self.current_backend else "Online"
+                self.status_bar.showMessage(f"Opened {backend_name} backend in browser")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to open browser: {e}")
         else:
-            self.status_bar.showMessage("Failed to load web content")
-            print(f"WebView failed to load: {self.current_backend}")
-            self.show_webview_error(f"Failed to load {self.current_backend}")
-
-    def show_webview_error(self, message):
-        """Show error message in WebView"""
-        if self.webview_widget:
-            error_html = f"""
-                <html>
-                <body style="background-color: #1e293b; color: #ef4444; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
-                    <div style="text-align: center;">
-                        <h2>Error Loading Content</h2>
-                        <p>{message}</p>
-                        <p><small>Check your internet connection and backend availability.</small></p>
-                    </div>
-                </body>
-                </html>
-            """
-            self.webview_widget.setHtml(error_html)
+            QMessageBox.warning(self, "No Backend Selected", "Please select a backend first.")
 
     def start_flask_server(self):
         """Start the Flask server"""
@@ -512,53 +571,6 @@ class FreeKhanaMainWindow(QMainWindow):
             self.start_local_btn.setEnabled(True)
             self.stop_local_btn.setVisible(False)
 
-    def switch_webview_backend(self, backend_url):
-        """Switch WebView to the specified backend"""
-        if backend_url == self.current_backend:
-            return
-
-        self.current_backend = backend_url
-        self.status_bar.showMessage(f"Switching to {backend_url}...")
-
-        # Determine which URL to load in WebView
-        # Online backend loads the frontend React app
-        # Offline backend loads the local Flask server
-        if 'freekhana-frontend.pages.dev' in backend_url:
-            webview_url = 'https://freekhana-frontend.pages.dev'
-        else:
-            webview_url = backend_url
-
-        print(f"Loading URL in WebView: {webview_url}")
-        backend_name = "Offline" if "127.0.0.1" in backend_url else "Online"
-
-        # Load URL in the embedded QWebEngineView
-        if self.webview_widget and WEBVIEW_AVAILABLE:
-            try:
-                # Connect to load finished signal to update status
-                self.webview_widget.loadFinished.connect(self.on_webview_load_finished)
-
-                # Load the URL
-                from PySide6.QtCore import QUrl
-                self.webview_widget.load(QUrl(webview_url))
-
-                print(f"WebView loading: {webview_url}")
-                self.status_bar.showMessage(f"Loading {backend_name} backend...")
-
-            except Exception as e:
-                print(f"Failed to load WebView URL: {e}")
-                self.status_bar.showMessage(f"Failed to load WebView: {e}")
-                self.show_webview_error(f"Failed to load {webview_url}\nError: {e}")
-        else:
-            print("WebView widget not available")
-            self.status_bar.showMessage("WebView not available")
-            self.show_webview_error("WebView not available.\nQt WebEngine is required.")
-
-    def resizeEvent(self, event):
-        """Handle window resize to adjust WebView size"""
-        super().resizeEvent(event)
-        # QWebEngineView automatically resizes with its container, no manual adjustment needed
-        pass
-
     def closeEvent(self, event):
         """Handle application close"""
         print("Application closing - cleaning up resources...")
@@ -571,15 +583,6 @@ class FreeKhanaMainWindow(QMainWindow):
         self.stop_flask_server()
         print("Flask server stopped")
 
-        # Close WebView - QWebEngineView is automatically cleaned up with Qt
-        if self.webview_widget:
-            try:
-                # Disconnect signals to prevent issues during shutdown
-                self.webview_widget.loadFinished.disconnect(self.on_webview_load_finished)
-                print("WebView signals disconnected")
-            except:
-                pass
-
         # Give a moment for cleanup
         QTimer.singleShot(500, lambda: self.finish_close(event))
 
@@ -591,28 +594,10 @@ class FreeKhanaMainWindow(QMainWindow):
 
 def main():
     """Main application entry point"""
-    print("Starting FreeKhana SIEM Desktop...")
+    print("Starting FreeKhana SIEM Desktop (Browser Mode)...")
     print(f"Python version: {sys.version}")
-    print(f"WEBVIEW_AVAILABLE: {WEBVIEW_AVAILABLE}")
-
-    # Configure Qt for cross-platform compatibility
-    import os
-    import platform
-
-    os.environ['QT_LOGGING_RULES'] = 'qt.qthread=true'
-    # Disable GPU acceleration for compatibility
-    os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--disable-gpu --disable-software-rasterizer --disable-web-security --allow-running-insecure-content'
-
-    # Platform-specific settings
-    if platform.system() == 'Windows':
-        os.environ['QT_QPA_PLATFORM'] = 'windows:dpiawareness=0'
 
     app = QApplication(sys.argv)
-    print("QApplication created")
-
-    # Set application attributes for better compatibility
-    app.setAttribute(Qt.ApplicationAttribute.AA_UseSoftwareOpenGL, True)
-    app.setAttribute(Qt.ApplicationAttribute.AA_DisableShaderDiskCache, True)
 
     # Set application properties
     app.setApplicationName("FreeKhana SIEM Desktop")
@@ -643,14 +628,6 @@ def main():
         try:
             window.stop_flask_server()
             print("Flask server stopped")
-        except:
-            pass
-
-        # QWebEngineView is automatically cleaned up with Qt application
-        try:
-            if window.webview_widget:
-                window.webview_widget.loadFinished.disconnect(window.on_webview_load_finished)
-                print("WebView signals disconnected")
         except:
             pass
 
