@@ -164,38 +164,71 @@ export const firewalldParser: Parser = {
 export const windowsFirewallParser: Parser = {
   name: 'Windows Firewall Log',
   logType: 'windows_firewall',
-  detect: (line: string) => /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+(ALLOW|DROP|BLOCK)\s+(TCP|UDP|ICMP)/.test(line),
+  detect: (line: string) => /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+(ALLOW|DROP)\s+(TCP|UDP|ICMP)/.test(line),
   parse: (line: string): ParsedLogEntry | null => {
-    const match = line.match(
-      /^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+(ALLOW|DROP|BLOCK)\s+(TCP|UDP|ICMP)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\d+)/
+    // Handle both formats: with and without ports
+    const withPortsMatch = line.match(
+      /^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+(ALLOW|DROP)\s+(TCP|UDP)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\d+)/
     );
-    if (!match) return null;
 
-    const [, date, time, action, protocol, srcIp, dstIp, srcPort, dstPort] = match;
+    if (withPortsMatch) {
+      const [, date, time, action, protocol, srcIp, dstIp, srcPort, dstPort] = withPortsMatch;
+      return {
+        id: generateId(),
+        timestamp: parseTimestamp(`${date} ${time}`),
+        logType: 'windows_firewall',
+        severity: action === 'DROP' ? 'warning' : 'info',
+        source: { service: 'windows_firewall', ip: srcIp, port: parseInt(srcPort) },
+        destination: { ip: dstIp, port: parseInt(dstPort) },
+        action: action.toLowerCase(),
+        outcome: action === 'ALLOW' ? 'success' : 'failure',
+        message: `${action} ${protocol} ${srcIp}:${srcPort} -> ${dstIp}:${dstPort}`,
+        rawLine: line,
+        fields: {
+          date,
+          time,
+          action,
+          protocol,
+          src_ip: srcIp,
+          dst_ip: dstIp,
+          src_port: parseInt(srcPort),
+          dst_port: parseInt(dstPort),
+        },
+        tags: ['firewall', 'windows', 'network'],
+      };
+    }
 
-    return {
-      id: generateId(),
-      timestamp: parseTimestamp(`${date} ${time}`),
-      logType: 'windows_firewall',
-      severity: action === 'DROP' || action === 'BLOCK' ? 'warning' : 'info',
-      source: { service: 'windows_firewall', ip: srcIp, port: parseInt(srcPort) },
-      destination: { ip: dstIp, port: parseInt(dstPort) },
-      action: action.toLowerCase(),
-      outcome: action === 'ALLOW' ? 'success' : 'failure',
-      message: `${action} ${protocol} ${srcIp}:${srcPort} -> ${dstIp}:${dstPort}`,
-      rawLine: line,
-      fields: {
-        date,
-        time,
-        action,
-        protocol,
-        src_ip: srcIp,
-        dst_ip: dstIp,
-        src_port: parseInt(srcPort),
-        dst_port: parseInt(dstPort),
-      },
-      tags: ['firewall', 'windows', 'network'],
-    };
+    // Handle ICMP format (no ports)
+    const icmpMatch = line.match(
+      /^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+(ALLOW|DROP)\s+ICMP\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)/
+    );
+
+    if (icmpMatch) {
+      const [, date, time, action, srcIp, dstIp] = icmpMatch;
+      return {
+        id: generateId(),
+        timestamp: parseTimestamp(`${date} ${time}`),
+        logType: 'windows_firewall',
+        severity: action === 'DROP' ? 'warning' : 'info',
+        source: { service: 'windows_firewall', ip: srcIp },
+        destination: { ip: dstIp },
+        action: action.toLowerCase(),
+        outcome: action === 'ALLOW' ? 'success' : 'failure',
+        message: `${action} ICMP ${srcIp} -> ${dstIp}`,
+        rawLine: line,
+        fields: {
+          date,
+          time,
+          action,
+          protocol: 'ICMP',
+          src_ip: srcIp,
+          dst_ip: dstIp,
+        },
+        tags: ['firewall', 'windows', 'network'],
+      };
+    }
+
+    return null;
   },
 };
 

@@ -15,12 +15,55 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// Enable CORS for frontend
+// Enable CORS for frontend with specific origins
 app.use('*', cors({
-  origin: '*', // Allow all origins for development, restrict in production
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
-  allowHeaders: ['Content-Type'],
+  origin: (origin) => {
+    // Allow specific origins
+    const allowedOrigins = [
+      'https://freekhana-frontend.pages.dev',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
+      // Add any additional origins as needed
+    ];
+
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return true;
+
+    // Return the origin if it's allowed, otherwise return false
+    return allowedOrigins.includes(origin) ? origin : false;
+  },
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  exposeHeaders: ['Content-Length', 'X-Custom-Header'],
+  maxAge: 86400, // 24 hours
+  credentials: false,
 }));
+
+// Handle preflight OPTIONS requests explicitly
+app.options('*', (c) => {
+  const origin = c.req.header('Origin');
+  const allowedOrigins = [
+    'https://freekhana-frontend.pages.dev',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+  ];
+
+  let allowOrigin = '*';
+  if (origin && allowedOrigins.includes(origin)) {
+    allowOrigin = origin;
+  }
+
+  return c.text('', 200, {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin, X-Requested-With',
+    'Access-Control-Max-Age': '86400',
+  });
+});
 
 // Health check
 app.get('/', (c) => {

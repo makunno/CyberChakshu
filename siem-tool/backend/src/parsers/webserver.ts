@@ -9,14 +9,14 @@ import { generateId, parseTimestamp, parseSeverity } from '../utils/helpers';
 export const apacheParser: Parser = {
   name: 'Apache Access Log',
   logType: 'apache',
-  detect: (line: string) => /^\S+\s+-\s+-?\s+\[.*?\]\s+"(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)/.test(line),
+  detect: (line: string) => /^\S+\s+-\s+-\s+\[.*?\]\s+"(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)/.test(line),
   parse: (line: string): ParsedLogEntry | null => {
     const match = line.match(
-      /^(\S+)\s+-\s+(\S+)\s+\[(.*?)\]\s+"(\w+)\s+(\S+)\s+HTTP\/[\d.]+"\s+(\d+)\s+(\d+)/
+      /^(\S+)\s+-\s+-\s+\[(.*?)\]\s+"(\w+)\s+(\S+)\s+HTTP\/[\d.]+"\s+(\d+)\s+(\d+)/
     );
     if (!match) return null;
 
-    const [, ip, user, timestamp, method, path, status, size] = match;
+    const [, ip, timestamp, method, path, status, size] = match;
     const statusCode = parseInt(status);
     let severity: ParsedLogEntry['severity'] = 'info';
     if (statusCode >= 500) severity = 'error';
@@ -28,7 +28,6 @@ export const apacheParser: Parser = {
       logType: 'apache',
       severity,
       source: { ip, service: 'apache' },
-      user: user !== '-' ? { name: user } : undefined,
       action: method,
       outcome: statusCode < 400 ? 'success' : 'failure',
       message: `${method} ${path} - ${status}`,
