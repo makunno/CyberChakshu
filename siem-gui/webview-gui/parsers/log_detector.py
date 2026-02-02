@@ -120,6 +120,27 @@ class LogDetector:
     MACOS_APP_FW_RE = re.compile(r'^Firewall:\s+(?:Blocked|Allowed)\s+(?:incoming|outgoing)\s+connection from\s+(?:\d{1,3}\.){3}\d{1,3}\s+to\s+app\s+\S+.*$')
     MOODLE_LMS_RE = re.compile(r'^\[\["19(?:\\\/)?\d{2}(?:\\\/)?\d{2},\s+\d{2}:\d{2}"')
 
+    CLOUDFLARE_RE = re.compile(r'^\{".*?"timestamp".*?".*?"\}')
+    AWS_CLOUDTRAIL_RE = re.compile(r'^\{".*?"eventTime".*?"eventName".*?"awsRegion".*?"\}')
+    AWS_GUARDDUTY_RE = re.compile(r'^\{".*?"schemaVersion".*?"accountId".*?"type".*?"severity".*?"\}')
+    AZURE_ACTIVITY_RE = re.compile(r'^\{".*?"time".*?"operationName".*?"resource".*?"status".*?"\}')
+    GCP_AUDIT_RE = re.compile(r'^\{".*?"protoPayload".*?"methodName".*?"resourceName".*?"timestamp".*?"\}')
+    KUBERNETES_RE = re.compile(r'^\{".*?"log".*?"stream".*?"docker".*?"\}')
+    DOCKER_RE = re.compile(r'^\{".*?"log".*?"stream".*?"time".*?"\}')
+    ELASTICSEARCH_RE = re.compile(r'^\{".*?"type".*?"timestamp".*?"level".*?"message".*?"\}')
+    REDIS_RE = re.compile(r'^\d+:[\sM]\s+\d+\s+\w+\s+\d+\s+\w+\s+\d{2}:\d{2}:\d{2}\.\d+\s+\S+\s+.*')
+    RABBITMQ_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+\[info\]\s+<\d+\.\d+>.*')
+    KAFKA_RE = re.compile(r'^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d+\s+\w+\]\s+.*')
+    ZOOKEEPER_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+\[myid:\d+\]\s+-\s+\w+\s+\[.*\]\s+.*')
+    NGINX_ERROR_RE = re.compile(r'^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s+\[(\w+)\]\s+\d+#\d+:\s+.*')
+    SQUID_RE = re.compile(r'^\d+\.\d+\s+\d+\s+(?:\d{1,3}\.){3}\d{1,3}\s+\S+\/\d+\s+\d+\s+\S+\s+\S+\s+\S+\s+\S+.*')
+    SURICATA_RE = re.compile(r'^\[\d+:\d+:\d+\]\s+\S+\s+\S+\s+\[Classification:.*\]\[Priority:\d+\]\s+\{.*\}.*')
+    ZEEK_RE = re.compile(r'^\d+\.\d+\s+\S+\s+(?:\d{1,3}\.){3}\d{1,3}\s+\d+\s+(?:\d{1,3}\.){3}\d{1,3}\s+\d+\s+\S+\s+.*')
+    OSSEC_RE = re.compile(r'^\*\*Alert \d+\.\d+\s+-\s+\S+\s+\S+\s+-\s+Rule:\s+\d+\s+-\s+Level:\s+\d+\s+-\s+.*')
+    FAIL2BAN_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d+\s+\w+\s+\[\d+\]:\s+\w+\s+\[\S+\]\s+.*')
+    AUTH0_RE = re.compile(r'^\d{2}\/\w+\/\d{4}:\d{2}:\d{2}:\d{2}\s+\S+\s+\[\d+\]\s+\[\w+\]:.*')
+    APACHE_COMBINED_RE = re.compile(r'^\S+\s+-\s+-\s+\[.*?\]\s+".*?"\s+\d+\s+\d+\s+".*?"\s+".*?"')
+
     @staticmethod
     def is_express_json(line: str) -> bool:
         return bool(LogDetector.EXPRESS_JSON_RE.match(line))
@@ -295,6 +316,118 @@ class LogDetector:
     @staticmethod
     def is_moodle_lms(line: str) -> bool:
         return bool(LogDetector.MOODLE_LMS_RE.match(line))
+
+    @staticmethod
+    def is_cloudflare(line: str) -> bool:
+        try:
+            j = json.loads(line)
+            return "timestamp" in j and "Edge" in j and "Request" in j
+        except:
+            return False
+
+    @staticmethod
+    def is_aws_cloudtrail(line: str) -> bool:
+        try:
+            j = json.loads(line)
+            return "eventTime" in j and "eventName" in j and "awsRegion" in j
+        except:
+            return False
+
+    @staticmethod
+    def is_aws_guardduty(line: str) -> bool:
+        try:
+            j = json.loads(line)
+            return "schemaVersion" in j and "accountId" in j and "type" in j and "severity" in j
+        except:
+            return False
+
+    @staticmethod
+    def is_azure_activity(line: str) -> bool:
+        try:
+            j = json.loads(line)
+            return "time" in j and "operationName" in j and "resource" in j and "status" in j
+        except:
+            return False
+
+    @staticmethod
+    def is_gcp_audit(line: str) -> bool:
+        try:
+            j = json.loads(line)
+            return "protoPayload" in j and "methodName" in j and "resourceName" in j
+        except:
+            return False
+
+    @staticmethod
+    def is_kubernetes(line: str) -> bool:
+        try:
+            j = json.loads(line)
+            return "log" in j and "stream" in j and "docker" in j
+        except:
+            return False
+
+    @staticmethod
+    def is_docker(line: str) -> bool:
+        try:
+            j = json.loads(line)
+            return "log" in j and "stream" in j and "time" in j
+        except:
+            return False
+
+    @staticmethod
+    def is_elasticsearch(line: str) -> bool:
+        try:
+            j = json.loads(line)
+            return "type" in j and "timestamp" in j and "level" in j and "message" in j
+        except:
+            return False
+
+    @staticmethod
+    def is_redis(line: str) -> bool:
+        return bool(LogDetector.REDIS_RE.match(line))
+
+    @staticmethod
+    def is_rabbitmq(line: str) -> bool:
+        return bool(LogDetector.RABBITMQ_RE.match(line))
+
+    @staticmethod
+    def is_kafka(line: str) -> bool:
+        return bool(LogDetector.KAFKA_RE.match(line))
+
+    @staticmethod
+    def is_zookeeper(line: str) -> bool:
+        return bool(LogDetector.ZOOKEEPER_RE.match(line))
+
+    @staticmethod
+    def is_nginx_error(line: str) -> bool:
+        return bool(LogDetector.NGINX_ERROR_RE.match(line))
+
+    @staticmethod
+    def is_squid(line: str) -> bool:
+        return bool(LogDetector.SQUID_RE.match(line))
+
+    @staticmethod
+    def is_suricata(line: str) -> bool:
+        return bool(LogDetector.SURICATA_RE.match(line))
+
+    @staticmethod
+    def is_zeek(line: str) -> bool:
+        return bool(LogDetector.ZEEK_RE.match(line))
+
+    @staticmethod
+    def is_ossec(line: str) -> bool:
+        return bool(LogDetector.OSSEC_RE.match(line))
+
+    @staticmethod
+    def is_fail2ban(line: str) -> bool:
+        return bool(LogDetector.FAIL2BAN_RE.match(line))
+
+    @staticmethod
+    def is_auth0(line: str) -> bool:
+        return bool(LogDetector.AUTH0_RE.match(line))
+
+    @staticmethod
+    def is_apache_combined(line: str) -> bool:
+        return bool(LogDetector.APACHE_COMBINED_RE.match(line))
 
     @staticmethod
     def is_apache_error(line: str) -> bool:
@@ -556,6 +689,26 @@ class LogDetector:
             ("DHCP", LogDetector.is_dhcp),
             ("DNS", LogDetector.is_dns),
             ("Proxy", LogDetector.is_proxy),
+            ("Cloudflare", LogDetector.is_cloudflare),
+            ("AWS CloudTrail", LogDetector.is_aws_cloudtrail),
+            ("AWS GuardDuty", LogDetector.is_aws_guardduty),
+            ("Azure Activity", LogDetector.is_azure_activity),
+            ("GCP Audit", LogDetector.is_gcp_audit),
+            ("Kubernetes", LogDetector.is_kubernetes),
+            ("Docker", LogDetector.is_docker),
+            ("Elasticsearch", LogDetector.is_elasticsearch),
+            ("Redis", LogDetector.is_redis),
+            ("RabbitMQ", LogDetector.is_rabbitmq),
+            ("Kafka", LogDetector.is_kafka),
+            ("Zookeeper", LogDetector.is_zookeeper),
+            ("Nginx Error", LogDetector.is_nginx_error),
+            ("Squid", LogDetector.is_squid),
+            ("Suricata", LogDetector.is_suricata),
+            ("Zeek", LogDetector.is_zeek),
+            ("Ossec", LogDetector.is_ossec),
+            ("Fail2ban", LogDetector.is_fail2ban),
+            ("Auth0", LogDetector.is_auth0),
+            ("Apache Combined", LogDetector.is_apache_combined),
         ]
 
     @staticmethod
@@ -642,6 +795,26 @@ class LogDetector:
             "DHCP": LogDetector.is_dhcp,
             "DNS": LogDetector.is_dns,
             "Proxy": LogDetector.is_proxy,
+            "Cloudflare": LogDetector.is_cloudflare,
+            "AWS CloudTrail": LogDetector.is_aws_cloudtrail,
+            "AWS GuardDuty": LogDetector.is_aws_guardduty,
+            "Azure Activity": LogDetector.is_azure_activity,
+            "GCP Audit": LogDetector.is_gcp_audit,
+            "Kubernetes": LogDetector.is_kubernetes,
+            "Docker": LogDetector.is_docker,
+            "Elasticsearch": LogDetector.is_elasticsearch,
+            "Redis": LogDetector.is_redis,
+            "RabbitMQ": LogDetector.is_rabbitmq,
+            "Kafka": LogDetector.is_kafka,
+            "Zookeeper": LogDetector.is_zookeeper,
+            "Nginx Error": LogDetector.is_nginx_error,
+            "Squid": LogDetector.is_squid,
+            "Suricata": LogDetector.is_suricata,
+            "Zeek": LogDetector.is_zeek,
+            "Ossec": LogDetector.is_ossec,
+            "Fail2ban": LogDetector.is_fail2ban,
+            "Auth0": LogDetector.is_auth0,
+            "Apache Combined": LogDetector.is_apache_combined,
         }
         func = check_functions.get(log_type)
         if func:

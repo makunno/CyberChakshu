@@ -1,12 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
-import type { ParsedLogEntry } from '../types';
+import { useRef, useEffect, useState } from 'react';
+import type { ParsedLogEntry } from './types';
 
 interface Column {
   key: string;
   label: string;
   width: number;
   visible: boolean;
-  getValue: (entry: ParsedLogEntry) => string | JSX.Element;
+  getValue: (entry: ParsedLogEntry) => string | React.ReactNode;
   sortable: boolean;
 }
 
@@ -46,8 +46,8 @@ const getColumnsForLogType = (logType: string, sampleEntries: ParsedLogEntry[]):
     if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || e.fields.url || e.fields.endpoint || '-' });
     if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
     if (hasSize) columns.push({ key: 'fields_size', label: 'Size', width: 90, visible: true, sortable: true, getValue: (e) => {
-      const size = e.fields.size !== undefined ? e.fields.size : e.fields.bytes;
-      return size !== undefined ? size.toString() : '-';
+      const size = e.fields.size ?? e.fields.bytes;
+      return size !== null && size !== undefined ? String(size) : '-';
     }});
   } else if (lowerType.includes('apache error') || lowerType.includes('apache_error') || (lowerType.includes('apache') && lowerType.includes('error'))) {
     columns.push({ key: 'fields_module', label: 'Module', width: 120, visible: true, sortable: true, getValue: (e) => e.fields.module || e.fields.level || '-' });
@@ -169,7 +169,7 @@ const getColumnsForLogType = (logType: string, sampleEntries: ParsedLogEntry[]):
     if (hasPid) columns.push({ key: 'source_pid', label: 'PID', width: 80, visible: false, sortable: true, getValue: (e) => e.source.pid?.toString() || '-' });
   }
 
-  columns.push({ key: 'fields', label: 'Fields', width: MIN_COLUMN_WIDTH, visible: false, sortable: false, getValue: (e) => '...' });
+  columns.push({ key: 'fields', label: 'Fields', width: MIN_COLUMN_WIDTH, visible: false, sortable: false, getValue: () => '...' });
 
   return columns;
 };
@@ -249,7 +249,6 @@ export function DynamicTable({ entries, detectedType, onEntryClick }: DynamicTab
   };
 
   const visibleColumnList = columns.filter(c => visibleColumns.has(c.key));
-  const totalWidth = visibleColumnList.reduce((sum, col) => sum + col.width, 0);
   const sortedEntries = getSortedEntries();
 
   return (

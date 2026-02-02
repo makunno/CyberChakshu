@@ -81,6 +81,26 @@ export class LogDetector {
   private static readonly SPRING_BOOT_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(?:INFO|WARN|ERROR|DEBUG)\s+\S+\s+-\s+(?:GET|POST|PUT|DELETE|PATCH)\s+\S+\s+\d{3}$/;
   private static readonly ASPNET_CORE_RE = /^(?:info|warn|error|debug):\s+Microsoft\.AspNetCore/i;
   private static readonly MOODLE_LMS_RE = /^\[\["19(?:\\\/)?\d{2}(?:\\\/)?\d{2},\s+\d{2}:\d{2}"/;
+  private static readonly CLOUDFLARE_RE = /^\{.*"timestamp".*"?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*".*\}?$/;
+  private static readonly AWS_CLOUDTRAIL_RE = /^\{.*"eventTime".*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z".*"eventSource".*"aws\..*".*\}$/;
+  private static readonly AWS_GUARDDUTY_RE = /^\{.*"detectorId".*"createdAt".*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z".*"severity".*\d+.*\}$/;
+  private static readonly AZURE_ACTIVITY_RE = /^\{.*"time".*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z".*"operationName".*".*".*"category".*".*"\}.*$/;
+  private static readonly GCP_AUDIT_RE = /^\{.*"protoPayload".*".*@googleapis\.com".*"methodName".*"audit_log_timestamp".*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z".*\}$/;
+  private static readonly KUBERNETES_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}Z\s+\w+\s+\w+\s+\w+\[\d+\]:\s+.*$/;
+  private static readonly DOCKER_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\w\s+\w+\s+\w+\[\d+\]:\s+.*$/;
+  private static readonly ELASTICSEARCH_RE = /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d+\]\[(\w+)\]\[(\w+)\]\s+.*$/;
+  private static readonly REDIS_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \w+(?: #\d+)?(?: \*)?.*$/;
+  private static readonly RABBITMQ_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[\w+\] \(<.*>@.*\)$/;
+  private static readonly KAFKA_RE = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+\]\s+(?:INFO|WARN|ERROR)\s+\[\w+,\w+\]\s+.*$/;
+  private static readonly ZOOKEEPER_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \d+\s+\w+\s+\[\w+\]\s+.*$/;
+  private static readonly NGINX_ERROR_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s+\[\w+\]\s+\d+#\d+:\s+\*?\d+\s+.*$/;
+  private static readonly SQUID_RE = /^\d{10}\s+\d+\s+\d+\s+\w+\s+\d+\s+\w+\s+\d+\s+\w+\s+(?:\d{1,3}\.){3}\d{1,3}\s+\w+\/\w+\/\w+\s+.*$/;
+  private static readonly SURICATA_RE = /^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\]\s+\[\w+\]\s+\[\w+\]\s+\[\*\*\].*$/;
+  private static readonly ZEEK_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s+\w+\s+\w+\s+.*$/;
+  private static readonly OSSEC_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s+\w+\s+\w+\s+(?:\w+:)?\w+\s+\[\d+\]:\s+.*$/;
+  private static readonly FAIL2BAN_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+\s+fail2ban\.(?:filter|actions)\[\d+\]:\s+WARNING\s+\[.*\]\s+Ban\s+\d{1,3}(?:\.\d{1,3}){3}$/;
+  private static readonly AUTH0_RE = /^\{.*"date".*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z".*"type".*".*".*"client_id".*".*"\}.*$/;
+  private static readonly APACHE_COMBINED_RE = /\S+ - - \[.*?\] ".*?" \d+ \d+ "(?:.*?)" "(?:.*?)"/;
 
   // ===========================
   // is_*() Methods for Detection
@@ -179,6 +199,26 @@ export class LogDetector {
   static isXferlog(line: string): boolean { return !!LogDetector.XFERLOG_RE.test(line); }
   static isFastapiJson(line: string): boolean { return !!LogDetector.FASTAPI_JSON_RE.test(line); }
   static isMoodleLms(line: string): boolean { return !!LogDetector.MOODLE_LMS_RE.test(line); }
+  static isCloudflare(line: string): boolean { return !!LogDetector.CLOUDFLARE_RE.test(line); }
+  static isAwsCloudtrail(line: string): boolean { return !!LogDetector.AWS_CLOUDTRAIL_RE.test(line); }
+  static isAwsGuardduty(line: string): boolean { return !!LogDetector.AWS_GUARDDUTY_RE.test(line); }
+  static isAzureActivity(line: string): boolean { return !!LogDetector.AZURE_ACTIVITY_RE.test(line); }
+  static isGcpAudit(line: string): boolean { return !!LogDetector.GCP_AUDIT_RE.test(line); }
+  static isKubernetes(line: string): boolean { return !!LogDetector.KUBERNETES_RE.test(line); }
+  static isDocker(line: string): boolean { return !!LogDetector.DOCKER_RE.test(line); }
+  static isElasticsearch(line: string): boolean { return !!LogDetector.ELASTICSEARCH_RE.test(line); }
+  static isRedis(line: string): boolean { return !!LogDetector.REDIS_RE.test(line); }
+  static isRabbitmq(line: string): boolean { return !!LogDetector.RABBITMQ_RE.test(line); }
+  static isKafka(line: string): boolean { return !!LogDetector.KAFKA_RE.test(line); }
+  static isZookeeper(line: string): boolean { return !!LogDetector.ZOOKEEPER_RE.test(line); }
+  static isNginxError(line: string): boolean { return !!LogDetector.NGINX_ERROR_RE.test(line); }
+  static isSquid(line: string): boolean { return !!LogDetector.SQUID_RE.test(line); }
+  static isSuricata(line: string): boolean { return !!LogDetector.SURICATA_RE.test(line); }
+  static isZeek(line: string): boolean { return !!LogDetector.ZEEK_RE.test(line); }
+  static isOssec(line: string): boolean { return !!LogDetector.OSSEC_RE.test(line); }
+  static isFail2ban(line: string): boolean { return !!LogDetector.FAIL2BAN_RE.test(line); }
+  static isAuth0(line: string): boolean { return !!LogDetector.AUTH0_RE.test(line); }
+  static isApacheCombined(line: string): boolean { return !!LogDetector.APACHE_COMBINED_RE.test(line); }
 
   // ===========================
   // Priority-based Check Functions
@@ -256,6 +296,26 @@ export class LogDetector {
       ["FileZilla FTP", LogDetector.isFilezilla],
       ["IIS FTP", LogDetector.isIisFtp],
       ["xferlog", LogDetector.isXferlog],
+      ["Cloudflare", LogDetector.isCloudflare],
+      ["AWS CloudTrail", LogDetector.isAwsCloudtrail],
+      ["AWS GuardDuty", LogDetector.isAwsGuardduty],
+      ["Azure Activity", LogDetector.isAzureActivity],
+      ["GCP Audit", LogDetector.isGcpAudit],
+      ["Kubernetes", LogDetector.isKubernetes],
+      ["Docker", LogDetector.isDocker],
+      ["Elasticsearch", LogDetector.isElasticsearch],
+      ["Redis", LogDetector.isRedis],
+      ["RabbitMQ", LogDetector.isRabbitmq],
+      ["Kafka", LogDetector.isKafka],
+      ["Zookeeper", LogDetector.isZookeeper],
+      ["Nginx Error", LogDetector.isNginxError],
+      ["Squid", LogDetector.isSquid],
+      ["Suricata", LogDetector.isSuricata],
+      ["Zeek", LogDetector.isZeek],
+      ["Ossec", LogDetector.isOssec],
+      ["Fail2ban", LogDetector.isFail2ban],
+      ["Auth0", LogDetector.isAuth0],
+      ["Apache Combined", LogDetector.isApacheCombined],
     ];
   }
 
@@ -331,6 +391,26 @@ export class LogDetector {
       "FileZilla FTP": LogDetector.isFilezilla,
       "IIS FTP": LogDetector.isIisFtp,
       "xferlog": LogDetector.isXferlog,
+      "Cloudflare": LogDetector.isCloudflare,
+      "AWS CloudTrail": LogDetector.isAwsCloudtrail,
+      "AWS GuardDuty": LogDetector.isAwsGuardduty,
+      "Azure Activity": LogDetector.isAzureActivity,
+      "GCP Audit": LogDetector.isGcpAudit,
+      "Kubernetes": LogDetector.isKubernetes,
+      "Docker": LogDetector.isDocker,
+      "Elasticsearch": LogDetector.isElasticsearch,
+      "Redis": LogDetector.isRedis,
+      "RabbitMQ": LogDetector.isRabbitmq,
+      "Kafka": LogDetector.isKafka,
+      "Zookeeper": LogDetector.isZookeeper,
+      "Nginx Error": LogDetector.isNginxError,
+      "Squid": LogDetector.isSquid,
+      "Suricata": LogDetector.isSuricata,
+      "Zeek": LogDetector.isZeek,
+      "Ossec": LogDetector.isOssec,
+      "Fail2ban": LogDetector.isFail2ban,
+      "Auth0": LogDetector.isAuth0,
+      "Apache Combined": LogDetector.isApacheCombined,
     };
     
     return checkFunctions[logType]?.(line) ?? false;
