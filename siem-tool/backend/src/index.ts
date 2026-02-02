@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { autoParse, detectLogType, allParsers, analyzeLogStructureAndSuggestLabels } from './parsers';
 import { runDetections, generateStats } from './detectors/alerts';
-import { correlateMultipleLogs, CorrelationResult } from './ml';
+import { correlateMultipleLogs, CorrelationResult, detectAttacksInEntries, enrichEntriesWithAttacks } from './ml';
 import type { ParseResponse, LogType, ParsedLogEntry } from './types';
 
 // Types for Cloudflare Workers
@@ -179,6 +179,19 @@ app.post('/parse', async (c) => {
     // Run detections
     const alerts = runDetections(entries);
     
+    // Run ML-based per-entry attack detection
+    const enrichedEntries = enrichEntriesWithAttacks(entries);
+    const detectedAttacks = detectAttacksInEntries(enrichedEntries);
+    
+    // Generate attack summary
+    const attackTypes = [...new Set(detectedAttacks.map(a => a.attack.attackType))];
+    const attackSummary = {
+      totalAttacks: detectedAttacks.length,
+      attackTypes,
+      uniqueSources: new Set(entries.map(e => e.source.ip).filter(Boolean)).size,
+      riskScore: Math.min(detectedAttacks.length * 10, 100),
+    };
+    
     // Generate statistics
     const stats = generateStats(entries);
 
@@ -188,9 +201,11 @@ app.post('/parse', async (c) => {
       totalLines: parseStats.totalLines,
       parsedLines: parseStats.parsedLines,
       failedLines: parseStats.failedLines,
-      entries,
+      entries: enrichedEntries,
       alerts,
       stats,
+      mlAttacks: detectedAttacks,
+      attackSummary,
     };
 
     return c.json(response);
@@ -406,11 +421,11 @@ app.post('/analyze', async (c) => {
     if (contentType.includes('multipart/form-data')) {
       const formData = await c.req.formData();
       const file = formData.get('file') as File | null;
-      
+
       if (!file) {
         return c.json({ error: 'No file provided' }, 400);
       }
-      
+
       content = await file.text();
     } else if (contentType.includes('application/json')) {
       const json = await c.req.json();
@@ -456,12 +471,136 @@ app.post('/analyze', async (c) => {
     });
   } catch (error) {
     console.error('Analysis error:', error);
-    return c.json({ 
+    return c.json({
       success: false,
-      error: 'Failed to analyze logs', 
-      details: String(error) 
+      error: 'Failed to analyze logs',
+      details: String(error)
     }, 500);
   }
+});
+
+// Submit feedback for a log entry
+app.post('/feedback', async (c) => {
+  try {
+    const json = await c.req.json();
+
+    if (!json.entry_id || !json.user_label) {
+      return c.json({ error: 'Missing required fields: entry_id, user_label' }, 400);
+    }
+
+    if (!['safe', 'unsafe', 'attack_pattern'].includes(json.user_label)) {
+      return c.json({ error: 'user_label must be "safe", "unsafe", or "attack_pattern"' }, 400);
+    }
+
+    // In a real implementation, this would store to a database
+    // For now, we just acknowledge the feedback
+    const feedbackId = `${json.entry_id}_${Date.now()}`;
+
+    console.log(`Feedback received: ${json.user_label} - Entry ${json.entry_id}`);
+
+    return c.json({
+      success: true,
+      message: `Feedback submitted: Entry ${json.entry_id} marked as ${json.user_label}`,
+      feedback_id: feedbackId
+    });
+  } catch (error) {
+    console.error('Feedback error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to submit feedback',
+      details: String(error)
+    }, 500);
+  }
+});
+
+// Submit bulk feedback for multiple entries
+app.post('/feedback/bulk', async (c) => {
+  try {
+    const json = await c.req.json();
+
+    if (!json.entries || !Array.isArray(json.entries)) {
+      return c.json({ error: 'Missing or invalid entries array' }, 400);
+    }
+
+    const { entries, user_label, attack_type } = json;
+
+    if (!['safe', 'unsafe', 'attack_pattern'].includes(user_label)) {
+      return c.json({ error: 'user_label must be "safe", "unsafe", or "attack_pattern"' }, 400);
+    }
+
+    if (user_label === 'attack_pattern' && !attack_type) {
+      return c.json({ error: 'attack_type is required when user_label is "attack_pattern"' }, 400);
+    }
+
+    const results: { id: string; success: boolean }[] = [];
+
+    for (const entry of entries) {
+      const feedbackId = `${entry.entry_id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+      results.push({
+        id: entry.entry_id,
+        success: true
+      });
+
+      console.log(`Bulk feedback: ${user_label} - Entry ${entry.entry_id} - Attack type: ${attack_type || 'N/A'}`);
+    }
+
+    return c.json({
+      success: true,
+      message: `Bulk feedback submitted for ${results.length} entries`,
+      results
+    });
+  } catch (error) {
+    console.error('Bulk feedback error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to submit bulk feedback',
+      details: String(error)
+    }, 500);
+  }
+});
+
+// Get available attack types for manual classification
+app.get('/feedback/attack-types', (c) => {
+  return c.json({
+    attackTypes: [
+      { type: 'sql_injection', label: 'SQL Injection', description: 'SQL commands injected into application queries' },
+      { type: 'xss_attack', label: 'Cross-Site Scripting (XSS)', description: 'Malicious scripts injected into web pages' },
+      { type: 'command_injection', label: 'Command Injection', description: 'OS commands injected through application input' },
+      { type: 'path_traversal', label: 'Path Traversal', description: 'Directory traversal to access restricted files' },
+      { type: 'file_inclusion', label: 'File Inclusion', description: 'Remote/local file inclusion attacks' },
+      { type: 'bruteforce', label: 'Brute Force', description: 'Multiple failed login attempts to same account' },
+      { type: 'password_spray', label: 'Password Spray', description: 'Same password tried against multiple accounts' },
+      { type: 'credential_stuffing', label: 'Credential Stuffing', description: 'Automated login with stolen credentials' },
+      { type: 'port_scan', label: 'Port Scan', description: 'Network reconnaissance scanning ports' },
+      { type: 'ddos', label: 'DDoS', description: 'Distributed denial of service attack' },
+      { type: 'reconnaissance', label: 'Reconnaissance', description: 'Information gathering activity' },
+      { type: 'privilege_escalation', label: 'Privilege Escalation', description: 'Attempts to gain elevated access' },
+      { type: 'lateral_movement', label: 'Lateral Movement', description: 'Movement between systems in network' },
+      { type: 'data_exfiltration', label: 'Data Exfiltration', description: 'Unauthorized data transfer out of network' },
+      { type: 'c2_communication', label: 'C2 Communication', description: 'Command and control server communication' },
+      { type: 'malware_activity', label: 'Malware Activity', description: 'Potential malware execution detected' },
+      { type: 'insider_threat', label: 'Insider Threat', description: 'Suspicious activity from authorized user' },
+      { type: 'account_takeover', label: 'Account Takeover', description: 'Unauthorized account access' },
+      { type: 'mfa_bypass', label: 'MFA Bypass', description: 'Attempts to circumvent multi-factor authentication' },
+      { type: 'session_hijacking', label: 'Session Hijacking', description: 'Unauthorized use of valid session tokens' },
+    ]
+  });
+});
+
+// Get feedback statistics
+app.get('/feedback/stats', (c) => {
+  // In a real implementation, this would query a database
+  return c.json({
+    success: true,
+    stats: {
+      total_feedback: 0,
+      safe_count: 0,
+      unsafe_count: 0,
+      attack_pattern_count: 0,
+      by_attack_type: {}
+    }
+  });
 });
 
 // Export for Cloudflare Workers

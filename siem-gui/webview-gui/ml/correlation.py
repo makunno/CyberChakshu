@@ -1,5 +1,6 @@
 """ML Module - Feature Extraction, Classification, and Correlation"""
 
+import re
 import numpy as np
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
@@ -33,7 +34,8 @@ def extract_features(entries: List[dict]) -> np.ndarray:
         vector.append(hash(ip) % 1000 / 1000.0 if ip else 0.0)
 
         # User hash
-        user = entry.get('user', {}).get('name', '')
+        user_dict = entry.get('user')
+        user = user_dict.get('name', '') if user_dict else ''
         vector.append(hash(user) % 1000 / 1000.0 if user else 0.0)
 
         # Message length
@@ -365,7 +367,8 @@ def generate_summary(entries: List[dict], attack_chains: List[dict], anomalies: 
     # Count users
     user_counts = defaultdict(int)
     for entry in entries:
-        user = entry.get('user', {}).get('name')
+        user_dict = entry.get('user')
+        user = user_dict.get('name') if user_dict else None
         if user:
             user_counts[user] += 1
 
@@ -430,3 +433,352 @@ def generate_recommendations(attack_chains: List[dict]) -> List[str]:
         recommendations.append('Continue monitoring log files for security events')
 
     return recommendations
+
+
+MODEL_CACHE = None
+
+def load_trained_model() -> Optional[Any]:
+    """Load the trained attack classification model"""
+    global MODEL_CACHE
+    if MODEL_CACHE is not None:
+        return MODEL_CACHE
+
+    try:
+        import joblib
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'attack_classifier.joblib')
+        if os.path.exists(model_path):
+            MODEL_CACHE = joblib.load(model_path)
+            return MODEL_CACHE
+    except Exception as e:
+        print(f"Warning: Could not load trained model: {e}")
+    return None
+
+
+ATTACK_PATTERNS = {
+    'sql_injection': [
+        r"(\%27)|(\')|(\-\-)|(\%23)|(#)",
+        r"(\%3D)|(=)[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))",
+        r"union\s+select",
+        r"exec(\s|\+)+(s|x)p\w+",
+        r"' OR '1'='1",
+        r"DROP TABLE",
+    ],
+    'xss': [
+        r"<script>",
+        r"javascript:",
+        r"onerror=",
+        r"onload=",
+        r"onmouseover=",
+        r"alert\(",
+        r"document\.cookie",
+    ],
+    'command_injection': [
+        r";\s*(cat|ls|wget|curl|nc|bash|sh)\s",
+        r"\|\s*(cat|ls|wget|curl|nc|bash|sh)\s",
+        r"`\s*(cat|ls|wget|curl|nc|bash|sh)\s`",
+        r"\$\(.*\)",
+        r"chmod\s+\d{3,4}",
+        r"wget\s+http",
+        r"curl\s+http",
+    ],
+    'directory_traversal': [
+        r"\.\./",
+        r"\.\.\\",
+        r"%2e%2e",
+        r"etc/passwd",
+        r"win.ini",
+        r"boot.ini",
+    ],
+    'file_inclusion': [
+        r"\?page=http",
+        r"\?file=http",
+        r"include\s*\(",
+        r"require\s*\(",
+    ],
+}
+
+
+def extract_attack_features(entry: dict) -> List[float]:
+    """Extract features for attack classification from a log entry dict"""
+    features = []
+    message = entry.get('message', '').lower()
+    raw_line = entry.get('rawLine', '').lower()
+    action = entry.get('action', '').lower()
+    source = entry.get('source') or {}
+    source_ip = source.get('ip', '')
+    severity = entry.get('severity', 'info')
+    outcome = entry.get('outcome', '')
+    user_dict = entry.get('user')
+    user = user_dict.get('name', '') if user_dict else ''
+    
+    # For web server logs, also check path and query parameters from raw line
+    fields = entry.get('fields', {})
+    path = fields.get('path', '').lower()
+    
+    # Combine message, path, and raw line for comprehensive attack detection
+    # Use raw_line for web logs as it contains the full request with query params
+    search_text = raw_line if raw_line else message
+
+    is_external = 1.0 if not (
+        source_ip.startswith('192.168.') or
+        source_ip.startswith('10.') or
+        source_ip.startswith('172.16') or
+        source_ip.startswith('172.17') or
+        source_ip.startswith('172.18') or
+        source_ip.startswith('172.19') or
+        source_ip.startswith('172.20') or
+        source_ip.startswith('172.21') or
+        source_ip.startswith('172.22') or
+        source_ip.startswith('172.23') or
+        source_ip.startswith('172.24') or
+        source_ip.startswith('172.25') or
+        source_ip.startswith('172.26') or
+        source_ip.startswith('172.27') or
+        source_ip.startswith('172.28') or
+        source_ip.startswith('172.29') or
+        source_ip.startswith('172.30') or
+        source_ip.startswith('172.31')
+    ) else 0.0
+    features.append(is_external)
+
+    features.append(min(len(search_text) / 500.0, 1.0))
+
+    # SQL Injection patterns - check in full request text (case-insensitive, flexible spacing)
+    sql_patterns = len(re.findall(
+        r"union\s+select|"  # UNION SELECT
+        r"select\s+.*\s+from|"  # SELECT ... FROM
+        r"drop\s+table|"  # DROP TABLE
+        r";\s*--|"  # Semicolon followed by comment
+        r"--\s*$|"  # Comment at end
+        r"'\s*or\s+'?1'?\s*=\s*'?1|"  # ' OR '1'='1 variations (flexible spacing and quotes)
+        r"\"\s*or\s+\"?1\"?\s*=\s*\"?1|"  # " OR "1"="1 variations
+        r"or\s+'1'\s*=\s*'1|"  # OR '1'='1 (without leading quote)
+        r"or\s+1\s*=\s*1|"  # OR 1=1 (numeric)
+        r"and\s+1\s*=\s*1|"  # AND 1=1 (numeric)
+        r"\bor\b.*=.*\bor\b|\band\b.*=.*\band\b",  # Generic OR/AND patterns
+        search_text, re.IGNORECASE))
+    features.append(min(sql_patterns / 3.0, 1.0))
+
+    # XSS patterns
+    xss_patterns = len(re.findall(r"<script|javascript:|on\w+\s*=|<iframe|<object|<embed|alert\(|document\.cookie|document\.location", search_text, re.IGNORECASE))
+    features.append(min(xss_patterns / 3.0, 1.0))
+
+    # Command Injection patterns
+    cmd_patterns = len(re.findall(r"[;|`]\s*(cat|ls|wget|curl|nc|bash|sh|whoami|id|uname|pwd|echo|chmod)\s|chmod\s+\d+|wget\s+http|curl\s+http|\$\(|\$\{|\`.*\`", search_text, re.IGNORECASE))
+    features.append(min(cmd_patterns / 3.0, 1.0))
+
+    # Directory Traversal patterns
+    dt_patterns = len(re.findall(r"\.\.(\/|\\)|%2e%2e|\.\.\\|%252e%252e|etc/passwd|win\.ini|boot\.ini|\.htaccess|\.htpasswd", search_text, re.IGNORECASE))
+    features.append(min(dt_patterns / 3.0, 1.0))
+
+    # File Inclusion patterns
+    fi_patterns = len(re.findall(r"\?(page|file|path|include|document)\s*=.*http|\?.*=.*\.\.|include\s*\(|require\s*\(|require_once\s*\(|virtual\s*\(", search_text, re.IGNORECASE))
+    features.append(min(fi_patterns / 3.0, 1.0))
+
+    is_http = 1.0 if re.search(r'\b(get|post|put|delete|patch)\s+/[^\s]*', search_text, re.IGNORECASE) else 0.0
+    features.append(is_http)
+
+    # Check for failure - both 'failure' outcome and HTTP error codes (4xx, 5xx)
+    has_failure = 1.0 if outcome == 'failure' or re.match(r'^(4|5)\d{2}$', str(outcome)) else 0.0
+    features.append(has_failure)
+
+    severity_val = {'debug': 0, 'info': 0, 'warning': 1, 'error': 1, 'critical': 1}
+    features.append(severity_val.get(severity, 0))
+
+    is_anonymous = 1.0 if user in ['', 'anonymous', 'www-data', 'nobody', 'root'] else 0.0
+    features.append(is_anonymous)
+
+    has_url_encoding = 1.0 if re.search(r'%[0-9a-fA-F]{2}', search_text) else 0.0
+    features.append(has_url_encoding)
+
+    has_ip_in_message = 1.0 if re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', search_text) else 0.0
+    features.append(has_ip_in_message)
+
+    has_port = 1.0 if re.search(r'port\s+\d+|:\d{2,5}', search_text) else 0.0
+    features.append(has_port)
+
+    system_files = len(re.findall(r'/etc/|/proc/|/var/|/usr/|\\windows\\|\\system32\\', search_text))
+    features.append(min(system_files / 3.0, 1.0))
+
+    sensitive_keywords = sum(1 for kw in ['password', 'credential', 'token', 'secret', 'key', 'auth'] if kw in search_text)
+    features.append(min(sensitive_keywords / 3.0, 1.0))
+
+    is_login = 1.0 if 'login' in action or 'auth' in search_text or 'password' in search_text else 0.0
+    features.append(is_login)
+
+    has_angle_brackets = 1.0 if re.search(r'<[^>]+>', search_text) else 0.0
+    features.append(has_angle_brackets)
+
+    has_single_quote = 1.0 if "'" in search_text else 0.0
+    features.append(has_single_quote)
+
+    has_eq_quotes = 1.0 if re.search(r"=\s*['\"]", search_text) else 0.0
+    features.append(has_eq_quotes)
+
+    has_double_dash = 1.0 if '--' in search_text else 0.0
+    features.append(has_double_dash)
+
+    has_semicolon = 1.0 if ';' in search_text else 0.0
+    features.append(has_semicolon)
+
+    has_pipe = 1.0 if '|' in search_text else 0.0
+    features.append(has_pipe)
+
+    has_backtick = 1.0 if '`' in search_text else 0.0
+    features.append(has_backtick)
+
+    is_connection = 1.0 if 'connection' in search_text or 'port' in search_text else 0.0
+    features.append(is_connection)
+
+    return features
+
+    cmd_patterns = sum(1 for pattern in ATTACK_PATTERNS['command_injection'] if re.search(pattern, message, re.I))
+    features.append(min(cmd_patterns / 3.0, 1.0))
+
+    dt_patterns = sum(1 for pattern in ATTACK_PATTERNS['directory_traversal'] if re.search(pattern, message, re.I))
+    features.append(min(dt_patterns / 3.0, 1.0))
+
+    fi_patterns = sum(1 for pattern in ATTACK_PATTERNS['file_inclusion'] if re.search(pattern, message, re.I))
+    features.append(min(fi_patterns / 3.0, 1.0))
+
+    is_http = 1.0 if action == 'http_request' or message.startswith(('GET ', 'POST ', 'PUT ', 'DELETE ')) else 0.0
+    features.append(is_http)
+
+    has_failure = 1.0 if outcome == 'failure' else 0.0
+    features.append(has_failure)
+
+    severity_val = {'debug': 0, 'info': 0, 'warning': 1, 'error': 2, 'critical': 2}
+    features.append(min(severity_val.get(severity, 0) / 2.0, 1.0))
+
+    is_anonymous = 1.0 if user in ['', 'anonymous', 'www-data', 'nobody'] else 0.0
+    features.append(is_anonymous)
+
+    has_url_encoding = 1.0 if re.search(r'%[0-9a-fA-F]{2}', message) else 0.0
+    features.append(has_url_encoding)
+
+    has_ip_in_message = 1.0 if re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', message) else 0.0
+    features.append(has_ip_in_message)
+
+    has_port = 1.0 if re.search(r':\d{2,5}', message) else 0.0
+    features.append(has_port)
+
+    system_files = len(re.findall(r'/etc/|/proc/|/var/|/usr/|\\windows\\|\\system32\\', message, re.I))
+    features.append(min(system_files / 3.0, 1.0))
+
+    sensitive_keywords = sum(1 for kw in ['password', 'credential', 'token', 'secret', 'key', 'auth'] if kw in message)
+    features.append(min(sensitive_keywords / 3.0, 1.0))
+
+    is_login = 1.0 if 'login' in action or 'auth' in action or 'password' in message else 0.0
+    features.append(is_login)
+
+    has_escape = 1.0 if re.search(r"\\['\";]|&#x", message) else 0.0
+    features.append(has_escape)
+
+    request_method = 1.0 if re.search(r'^(GET|POST|PUT|DELETE|PATCH)\s', message) else 0.0
+    features.append(request_method)
+
+    return features
+
+
+MITRE_MAPPING = {
+    'sql_injection': {'tactics': ['TA0006'], 'techniques': ['T1190']},
+    'xss': {'tactics': ['TA0006'], 'techniques': ['T1190']},
+    'command_injection': {'tactics': ['TA0001', 'TA0002'], 'techniques': ['T1059']},
+    'directory_traversal': {'tactics': ['TA0006'], 'techniques': ['T1083']},
+    'file_inclusion': {'tactics': ['TA0006'], 'techniques': ['T1190']},
+    'port_scan': {'tactics': ['TA0043'], 'techniques': ['T1595']},
+    'bruteforce': {'tactics': ['TA0006'], 'techniques': ['T1110']},
+    'password_spray': {'tactics': ['TA0006'], 'techniques': ['T1110']},
+}
+
+
+def predict_attack_type(entry: dict, threshold: float = 0.3) -> Optional[Dict[str, Any]]:
+    """Predict attack type for a log entry using the trained model"""
+    model_data = load_trained_model()
+    if model_data is None:
+        return None
+
+    features = np.array(extract_attack_features(entry)).reshape(1, -1)
+
+    pipeline = model_data['pipeline']
+    label_encoder = model_data['label_encoder']
+
+    prediction = pipeline.predict(features)
+    probability = pipeline.predict_proba(features)[0]
+
+    attack_type = label_encoder.inverse_transform(prediction)[0]
+    confidence = float(max(probability))
+
+    if attack_type == 'normal' or confidence < threshold:
+        return None
+
+    mitre = MITRE_MAPPING.get(attack_type, {'tactics': ['TA0006'], 'techniques': ['T1055']})
+
+    return {
+        'attackType': attack_type,
+        'confidence': confidence,
+        'mitreTactics': mitre['tactics'],
+        'mitreTechniques': mitre['techniques']
+    }
+
+
+def detect_attack_types(entries: List[dict]) -> List[dict]:
+    """Detect attack types for all log entries using trained model"""
+    attacks = []
+
+    for entry in entries:
+        result = predict_attack_type(entry)
+        if result:
+            result['entry'] = entry
+            attacks.append(result)
+
+    return attacks
+
+
+def correlate_attacks(entries: List[dict], attacks: List[dict]) -> List[dict]:
+    """Correlate detected attacks into attack chains"""
+    if not attacks:
+        return []
+
+    attacks_by_ip = defaultdict(list)
+    attacks_by_user = defaultdict(list)
+    attacks_by_time = defaultdict(list)
+
+    for attack in attacks:
+        entry = attack['entry']
+        ip = entry.get('source', {}).get('ip', '')
+        user_dict = entry.get('user')
+        user = user_dict.get('name', '') if user_dict else ''
+        timestamp = entry.get('timestamp', '')
+
+        if ip:
+            attacks_by_ip[ip].append(attack)
+        if user:
+            attacks_by_user[user].append(attack)
+        if timestamp:
+            attacks_by_time[timestamp].append(attack)
+
+    chains = []
+
+    for ip, ip_attacks in attacks_by_ip.items():
+        if len(ip_attacks) >= 3:
+            chain = {
+                'id': f"chain_{hash(ip) % 100000}",
+                'attackType': ip_attacks[0]['attackType'],
+                'stage': 'initial_access',
+                'events': [a['entry'] for a in ip_attacks[:10]],
+                'sourceIps': [ip],
+                'targetUsers': list(set(a['entry'].get('user', {}).get('name', '') for a in ip_attacks)),
+                'startTime': min(a['entry'].get('timestamp', '') for a in ip_attacks),
+                'endTime': max(a['entry'].get('timestamp', '') for a in ip_attacks),
+                'prediction': {
+                    'confidence': sum(a['confidence'] for a in ip_attacks) / len(ip_attacks),
+                    'explanation': [f'Detected {len(ip_attacks)} {ip_attacks[0]["attackType"]} attempts from {ip}']
+                },
+                'mitreTactics': ip_attacks[0]['mitreTactics'],
+                'mitreTechniques': ip_attacks[0]['mitreTechniques'],
+                'recommendation': f'Monitor and block traffic from {ip}. Consider implementing rate limiting.'
+            }
+            chains.append(chain)
+
+    return chains

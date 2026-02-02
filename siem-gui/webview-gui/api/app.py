@@ -156,6 +156,22 @@ def parse_logs():
         # Generate statistics
         stats = generate_stats(parse_result['entries'])
 
+        # Run ML attack detection
+        from ml.correlation import detect_attack_types, correlate_attacks
+        attacks = detect_attack_types(parse_result['entries'])
+        attack_chains = correlate_attacks(parse_result['entries'], attacks)
+
+        # Add attack info to each entry
+        attack_by_entry = {a['entry'].get('id'): a for a in attacks}
+        for entry in parse_result['entries']:
+            entry_id = entry.get('id')
+            if entry_id in attack_by_entry:
+                attack_info = attack_by_entry[entry_id]
+                entry['attackType'] = attack_info.get('attackType')
+                entry['attackConfidence'] = attack_info.get('confidence')
+                entry['mitreTactics'] = attack_info.get('mitreTactics', [])
+                entry['mitreTechniques'] = attack_info.get('mitreTechniques', [])
+
         response = {
             'success': True,
             'detectedType': parse_result['detectedType'],
@@ -165,6 +181,14 @@ def parse_logs():
             'entries': parse_result['entries'],
             'alerts': alerts,
             'stats': stats,
+            'mlAttacks': attacks,
+            'attackChains': attack_chains,
+            'attackSummary': {
+                'totalAttacks': len(attacks),
+                'attackTypes': list(set(a['attackType'] for a in attacks)),
+                'uniqueSources': len(set(e.get('source', {}).get('ip', '') for e in parse_result['entries'] if e.get('source', {}).get('ip', ''))),
+                'riskScore': min(len(attacks) * 10, 100),
+            }
         }
 
         return jsonify(response)
@@ -323,6 +347,170 @@ def analyze():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': 'Failed to analyze logs', 'details': str(e)}), 500
+
+
+@app.route('/detect-attack', methods=['POST'])
+def detect_attack():
+    """ML-based attack type detection endpoint"""
+    try:
+        from ml.correlation import load_trained_model, detect_attack_types, correlate_attacks
+        import numpy as np
+
+        data = request.get_json()
+        if not data or 'entries' not in data:
+            return jsonify({'error': 'No entries provided'}), 400
+
+        entries = data['entries']
+        if not isinstance(entries, list):
+            return jsonify({'error': 'Entries must be a list'}), 400
+
+        # Detect attacks using trained model
+        attacks = detect_attack_types(entries)
+
+        # Correlate attacks into chains
+        attack_chains = correlate_attacks(entries, attacks)
+
+        return jsonify({
+            'success': True,
+            'totalEntries': len(entries),
+            'attacksDetected': len(attacks),
+            'attackChains': len(attack_chains),
+            'attacks': attacks,
+            'chains': attack_chains,
+            'summary': {
+                'attackTypes': list(set(a['attackType'] for a in attacks)),
+                'uniqueSources': len(set(e.get('source', {}).get('ip', '') for e in entries if e.get('source', {}).get('ip'))),
+                'riskScore': min(len(attacks) * 10, 100),
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to detect attacks', 'details': str(e)}), 500
+
+
+@app.route('/feedback', methods=['POST'])
+def submit_feedback():
+    """Submit user feedback on a log entry classification"""
+    try:
+        from ml.federated_learning import FederatedLearningManager, UserFeedback
+        import uuid
+        from datetime import datetime
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No feedback data provided'}), 400
+
+        required_fields = ['entry_id', 'user_label', 'original_prediction']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+
+        if data['user_label'] not in ['safe', 'unsafe']:
+            return jsonify({'error': 'user_label must be "safe" or "unsafe"'}), 400
+
+        fl_manager = FederatedLearningManager()
+
+        feedback = UserFeedback(
+            entry_id=data['entry_id'],
+            user_id=data.get('user_id', f'anonymous_{uuid.uuid4().hex[:8]}'),
+            timestamp=datetime.now().isoformat(),
+            original_prediction=data['original_prediction'],
+            user_label=data['user_label'],
+            confidence=data.get('confidence', 0.0),
+            log_message=data.get('log_message', ''),
+            source_ip=data.get('source_ip', ''),
+            log_type=data.get('log_type', ''),
+            mitre_tactics=data.get('mitre_tactics', []),
+            mitre_techniques=data.get('mitre_techniques', []),
+            feedback_metadata=data.get('feedback_metadata', {})
+        )
+
+        fl_manager.add_feedback(feedback)
+
+        return jsonify({
+            'success': True,
+            'message': f'Feedback submitted: Entry {data["entry_id"]} marked as {data["user_label"]}',
+            'feedback_id': feedback.entry_id
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to submit feedback', 'details': str(e)}), 500
+
+
+@app.route('/feedback/stats', methods=['GET'])
+def get_feedback_stats():
+    """Get feedback statistics"""
+    try:
+        from ml.federated_learning import FederatedLearningManager
+
+        fl_manager = FederatedLearningManager()
+        stats = fl_manager.get_feedback_stats()
+
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to get stats', 'details': str(e)}), 500
+
+
+@app.route('/feedback/retrain', methods=['POST'])
+def trigger_retrain():
+    """Trigger model retraining with feedback data"""
+    try:
+        from ml.federated_learning import FederatedLearningManager
+
+        fl_manager = FederatedLearningManager()
+        success, message = fl_manager.retrain_model(
+            use_real_data=True,
+            differential_privacy=True,
+            epsilon=1.0
+        )
+
+        return jsonify({
+            'success': success,
+            'message': message
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to retrain model', 'details': str(e)}), 500
+
+
+@app.route('/feedback/versions', methods=['GET'])
+def list_versions():
+    """List all model versions"""
+    try:
+        from ml.federated_learning import FederatedLearningManager
+        from dataclasses import asdict
+
+        fl_manager = FederatedLearningManager()
+
+        return jsonify({
+            'success': True,
+            'versions': [asdict(v) for v in fl_manager.model_versions]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to list versions', 'details': str(e)}), 500
+
+
+@app.route('/feedback/rollback/<version_id>', methods=['POST'])
+def rollback_version(version_id):
+    """Rollback to a specific model version"""
+    try:
+        from ml.federated_learning import FederatedLearningManager
+
+        fl_manager = FederatedLearningManager()
+        success = fl_manager.rollback_model(version_id)
+
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Rolled back to version {version_id}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Version {version_id} not found'
+            }), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to rollback', 'details': str(e)}), 500
 
 
 if __name__ == '__main__':

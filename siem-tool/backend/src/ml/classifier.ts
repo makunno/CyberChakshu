@@ -135,6 +135,12 @@ const ATTACK_WEIGHTS: Record<AttackType, Partial<Record<keyof FeatureVector, num
     suspiciousPatternCount: 0.9,
     errorCodeRatio: 0.6,
   },
+  // NEW: File Inclusion (LFI/RFI)
+  file_inclusion: {
+    suspiciousPatternCount: 0.9,
+    errorCodeRatio: 0.7,
+    avgRequestSize: 0.6,
+  },
 
   // ============ INFRASTRUCTURE ATTACKS ============
   privilege_escalation: {
@@ -286,6 +292,7 @@ const ATTACK_THRESHOLDS: Record<AttackType, number> = {
   ldap_injection: 0.75,      // NEW
   log4shell: 0.65,           // NEW - Very specific, lower threshold
   prototype_pollution: 0.75,  // NEW
+  file_inclusion: 0.75,      // NEW
   
   // Infrastructure attacks
   privilege_escalation: 0.7,
@@ -596,6 +603,11 @@ function getAttackContext(attackType: AttackType, features: FeatureVector): stri
       'Attacker may be manipulating application behavior',
       'Sanitize object property assignments from user input',
     ],
+    file_inclusion: [
+      'File inclusion attack detected (LFI/RFI)',
+      'Attacker attempting to include unauthorized files',
+      'Validate and sanitize file paths, use allowlists',
+    ],
     
     // Infrastructure attacks
     data_exfiltration: [
@@ -782,6 +794,7 @@ export function getMitreTactics(attackType: AttackType): string[] {
     ldap_injection: ['TA0006 - Credential Access', 'TA0009 - Collection'],
     log4shell: ['TA0001 - Initial Access', 'TA0002 - Execution'],
     prototype_pollution: ['TA0002 - Execution'],
+    file_inclusion: ['TA0001 - Initial Access', 'TA0009 - Collection'],
     
     // Infrastructure attacks
     privilege_escalation: ['TA0004 - Privilege Escalation'],
@@ -837,6 +850,7 @@ export function getMitreTechniques(attackType: AttackType): string[] {
     ldap_injection: ['T1190 - Exploit Public-Facing Application', 'T1087 - Account Discovery'],
     log4shell: ['T1190 - Exploit Public-Facing Application', 'T1059 - Command and Scripting Interpreter'],
     prototype_pollution: ['T1059.007 - JavaScript'],
+    file_inclusion: ['T1190 - Exploit Public-Facing Application', 'T1083 - File and Directory Discovery'],
     
     // Infrastructure attacks
     privilege_escalation: ['T1068 - Exploitation for Privilege Escalation', 'T1548 - Abuse Elevation Control Mechanism'],

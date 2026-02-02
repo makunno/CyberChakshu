@@ -59,6 +59,10 @@ export interface ParsedLogEntry {
   rawLine: string;
   fields: Record<string, string | number | boolean | null>;
   tags: string[];
+  attackType?: string;
+  attackConfidence?: number;
+  mitreTactics?: string[];
+  mitreTechniques?: string[];
 }
 
 // Detection alert
@@ -100,5 +104,20 @@ export interface ParseResponse {
     topSources: Array<{ ip: string; count: number }>;
     topUsers: Array<{ user: string; count: number }>;
     timeline: Array<{ time: string; count: number }>;
+  };
+  mlAttacks?: Array<{
+    entry: ParsedLogEntry;
+    attack: {
+      attackType: string;
+      confidence: number;
+      mitreTactics: string[];
+      mitreTechniques: string[];
+    };
+  }>;
+  attackSummary?: {
+    totalAttacks: number;
+    attackTypes: string[];
+    uniqueSources: number;
+    riskScore: number;
   };
 }

@@ -1,5 +1,15 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import type { ParsedLogEntry } from './types';
+
+interface FeedbackState {
+  [entryId: string]: 'safe' | 'unsafe' | 'attack_pattern';
+}
+
+interface AttackTypeOption {
+  type: string;
+  label: string;
+  description: string;
+}
 
 interface Column {
   key: string;
@@ -10,166 +20,131 @@ interface Column {
   sortable: boolean;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 const MIN_COLUMN_WIDTH = 100;
 
+const ATTACK_TYPE_OPTIONS: AttackTypeOption[] = [
+  { type: 'sql_injection', label: 'SQL Injection', description: 'SQL commands injected into application queries' },
+  { type: 'xss_attack', label: 'XSS', description: 'Cross-site scripting attack' },
+  { type: 'command_injection', label: 'Command Injection', description: 'OS commands injected through input' },
+  { type: 'path_traversal', label: 'Path Traversal', description: 'Directory traversal attack' },
+  { type: 'file_inclusion', label: 'File Inclusion', description: 'Remote/local file inclusion' },
+  { type: 'bruteforce', label: 'Brute Force', description: 'Multiple failed login attempts' },
+  { type: 'password_spray', label: 'Password Spray', description: 'Same password against multiple accounts' },
+  { type: 'credential_stuffing', label: 'Credential Stuffing', description: 'Stolen credentials login' },
+  { type: 'port_scan', label: 'Port Scan', description: 'Network port scanning' },
+  { type: 'ddos', label: 'DDoS', description: 'Distributed denial of service' },
+  { type: 'reconnaissance', label: 'Reconnaissance', description: 'Information gathering' },
+  { type: 'privilege_escalation', label: 'Privilege Escalation', description: 'Elevated access attempts' },
+  { type: 'lateral_movement', label: 'Lateral Movement', description: 'Movement between systems' },
+  { type: 'data_exfiltration', label: 'Data Exfiltration', description: 'Unauthorized data transfer' },
+  { type: 'c2_communication', label: 'C2 Communication', description: 'Command and control traffic' },
+  { type: 'malware_activity', label: 'Malware Activity', description: 'Potential malware execution' },
+  { type: 'insider_threat', label: 'Insider Threat', description: 'Authorized user suspicious activity' },
+  { type: 'account_takeover', label: 'Account Takeover', description: 'Unauthorized account access' },
+];
+
 const getColumnsForLogType = (logType: string, sampleEntries: ParsedLogEntry[]): Column[] => {
-  const columns: Column[] = [
+  const hasAttacks = sampleEntries.some(e => e.attackType);
+  const hasEntries = sampleEntries.length > 0;
+
+  const columns: Column[] = [];
+
+  if (hasEntries) {
+    columns.push({
+      key: 'select',
+      label: '',
+      width: 40,
+      visible: true,
+      sortable: false,
+      getValue: () => 'checkbox'
+    });
+  }
+
+  columns.push(
     { key: 'timestamp', label: 'Timestamp', width: 180, visible: true, sortable: true, getValue: (e) => e.timestamp || '-' },
-    { key: 'severity', label: 'Severity', width: 100, visible: true, sortable: true, getValue: (e) => e.severity },
-    { key: 'message', label: 'Message', width: MIN_COLUMN_WIDTH, visible: true, sortable: false, getValue: (e) => e.message },
-  ];
+    {
+      key: 'severity',
+      label: 'Severity',
+      width: 100,
+      visible: true,
+      sortable: true,
+      getValue: (e) => {
+        if (e.attackType) {
+          return (
+            <div className="severity-with-indicator">
+              <span className="severity-icon">⚠️</span>
+              <span>{e.severity}</span>
+            </div>
+          );
+        }
+        return e.severity;
+      }
+    },
+  );
+
+  if (hasAttacks) {
+    columns.push({
+      key: 'attack',
+      label: 'Attack',
+      width: 130,
+      visible: true,
+      sortable: false,
+      getValue: (e) => {
+        if (!e.attackType) return '-';
+        return (
+          <span className="attack-badge" title={`Confidence: ${(e.attackConfidence! * 100).toFixed(0)}%`}>
+            {e.attackType.replace(/_/g, ' ')}
+          </span>
+        );
+      }
+    });
+  }
+
+  columns.push({
+    key: 'message',
+    label: 'Message',
+    width: MIN_COLUMN_WIDTH,
+    visible: true,
+    sortable: false,
+    getValue: (e) => e.message
+  });
 
   const lowerType = logType.toLowerCase();
-
-  // Check first entry to see what fields are available
   const hasIp = sampleEntries.some(e => e.source?.ip);
   const hasPath = sampleEntries.some(e => e.fields?.path || e.fields?.url);
   const hasStatus = sampleEntries.some(e => e.fields?.status !== undefined);
   const hasSize = sampleEntries.some(e => e.fields?.size !== undefined || e.fields?.bytes !== undefined);
   const hasMethod = sampleEntries.some(e => e.action || e.fields?.method);
   const hasUser = sampleEntries.some(e => e.user?.name);
-  const hasPid = sampleEntries.some(e => e.source?.pid);
-  const hasHostname = sampleEntries.some(e => e.source?.hostname);
 
   if (lowerType.includes('ssh') || lowerType.includes('auth') || lowerType.includes('sshd')) {
     if (hasIp) columns.push({ key: 'source_ip', label: 'Source IP', width: 140, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
     if (hasUser) columns.push({ key: 'user', label: 'User', width: 140, visible: true, sortable: true, getValue: (e) => e.user?.name || '-' });
     columns.push({ key: 'outcome', label: 'Outcome', width: 100, visible: true, sortable: true, getValue: (e) => e.outcome || '-' });
     columns.push({ key: 'action', label: 'Action', width: 120, visible: true, sortable: true, getValue: (e) => e.action || '-' });
-  } else if (lowerType.includes('mysql') || lowerType.includes('postgres') || lowerType.includes('oracle') || lowerType.includes('mongodb') || lowerType.includes('sqlserver') || lowerType.includes('database')) {
-    if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
-    columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || '-' });
-    if (hasPid) columns.push({ key: 'source_pid', label: 'PID', width: 80, visible: true, sortable: true, getValue: (e) => e.source.pid?.toString() || '-' });
-  } else if (lowerType.includes('apache') || lowerType.includes('nginx') || lowerType.includes('iis') || lowerType.includes('django') || lowerType.includes('flask') || lowerType.includes('express') || lowerType.includes('laravel') || lowerType.includes('rails') || lowerType.includes('gunicorn') || lowerType.includes('uvicorn') || lowerType.includes('web')) {
+  } else if (lowerType.includes('apache') || lowerType.includes('nginx') || lowerType.includes('iis') || lowerType.includes('web')) {
     if (hasIp) columns.push({ key: 'source_ip', label: 'IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
     if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 90, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
     if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || e.fields.url || e.fields.endpoint || '-' });
     if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
-    if (hasSize) columns.push({ key: 'fields_size', label: 'Size', width: 90, visible: true, sortable: true, getValue: (e) => {
+    if (hasSize) columns.push({ key: 'fields_size', label: 'Size', width: 90, visible: false, sortable: true, getValue: (e) => {
       const size = e.fields.size ?? e.fields.bytes;
       return size !== null && size !== undefined ? String(size) : '-';
     }});
-  } else if (lowerType.includes('apache error') || lowerType.includes('apache_error') || (lowerType.includes('apache') && lowerType.includes('error'))) {
-    columns.push({ key: 'fields_module', label: 'Module', width: 120, visible: true, sortable: true, getValue: (e) => e.fields.module || e.fields.level || '-' });
-    columns.push({ key: 'fields_level', label: 'Level', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.level || e.severity || '-' });
-    if (hasPid) columns.push({ key: 'source_pid', label: 'PID', width: 80, visible: true, sortable: true, getValue: (e) => e.source.pid?.toString() || e.fields.pid?.toString() || '-' });
-    columns.push({ key: 'fields_client', label: 'Client', width: 150, visible: false, sortable: true, getValue: (e) => e.fields.client || e.fields.client_ip || '-' });
-  } else if (lowerType.includes('disk traffic') || lowerType.includes('disk_traffic') || (lowerType.includes('disk') && lowerType.includes('traffic'))) {
-    columns.push({ key: 'fields_srcip', label: 'Source IP', width: 140, visible: true, sortable: true, getValue: (e) => e.source.ip || e.fields.srcip || e.fields.src_ip || '-' });
-    columns.push({ key: 'fields_srcport', label: 'Src Port', width: 90, visible: true, sortable: true, getValue: (e) => e.fields.srcport?.toString() || e.fields.src_port?.toString() || '-' });
-    columns.push({ key: 'fields_dstip', label: 'Dest IP', width: 140, visible: true, sortable: true, getValue: (e) => e.destination?.ip || e.fields.dstip || e.fields.dst_ip || '-' });
-    columns.push({ key: 'fields_dstport', label: 'Dst Port', width: 90, visible: true, sortable: true, getValue: (e) => e.fields.dstport?.toString() || e.fields.dst_port?.toString() || '-' });
-    columns.push({ key: 'fields_proto', label: 'Proto', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.proto?.toString() || e.fields.protocol?.toString() || e.fields.proto || '-' });
-    columns.push({ key: 'fields_action', label: 'Action', width: 90, visible: true, sortable: true, getValue: (e) => e.fields.action || e.outcome || '-' });
-    columns.push({ key: 'fields_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.fields.service || '-' });
-    columns.push({ key: 'fields_policyid', label: 'Policy ID', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.policyid?.toString() || e.fields.policy_id?.toString() || '-' });
-    columns.push({ key: 'fields_policytype', label: 'Policy Type', width: 130, visible: false, sortable: true, getValue: (e) => e.fields.policytype || e.fields.policy_type || '-' });
-    columns.push({ key: 'fields_sessionid', label: 'Session ID', width: 120, visible: false, sortable: true, getValue: (e) => e.fields.sessionid?.toString() || e.fields.session_id?.toString() || '-' });
-    columns.push({ key: 'fields_sentbyte', label: 'Sent Bytes', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.sentbyte?.toString() || e.fields.sent_bytes?.toString() || '-' });
-    columns.push({ key: 'fields_rcvdbyte', label: 'Rcvd Bytes', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.rcvdbyte?.toString() || e.fields.rcvd_bytes?.toString() || '-' });
-    columns.push({ key: 'fields_duration', label: 'Duration', width: 90, visible: false, sortable: true, getValue: (e) => e.fields.duration?.toString() || '-' });
-    columns.push({ key: 'fields_srccountry', label: 'Src Country', width: 120, visible: false, sortable: true, getValue: (e) => e.fields.srccountry || e.fields.src_country || '-' });
-    columns.push({ key: 'fields_dstcountry', label: 'Dst Country', width: 120, visible: false, sortable: true, getValue: (e) => e.fields.dstcountry || e.fields.dst_country || '-' });
-    columns.push({ key: 'fields_app', label: 'Application', width: 150, visible: false, sortable: true, getValue: (e) => e.fields.app || e.fields.application || '-' });
-    columns.push({ key: 'fields_appcat', label: 'App Category', width: 120, visible: false, sortable: true, getValue: (e) => e.fields.appcat || e.fields.app_category || '-' });
-    columns.push({ key: 'fields_vd', label: 'VD', width: 80, visible: false, sortable: true, getValue: (e) => e.fields.vd || e.fields.vdom || '-' });
-    columns.push({ key: 'fields_subtype', label: 'Subtype', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.subtype || '-' });
-    columns.push({ key: 'fields_trandisp', label: 'Trans Disposition', width: 140, visible: false, sortable: true, getValue: (e) => e.fields.trandisp || e.fields.tran_disp || '-' });
-    columns.push({ key: 'fields_crlevel', label: 'CR Level', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.crlevel || e.fields.cr_level || '-' });
-    columns.push({ key: 'fields_crscore', label: 'CR Score', width: 90, visible: false, sortable: true, getValue: (e) => e.fields.crscore?.toString() || e.fields.cr_score?.toString() || '-' });
-  } else if (lowerType.includes('postfix') || lowerType.includes('sendmail') || lowerType.includes('exim') || lowerType.includes('dovecot') || lowerType.includes('exchange') || lowerType.includes('mail') || lowerType.includes('smtp')) {
-    if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
-    columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || '-' });
-    columns.push({ key: 'fields_sender', label: 'From', width: 160, visible: false, sortable: true, getValue: (e) => e.fields.sender || e.fields.from || e.fields.from_address || '-' });
-    columns.push({ key: 'fields_recipient', label: 'Recipient', width: 160, visible: true, sortable: true, getValue: (e) => e.fields.recipient || e.fields.to || e.fields.to_address || '-' });
-    columns.push({ key: 'action', label: 'Action', width: 100, visible: true, sortable: true, getValue: (e) => e.action || e.fields.action || '-' });
-  } else if (lowerType.includes('iptables') || lowerType.includes('ufw') || lowerType.includes('nftables') || lowerType.includes('firewalld') || lowerType.includes('firewall') || lowerType.includes('palo') || lowerType.includes('fortigate') || lowerType.includes('cisco') || lowerType.includes('checkpoint') || lowerType.includes('aws') || lowerType.includes('azure') || lowerType.includes('gcp')) {
+  } else if (lowerType.includes('syslog') || lowerType.includes('systemd') || lowerType.includes('kernel') || lowerType.includes('audit')) {
     if (hasIp) columns.push({ key: 'source_ip', label: 'Source IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
-    columns.push({ key: 'destination_ip', label: 'Dest IP', width: 130, visible: true, sortable: true, getValue: (e) => e.destination?.ip || e.fields.dst_ip || e.fields.destination_ip || '-' });
-    columns.push({ key: 'fields_protocol', label: 'Protocol', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.protocol || e.fields.proto || '-' });
-    columns.push({ key: 'fields_action', label: 'Action', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.action || e.outcome || '-' });
-  } else if (lowerType.includes('windows') || lowerType.includes('security') || lowerType.includes('system') || lowerType.includes('application') || lowerType.includes('event')) {
-    if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
-    columns.push({ key: 'fields_event_id', label: 'Event ID', width: 90, visible: true, sortable: true, getValue: (e) => e.fields.event_id?.toString() || e.fields.eventid?.toString() || e.fields.EventID?.toString() || '-' });
-    if (hasUser) columns.push({ key: 'user', label: 'User', width: 120, visible: true, sortable: true, getValue: (e) => e.user?.name || e.fields.accountname || e.fields.AccountName || '-' });
-    columns.push({ key: 'fields_logon_type', label: 'Logon Type', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.logontype?.toString() || e.fields.LogonType?.toString() || '-' });
-    columns.push({ key: 'fields_ip_address', label: 'IP Address', width: 130, visible: false, sortable: true, getValue: (e) => e.fields.ipaddress?.toString() || e.fields.IpAddress?.toString() || '-' });
-  } else if (lowerType.includes('vsftpd') || lowerType.includes('proftpd') || lowerType.includes('ftp') || lowerType.includes('filezilla') || lowerType.includes('xferlog')) {
-    if (hasIp) columns.push({ key: 'source_ip', label: 'Client IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
-    if (hasUser) columns.push({ key: 'user', label: 'User', width: 120, visible: true, sortable: true, getValue: (e) => e.user?.name || e.fields.user || '-' });
-    columns.push({ key: 'action', label: 'Action', width: 100, visible: true, sortable: true, getValue: (e) => e.action || e.fields.action || '-' });
-    if (hasPid) columns.push({ key: 'source_pid', label: 'PID', width: 80, visible: false, sortable: true, getValue: (e) => e.source.pid?.toString() || '-' });
-  } else if (lowerType.includes('dhcp') || lowerType.includes('dns') || lowerType.includes('proxy') || lowerType.includes('network')) {
-    if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
-    columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || '-' });
-    columns.push({ key: 'fields_mac', label: 'MAC Address', width: 140, visible: false, sortable: true, getValue: (e) => e.fields.mac || e.fields.client_mac || '-' });
-    columns.push({ key: 'action', label: 'Action', width: 100, visible: true, sortable: true, getValue: (e) => e.action || e.fields.action || '-' });
-    if (hasIp) columns.push({ key: 'source_ip', label: 'Client IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
-  } else if (lowerType.includes('syslog') || lowerType.includes('systemd') || lowerType.includes('kernel') || lowerType.includes('audit') || lowerType.includes('cron') || lowerType.includes('daemon') || lowerType.includes('auth') || lowerType.includes('system')) {
-    if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
-    if (hasPid) columns.push({ key: 'source_pid', label: 'PID', width: 80, visible: true, sortable: true, getValue: (e) => e.source.pid?.toString() || '-' });
     columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || e.fields.program || '-' });
-    columns.push({ key: 'command', label: 'Command', width: 180, visible: false, sortable: true, getValue: (e) => e.fields.command || e.fields.comm || e.fields.exe || '-' });
-  } else if (lowerType.includes('fastapi') || lowerType.includes('aiohttp') || lowerType.includes('starlette') || lowerType.includes('python') || lowerType.includes('uvicorn') || lowerType.includes('gunicorn')) {
-    if (hasIp) columns.push({ key: 'source_ip', label: 'Client IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || e.fields.client_ip || e.fields.clientip || '-' });
-    if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 100, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
-    if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || e.fields.url || e.fields.endpoint || '-' });
-    if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
-    columns.push({ key: 'fields_latency', label: 'Latency (ms)', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.latency_ms?.toString() || e.fields.latency || '-' });
-  } else if (lowerType.includes('php-fpm') || lowerType.includes('php') || lowerType.includes('fpm')) {
-    columns.push({ key: 'fields_level', label: 'Level', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.level || e.severity || '-' });
-  } else if (lowerType.includes('haproxy')) {
-    if (hasIp) columns.push({ key: 'source_ip', label: 'Client IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
-    if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 100, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
-    if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || e.fields.url || '-' });
-    if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
-  } else if (lowerType.includes('spring') || lowerType.includes('java') || lowerType.includes('boot')) {
-    columns.push({ key: 'fields_level', label: 'Level', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.level || e.severity || '-' });
-    columns.push({ key: 'fields_logger', label: 'Logger', width: 150, visible: false, sortable: true, getValue: (e) => e.fields.logger || e.fields.logger_name || '-' });
-    if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 100, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
-    if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || '-' });
-    if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
-  } else if (lowerType.includes('aspnet') || lowerType.includes('dotnet') || lowerType.includes('core')) {
-    columns.push({ key: 'fields_level', label: 'Level', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.level || e.severity || '-' });
-    if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 100, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
-    if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || '-' });
-    if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
-  } else if (lowerType.includes('courier')) {
-    if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
-    columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || 'courier' });
-    columns.push({ key: 'action', label: 'Action', width: 100, visible: true, sortable: true, getValue: (e) => e.action || e.fields.action || '-' });
-    if (hasUser) columns.push({ key: 'user', label: 'User', width: 120, visible: true, sortable: true, getValue: (e) => e.user?.name || e.fields.user || '-' });
-  } else if (lowerType.includes('amavis') || lowerType.includes('spamassassin') || lowerType.includes('mailscanner')) {
-    if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
-    columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || '-' });
-  } else if (lowerType.includes('macos') && (lowerType.includes('pf') || lowerType.includes('firewall'))) {
-    columns.push({ key: 'fields_rule', label: 'Rule', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.rule || '-' });
-    columns.push({ key: 'fields_action', label: 'Action', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.action || e.outcome || '-' });
-    columns.push({ key: 'fields_direction', label: 'Direction', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.direction || '-' });
-    columns.push({ key: 'fields_interface', label: 'Interface', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.iface || e.fields.interface || '-' });
-  } else if (lowerType.includes('oracle')) {
-    if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
-    columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.fields.service_name || e.source.service || '-' });
-    columns.push({ key: 'fields_protocol', label: 'Protocol', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.protocol || '-' });
-    columns.push({ key: 'fields_port', label: 'Port', width: 80, visible: false, sortable: true, getValue: (e) => e.fields.port?.toString() || '-' });
-  } else if (lowerType.includes('package') || lowerType.includes('linux_package')) {
-    columns.push({ key: 'command', label: 'Package Action', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.message || e.message || '-' });
-  } else if (lowerType.includes('macos') && lowerType.includes('app')) {
-    columns.push({ key: 'fields_action', label: 'Action', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.action || '-' });
-    columns.push({ key: 'fields_direction', label: 'Direction', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.direction || '-' });
-    columns.push({ key: 'source_ip', label: 'Source IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || e.fields.ip || '-' });
-    columns.push({ key: 'fields_app', label: 'Application', width: 150, visible: true, sortable: true, getValue: (e) => e.fields.app || '-' });
+  } else if (lowerType.includes('windows') || lowerType.includes('security') || lowerType.includes('system')) {
+    if (hasUser) columns.push({ key: 'user', label: 'User', width: 120, visible: true, sortable: true, getValue: (e) => e.user?.name || e.fields.accountname || '-' });
   } else {
-    // Fallback: inspect sample entries to determine columns
     if (hasIp) columns.push({ key: 'source_ip', label: 'IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
     if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 90, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
     if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || e.fields.url || '-' });
     if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
     if (hasUser) columns.push({ key: 'user', label: 'User', width: 120, visible: true, sortable: true, getValue: (e) => e.user?.name || '-' });
-    if (hasPid) columns.push({ key: 'source_pid', label: 'PID', width: 80, visible: false, sortable: true, getValue: (e) => e.source.pid?.toString() || '-' });
   }
-
-  columns.push({ key: 'fields', label: 'Fields', width: MIN_COLUMN_WIDTH, visible: false, sortable: false, getValue: () => '...' });
 
   return columns;
 };
@@ -185,8 +160,171 @@ export function DynamicTable({ entries, detectedType, onEntryClick }: DynamicTab
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
+  const [feedbackState, setFeedbackState] = useState<FeedbackState>({});
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [showAttackTypeDropdown, setShowAttackTypeDropdown] = useState(false);
+  const [bulkFeedbackStatus, setBulkFeedbackStatus] = useState<{ success: number; failed: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [showContextAttackDropdown, setShowContextAttackDropdown] = useState(false);
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  const submitBulkFeedback = useCallback(async (label: 'safe' | 'unsafe' | 'attack_pattern', attackType?: string) => {
+    if (selectedEntries.size === 0) return;
+
+    const entriesToSubmit = Array.from(selectedEntries);
+    let success = 0;
+    let failed = 0;
+
+    for (const entryId of entriesToSubmit) {
+      const entry = entries.find(e => e.id === entryId);
+      if (!entry) {
+        failed++;
+        continue;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/feedback/bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entries: [{ entry_id: entryId }],
+            user_label: label,
+            attack_type: attackType,
+          }),
+        });
+
+        if (response.ok) {
+          success++;
+          setFeedbackState(prev => ({ ...prev, [entryId]: label }));
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+
+    setBulkFeedbackStatus({ success, failed });
+    setSelectedEntries(new Set());
+    setShowAttackTypeDropdown(false);
+    setContextMenu(null);
+
+    setTimeout(() => setBulkFeedbackStatus(null), 3000);
+  }, [selectedEntries, entries]);
+
+  const exportToCSV = useCallback(() => {
+    if (selectedEntries.size === 0) return;
+
+    const selectedData = entries.filter(e => selectedEntries.has(e.id));
+    const headers = ['timestamp', 'logType', 'severity', 'source_ip', 'user', 'action', 'outcome', 'message', 'attackType'];
+    const rows = selectedData.map(e => [
+      e.timestamp || '',
+      e.logType,
+      e.severity,
+      e.source?.ip || '',
+      e.user?.name || '',
+      e.action || '',
+      e.outcome || '',
+      `"${(e.message || '').replace(/"/g, '""')}"`,
+      e.attackType || 'normal',
+    ]);
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `siem-logs-selected-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setContextMenu(null);
+  }, [selectedEntries, entries]);
+
+  const exportToJSON = useCallback(() => {
+    if (selectedEntries.size === 0) return;
+
+    const selectedData = entries.filter(e => selectedEntries.has(e.id));
+    const blob = new Blob([JSON.stringify(selectedData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `siem-logs-selected-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setContextMenu(null);
+  }, [selectedEntries, entries]);
+
+  const exportToTXT = useCallback(() => {
+    if (selectedEntries.size === 0) return;
+
+    const selectedData = entries.filter(e => selectedEntries.has(e.id));
+    const text = selectedData.map(e => e.rawLine || e.message).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `siem-logs-selected-${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setContextMenu(null);
+  }, [selectedEntries, entries]);
+
+  const toggleEntrySelection = useCallback((entryId: string) => {
+    setSelectedEntries(prev => {
+      const next = new Set(prev);
+      if (next.has(entryId)) {
+        next.delete(entryId);
+      } else {
+        next.add(entryId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (selectedEntries.size > 0) {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY });
+      setShowContextAttackDropdown(false);
+    }
+  }, [selectedEntries.size]);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+    setShowContextAttackDropdown(false);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        closeContextMenu();
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeContextMenu();
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [closeContextMenu]);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedEntries.size === entries.length) {
+      setSelectedEntries(new Set());
+    } else {
+      setSelectedEntries(new Set(entries.map(e => e.id)));
+    }
+  }, [selectedEntries, entries]);
 
   useEffect(() => {
     const newColumns = getColumnsForLogType(detectedType, entries.slice(0, 10));
@@ -210,16 +348,10 @@ export function DynamicTable({ entries, detectedType, onEntryClick }: DynamicTab
 
       const delta = startX - e.clientX;
       const newWidth = Math.max(MIN_COLUMN_WIDTH, column.width - delta);
-      
-      setColumns(prev => prev.map(c => 
+
+      setColumns(prev => prev.map(c =>
         c.key === columnKey ? { ...c, width: newWidth } : c
       ));
-
-      if (newWidth === MIN_COLUMN_WIDTH) {
-        const newVisible = new Set(visibleColumns);
-        newVisible.delete(columnKey);
-        setVisibleColumns(newVisible);
-      }
     };
 
     const handleMouseUp = () => {
@@ -231,7 +363,7 @@ export function DynamicTable({ entries, detectedType, onEntryClick }: DynamicTab
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const getSortedEntries = (): ParsedLogEntry[] => {
+  const getSortedEntries = useCallback(() => {
     if (!sortColumn) return entries;
 
     const column = columns.find(c => c.key === sortColumn);
@@ -240,20 +372,153 @@ export function DynamicTable({ entries, detectedType, onEntryClick }: DynamicTab
     const sorted = [...entries].sort((a, b) => {
       const valueA = String(column.getValue(a) || '');
       const valueB = String(column.getValue(b) || '');
-      
+
       const comparison = valueA.localeCompare(valueB);
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
     return sorted;
-  };
+  }, [sortColumn, sortDirection, columns, entries]);
 
   const visibleColumnList = columns.filter(c => visibleColumns.has(c.key));
   const sortedEntries = getSortedEntries();
 
+  const getColumnContent = (column: Column, entry: ParsedLogEntry) => {
+    if (column.key === 'select') {
+      return (
+        <input
+          type="checkbox"
+          checked={selectedEntries.has(entry.id)}
+          onChange={() => toggleEntrySelection(entry.id)}
+          onClick={e => e.stopPropagation()}
+        />
+      );
+    }
+    if (column.key === 'severity' && entry.attackType) {
+      return (
+        <div className="severity-with-indicator">
+          <span className="severity-icon">⚠️</span>
+          <span>{entry.severity}</span>
+        </div>
+      );
+    }
+    if (column.key === 'attack' && entry.attackType) {
+      return (
+        <span className="attack-badge" title={`Confidence: ${(entry.attackConfidence! * 100).toFixed(0)}%`}>
+          {entry.attackType!.replace(/_/g, ' ')}
+        </span>
+      );
+    }
+    return column.getValue(entry);
+  };
+
+  const getHeaderContent = (column: Column) => {
+    if (column.key === 'select') {
+      return (
+        <input
+          type="checkbox"
+          checked={selectedEntries.size === entries.length && entries.length > 0}
+          ref={input => {
+            if (input) {
+              input.indeterminate = selectedEntries.size > 0 && selectedEntries.size < entries.length;
+            }
+          }}
+          onChange={toggleSelectAll}
+          onClick={e => e.stopPropagation()}
+        />
+      );
+    }
+    return (
+      <div className="th-content">
+        <span className="th-label">{column.label}</span>
+        {sortColumn === column.key && (
+          <span className={`sort-indicator ${sortDirection}`}>
+            {sortDirection === 'asc' ? '▲' : '▼'}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const getRowClassName = (entry: ParsedLogEntry) => {
+    const feedback = feedbackState[entry.id];
+    const hasAttack = !!entry.attackType;
+    const isSelected = selectedEntries.has(entry.id);
+
+    const classes: string[] = [];
+    if (hasAttack) classes.push('attack-row');
+    if (feedback) classes.push(`feedback-${feedback}`);
+    if (isSelected) classes.push('selected-row');
+    return classes.join(' ');
+  };
+
+  const getTdClassName = (column: Column, entry: ParsedLogEntry) => {
+    const hasAttack = !!entry.attackType;
+    const classes: string[] = ['data-cell'];
+    if (hasAttack) classes.push('attack-cell');
+    if (column.key === 'select') classes.push('select-cell');
+    return classes.join(' ');
+  };
+
   return (
     <div className="dynamic-table-container">
-      <div className="table-scroll-wrapper" ref={tableContainerRef}>
+      {selectedEntries.size > 0 && (
+        <div className="bulk-actions-bar">
+          <span className="selected-count">{selectedEntries.size} selected</span>
+          <button
+            className="bulk-action-btn safe"
+            onClick={() => submitBulkFeedback('safe')}
+          >
+            Mark Safe
+          </button>
+          <button
+            className="bulk-action-btn unsafe"
+            onClick={() => submitBulkFeedback('unsafe')}
+          >
+            Mark Unsafe
+          </button>
+          <div className="bulk-action-dropdown">
+            <button
+              className="bulk-action-btn attack-pattern"
+              onClick={() => setShowAttackTypeDropdown(!showAttackTypeDropdown)}
+            >
+              Mark as Attack Pattern
+            </button>
+            {showAttackTypeDropdown && (
+              <div className="attack-type-dropdown">
+                {ATTACK_TYPE_OPTIONS.map(option => (
+                  <button
+                    key={option.type}
+                    className="attack-type-option"
+                    onClick={() => submitBulkFeedback('attack_pattern', option.type)}
+                  >
+                    <span className="attack-type-label">{option.label}</span>
+                    <span className="attack-type-desc">{option.description}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            className="bulk-action-btn clear"
+            onClick={() => setSelectedEntries(new Set())}
+          >
+            Clear Selection
+          </button>
+          {bulkFeedbackStatus && (
+            <span className="bulk-feedback-status">
+              {bulkFeedbackStatus.success} submitted
+              {bulkFeedbackStatus.failed > 0 && `, ${bulkFeedbackStatus.failed} failed`}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div
+        className="table-scroll-wrapper"
+        ref={tableContainerRef}
+        onContextMenu={handleContextMenu}
+      >
         <table className="dynamic-table">
           <thead>
             <tr>
@@ -261,18 +526,11 @@ export function DynamicTable({ entries, detectedType, onEntryClick }: DynamicTab
                 <th
                   key={column.key}
                   style={{ width: `${column.width}px`, minWidth: `${MIN_COLUMN_WIDTH}px` }}
-                  className={`sortable ${sortColumn === column.key ? 'sorted' : ''}`}
+                  className={`sortable ${sortColumn === column.key ? 'sorted' : ''} ${column.key === 'select' ? 'select-column' : ''}`}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
-                  <div className="th-content">
-                    <span className="th-label">{column.label}</span>
-                    {sortColumn === column.key && (
-                      <span className={`sort-indicator ${sortDirection}`}>
-                        {sortDirection === 'asc' ? '▲' : '▼'}
-                      </span>
-                    )}
-                  </div>
-                  <div 
+                  {getHeaderContent(column)}
+                  <div
                     className="resize-handle"
                     onMouseDown={(e) => handleResizeStart(column.key, e.clientX)}
                   />
@@ -282,14 +540,18 @@ export function DynamicTable({ entries, detectedType, onEntryClick }: DynamicTab
           </thead>
           <tbody>
             {sortedEntries.map((entry) => (
-              <tr key={entry.id} onClick={() => onEntryClick?.(entry)}>
+              <tr
+                key={entry.id}
+                onClick={() => onEntryClick?.(entry)}
+                className={getRowClassName(entry)}
+              >
                 {visibleColumnList.map(column => (
-                  <td 
+                  <td
                     key={column.key}
                     style={{ width: `${column.width}px` }}
-                    className="data-cell"
+                    className={getTdClassName(column, entry)}
                   >
-                    {column.getValue(entry)}
+                    {getColumnContent(column, entry)}
                   </td>
                 ))}
               </tr>
@@ -297,25 +559,86 @@ export function DynamicTable({ entries, detectedType, onEntryClick }: DynamicTab
           </tbody>
         </table>
       </div>
+
       <div className="column-toggles">
-        <button 
+        <button
           className="toggle-columns-btn"
           onClick={() => {
             if (visibleColumns.size === columns.filter(c => c.visible).length) {
-              const allVisible = new Set(columns.filter(c => c.visible).map(c => c.key));
-              setVisibleColumns(allVisible);
-            } else {
-              const minimalVisible = new Set(['timestamp', 'severity', 'message']);
+              const minimalVisible = new Set(['select', 'timestamp', 'severity', 'message']);
               setVisibleColumns(minimalVisible);
+            } else {
+              setVisibleColumns(new Set(columns.filter(c => c.visible).map(c => c.key)));
             }
           }}
         >
-          {visibleColumns.size > 3 ? 'Fewer Columns' : 'More Columns'}
+          {visibleColumns.size > 4 ? 'Fewer Columns' : 'More Columns'}
         </button>
       </div>
       {visibleColumns.size < columns.filter(c => c.visible).length && (
         <div className="hidden-columns-indicator">
           {columns.filter(c => c.visible).length - visibleColumns.size} hidden columns
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <div className="context-menu-header">
+            {selectedEntries.size} selected entries
+          </div>
+          <div className="context-menu-divider" />
+          <div className="context-menu-section">
+            <div className="context-menu-label">Classification</div>
+            <button className="context-menu-item safe" onClick={() => submitBulkFeedback('safe')}>
+              ✓ Mark as Safe
+            </button>
+            <button className="context-menu-item unsafe" onClick={() => submitBulkFeedback('unsafe')}>
+              ✗ Mark as Unsafe
+            </button>
+            <div className="context-menu-dropdown">
+              <button
+                className="context-menu-item attack-pattern"
+                onClick={() => setShowContextAttackDropdown(!showContextAttackDropdown)}
+              >
+                🎯 Mark as Attack Pattern ▾
+              </button>
+              {showContextAttackDropdown && (
+                <div className="context-menu-subdropdown">
+                  {ATTACK_TYPE_OPTIONS.map(option => (
+                    <button
+                      key={option.type}
+                      className="context-menu-subitem"
+                      onClick={() => submitBulkFeedback('attack_pattern', option.type)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="context-menu-divider" />
+          <div className="context-menu-section">
+            <div className="context-menu-label">Export Selected</div>
+            <button className="context-menu-item export" onClick={exportToCSV}>
+              📄 Export as CSV
+            </button>
+            <button className="context-menu-item export" onClick={exportToJSON}>
+              📋 Export as JSON
+            </button>
+            <button className="context-menu-item export" onClick={exportToTXT}>
+              📝 Export as TXT
+            </button>
+          </div>
+          <div className="context-menu-divider" />
+          <button className="context-menu-item clear" onClick={() => { setSelectedEntries(new Set()); setContextMenu(null); }}>
+            Clear Selection
+          </button>
         </div>
       )}
     </div>

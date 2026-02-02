@@ -25,6 +25,7 @@ export type AttackType =
   | 'ldap_injection'         // NEW: LDAP injection
   | 'log4shell'              // NEW: Log4j CVE-2021-44228
   | 'prototype_pollution'    // NEW: JavaScript prototype pollution
+  | 'file_inclusion'         // NEW: File inclusion attacks (LFI/RFI)
   
   // Infrastructure attacks
   | 'privilege_escalation'

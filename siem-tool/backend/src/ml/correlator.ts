@@ -1479,6 +1479,7 @@ function generateChainRecommendation(attackType: AttackType, events: CorrelatedE
     ldap_injection: 'Use parameterized LDAP queries, validate inputs, implement least privilege for LDAP binds.',
     log4shell: 'CRITICAL: Patch Log4j to 2.17.1+. Block outbound LDAP/RMI. Set log4j2.formatMsgNoLookups=true.',
     prototype_pollution: 'Freeze Object.prototype, validate JSON schema, sanitize property assignments.',
+    file_inclusion: 'Validate file paths, implement allowlists, disable URL file wrappers, use chroot/jail environments.',
     
     // Infrastructure attacks
     privilege_escalation: 'Review sudo policies, audit privileged commands, and implement just-in-time access.',

@@ -49,10 +49,24 @@ class ApacheParser(Parser):
         except:
             pass
 
-        # Parse request
-        request_parts = request.split()
-        method = request_parts[0] if len(request_parts) > 0 else ""
-        path = request_parts[1] if len(request_parts) > 1 else ""
+        # Parse request - handle URLs with spaces (e.g., SQL injection attempts)
+        # Request format: "METHOD PATH PROTOCOL" where PROTOCOL is HTTP/x.x
+        method = ""
+        path = ""
+        protocol = ""
+
+        if request:
+            # Split from the right to separate protocol first (in case URL has spaces)
+            if ' HTTP/' in request:
+                request_body, protocol_suffix = request.rsplit(' HTTP/', 1)
+                protocol = 'HTTP/' + protocol_suffix
+            else:
+                request_body = request
+            
+            # Now split method from path
+            parts = request_body.split(' ', 1)
+            method = parts[0] if len(parts) > 0 else ""
+            path = parts[1] if len(parts) > 1 else ""
 
         # Determine severity
         severity = Severity.INFO
@@ -60,6 +74,9 @@ class ApacheParser(Parser):
             severity = Severity.WARNING
         elif status.startswith('5'):
             severity = Severity.ERROR
+
+        # Store full request for attack detection (includes query string with spaces)
+        full_path = path
 
         return LogEntry(
             line,
@@ -70,10 +87,10 @@ class ApacheParser(Parser):
             user={'name': user} if user != '-' else None,
             action=method,
             outcome=status,
-            message=f"{method} {path} {status}",
+            message=f"{method} {full_path} {status}",
             fields={
                 'method': method,
-                'path': path,
+                'path': full_path,
                 'status': int(status),
                 'size': int(size) if size != '-' else 0,
                 'referer': referer,
@@ -172,10 +189,24 @@ class NginxParser(Parser):
         except:
             pass
 
-        # Parse request
-        request_parts = request.split()
-        method = request_parts[0] if len(request_parts) > 0 else ""
-        path = request_parts[1] if len(request_parts) > 1 else ""
+        # Parse request - handle URLs with spaces (e.g., SQL injection attempts)
+        # Request format: "METHOD PATH PROTOCOL" where PROTOCOL is HTTP/x.x
+        method = ""
+        path = ""
+        protocol = ""
+
+        if request:
+            # Split from the right to separate protocol first (in case URL has spaces)
+            if ' HTTP/' in request:
+                request_body, protocol_suffix = request.rsplit(' HTTP/', 1)
+                protocol = 'HTTP/' + protocol_suffix
+            else:
+                request_body = request
+            
+            # Now split method from path
+            parts = request_body.split(' ', 1)
+            method = parts[0] if len(parts) > 0 else ""
+            path = parts[1] if len(parts) > 1 else ""
 
         # Determine severity
         severity = Severity.INFO

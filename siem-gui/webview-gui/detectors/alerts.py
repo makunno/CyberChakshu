@@ -10,6 +10,26 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from parsers.types import LogEntry
 
 
+def _get_user_name(entry: dict) -> str:
+    """Safely get user name from entry, handling None user field"""
+    user = entry.get('user')
+    if user is None:
+        return ''
+    if isinstance(user, dict):
+        return user.get('name', '')
+    return str(user)
+
+
+def _get_source_ip(entry: dict) -> str:
+    """Safely get source IP from entry, handling None source field"""
+    source = entry.get('source')
+    if source is None:
+        return ''
+    if isinstance(source, dict):
+        return source.get('ip', '')
+    return str(source)
+
+
 def run_detections(entries: List[dict], config: dict = None) -> List[dict]:
     """Run all detection rules on parsed log entries"""
     if config is None:
@@ -48,15 +68,15 @@ def detect_bruteforce(entries: List[dict], config: dict) -> List[dict]:
     failures = [
         e for e in entries
         if e.get('outcome') == 'failure'
-        and e.get('source', {}).get('ip')
-        and e.get('user', {}).get('name')
+        and _get_source_ip(e)
+        and _get_user_name(e)
         and (e.get('tags', []).__contains__('auth') or e.get('tags', []).__contains__('ssh') or e.get('logType') == 'ssh_auth')
     ]
 
     # Group by (IP, user)
     groups = defaultdict(list)
     for entry in failures:
-        key = f"{entry['source']['ip']}|{entry['user']['name']}"
+        key = f"{_get_source_ip(entry)}|{_get_user_name(entry)}"
         groups[key].append(entry)
 
     # Check each group for brute force pattern
@@ -112,15 +132,15 @@ def detect_password_spray(entries: List[dict], config: dict) -> List[dict]:
     failures = [
         e for e in entries
         if e.get('outcome') == 'failure'
-        and e.get('source', {}).get('ip')
-        and e.get('user', {}).get('name')
+        and _get_source_ip(e)
+        and _get_user_name(e)
         and (e.get('tags', []).__contains__('auth') or e.get('tags', []).__contains__('ssh') or e.get('logType') == 'ssh_auth')
     ]
 
     # Group by IP
     by_ip = defaultdict(list)
     for entry in failures:
-        by_ip[entry['source']['ip']].append(entry)
+        by_ip[_get_source_ip(entry)].append(entry)
 
     # Check each IP for spray pattern
     for (ip, group) in by_ip.items():
@@ -133,7 +153,7 @@ def detect_password_spray(entries: List[dict], config: dict) -> List[dict]:
             for j in range(i, len(group)):
                 time = datetime.fromisoformat(group[j]['timestamp'].replace('Z', '+00:00'))
                 if (time - window_start).total_seconds() * 1000 <= window_ms:
-                    users_in_window.add(group[j]['user']['name'])
+                    users_in_window.add(_get_user_name(group[j]))
                     window_end = time
                 else:
                     break
@@ -169,14 +189,14 @@ def detect_success_after_failures(entries: List[dict], config: dict) -> List[dic
     # Get auth events
     auth_events = [
         e for e in entries
-        if e.get('user', {}).get('name')
+        if _get_user_name(e)
         and (e.get('tags', []).__contains__('auth') or e.get('tags', []).__contains__('ssh') or e.get('logType') == 'ssh_auth')
     ]
 
     # Group by user
     by_user = defaultdict(list)
     for entry in auth_events:
-        by_user[entry['user']['name']].append(entry)
+        by_user[_get_user_name(entry)].append(entry)
 
     # Check for success-after-failures pattern
     for (user, group) in by_user.items():
@@ -247,7 +267,7 @@ def detect_suspicious_activity(entries: List[dict]) -> List[dict]:
                 'timestamp': datetime.now().isoformat(),
                 'sourceIps': [],
                 'targetUsers': [user],
-                'relatedEvents': [e['id'] for e in priv_esc[:10] if e.get('user', {}).get('name') == user],
+                'relatedEvents': [e['id'] for e in priv_esc[:10] if _get_user_name(e) == user],
                 'metadata': {'count': count}
             })
 
@@ -275,12 +295,12 @@ def generate_stats(entries: List[dict]) -> dict:
             by_outcome[entry['outcome']] += 1
 
         # Source IPs
-        ip = entry.get('source', {}).get('ip')
+        ip = _get_source_ip(entry)
         if ip:
             source_count[ip] += 1
 
         # Users
-        user = entry.get('user', {}).get('name')
+        user = _get_user_name(entry)
         if user:
             user_count[user] += 1
 

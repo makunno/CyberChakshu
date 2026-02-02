@@ -58,6 +58,27 @@ const STAGE_COLORS: Record<string, string> = {
   complete: '#7c3aed',
 };
 
+const ATTACK_TYPE_OPTIONS = [
+  { type: 'sql_injection', label: 'SQL Injection' },
+  { type: 'xss_attack', label: 'XSS' },
+  { type: 'command_injection', label: 'Command Injection' },
+  { type: 'path_traversal', label: 'Path Traversal' },
+  { type: 'file_inclusion', label: 'File Inclusion' },
+  { type: 'bruteforce', label: 'Brute Force' },
+  { type: 'password_spray', label: 'Password Spray' },
+  { type: 'credential_stuffing', label: 'Credential Stuffing' },
+  { type: 'port_scan', label: 'Port Scan' },
+  { type: 'ddos', label: 'DDoS' },
+  { type: 'reconnaissance', label: 'Reconnaissance' },
+  { type: 'privilege_escalation', label: 'Privilege Escalation' },
+  { type: 'lateral_movement', label: 'Lateral Movement' },
+  { type: 'data_exfiltration', label: 'Data Exfiltration' },
+  { type: 'c2_communication', label: 'C2 Communication' },
+  { type: 'malware_activity', label: 'Malware Activity' },
+  { type: 'insider_threat', label: 'Insider Threat' },
+  { type: 'account_takeover', label: 'Account Takeover' },
+];
+
 function App() {
   const [mode, setMode] = useState<'single' | 'multi'>('single');
   const [data, setData] = useState<ParseResponse | null>(null);
@@ -68,7 +89,71 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
+  const [selectedEntryFeedback, setSelectedEntryFeedback] = useState<{ [entryId: string]: 'safe' | 'unsafe' | 'attack_pattern' }>({});
+  const [selectedEntryAttackType, setSelectedEntryAttackType] = useState<string>('');
+  const [showAttackTypeDropdown, setShowAttackTypeDropdown] = useState(false);
   const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
+
+  // Get unique attack types from entries for filter
+  const attackTypesInData = [...new Set((data?.entries || []).filter(e => e.attackType).map(e => e.attackType))].sort();
+
+  const filteredEntries = (data?.entries || []).filter(entry => {
+    const matchesSearch = searchQuery === '' || 
+      entry.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      entry.source.ip?.includes(searchQuery) ||
+      entry.user?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (severityFilter === 'all') return matchesSearch;
+    
+    // Check if severity filter is an attack type
+    if (attackTypesInData.includes(severityFilter)) {
+      return matchesSearch && entry.attackType === severityFilter;
+    }
+    
+    return matchesSearch && entry.severity === severityFilter;
+  });
+
+  const exportToCSV = useCallback(() => {
+    if (!data && !correlationData) return;
+    
+    const entries = data?.entries || [];
+    const headers = ['timestamp', 'logType', 'severity', 'source_ip', 'user', 'action', 'outcome', 'message'];
+    const rows = entries.map(e => [
+      e.timestamp || '',
+      e.logType,
+      e.severity,
+      e.source.ip || '',
+      e.user?.name || '',
+      e.action || '',
+      e.outcome || '',
+      `"${e.message.replace(/"/g, '""')}"`,
+    ]);
+    
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `siem-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  }, [data, correlationData]);
+
+  const exportToJSON = useCallback(() => {
+    const exportData = correlationData || data;
+    if (!exportData) return;
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `siem-analysis-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+  }, [data, correlationData]);
+
+  const hasData = data || correlationData;
+  const attackChains = correlationData?.correlation?.attackChains || [];
+  const timeline = correlationData?.correlation?.timeline || [];
+
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,61 +252,12 @@ function App() {
     setCorrelationData(null);
     setUploadedFiles([]);
     setSelectedEntry(null);
+    setSelectedEntryFeedback({});
+    setSelectedEntryAttackType('');
+    setShowAttackTypeDropdown(false);
     setSelectedChain(null);
     setError(null);
   };
-
-  const filteredEntries = (data?.entries || []).filter(entry => {
-    const matchesSearch = searchQuery === '' || 
-      entry.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.source.ip?.includes(searchQuery) ||
-      entry.user?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesSeverity = severityFilter === 'all' || entry.severity === severityFilter;
-    
-    return matchesSearch && matchesSeverity;
-  });
-
-  const exportToCSV = useCallback(() => {
-    if (!data && !correlationData) return;
-    
-    const entries = data?.entries || [];
-    const headers = ['timestamp', 'logType', 'severity', 'source_ip', 'user', 'action', 'outcome', 'message'];
-    const rows = entries.map(e => [
-      e.timestamp || '',
-      e.logType,
-      e.severity,
-      e.source.ip || '',
-      e.user?.name || '',
-      e.action || '',
-      e.outcome || '',
-      `"${e.message.replace(/"/g, '""')}"`,
-    ]);
-    
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `siem-logs-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  }, [data, correlationData]);
-
-  const exportToJSON = useCallback(() => {
-    const exportData = correlationData || data;
-    if (!exportData) return;
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `siem-analysis-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-  }, [data, correlationData]);
-
-  const hasData = data || correlationData;
-  const attackChains = correlationData?.correlation?.attackChains || [];
-  const timeline = correlationData?.correlation?.timeline || [];
   const summary = correlationData?.correlation?.summary;
 
   return (
@@ -405,7 +441,7 @@ function App() {
                       onClick={() => setActiveTab('alerts')}
                     >
                       <AlertTriangle size={16} />
-                      Alerts ({data.alerts.length})
+                      Alerts ({data.entries.filter(e => e.attackType).length + data.alerts.length})
                     </button>
                   </>
                 )}
@@ -513,12 +549,12 @@ function App() {
                   </div>
                 </div>
                 <div className="kpi-card">
-                  <div className="kpi-icon" style={{ background: 'rgba(234, 179, 8, 0.2)' }}>
-                    <Shield size={24} color="#eab308" />
+                  <div className="kpi-icon" style={{ background: 'rgba(245, 158, 11, 0.2)' }}>
+                    <Target size={24} color="#f59e0b" />
                   </div>
                   <div className="kpi-content">
-                    <div className="kpi-value">{data.alerts.filter(a => a.severity === 'high' || a.severity === 'critical').length}</div>
-                    <div className="kpi-label">Critical Alerts</div>
+                    <div className="kpi-value">{data.entries.filter(e => e.attackType).length}</div>
+                    <div className="kpi-label">ML Detected Attacks</div>
                   </div>
                 </div>
               </div>
@@ -692,17 +728,26 @@ function App() {
                       </button>
                     )}
                   </div>
-                  <select 
-                    value={severityFilter} 
-                    onChange={(e) => setSeverityFilter(e.target.value)}
-                  >
-                    <option value="all">All Severities</option>
-                    <option value="critical">Critical</option>
-                    <option value="error">Error</option>
-                    <option value="warning">Warning</option>
-                    <option value="info">Info</option>
-                    <option value="debug">Debug</option>
-                  </select>
+                    <select 
+                      value={severityFilter} 
+                      onChange={(e) => setSeverityFilter(e.target.value)}
+                    >
+                      <option value="all">All Entries</option>
+                      <optgroup label="Severity">
+                        <option value="critical">Critical</option>
+                        <option value="error">Error</option>
+                        <option value="warning">Warning</option>
+                        <option value="info">Info</option>
+                        <option value="debug">Debug</option>
+                      </optgroup>
+                      {attackTypesInData.length > 0 && (
+                        <optgroup label="ML Detected Attacks">
+                          {attackTypesInData.map(type => (
+                            <option key={type} value={type}>{type?.replace(/_/g, ' ')}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
                 </div>
 
                 {/* Dynamic Logs Table */}
@@ -720,132 +765,315 @@ function App() {
             {/* Alerts Tab */}
             {activeTab === 'alerts' && data && (
               <div className="alerts-section">
-                {data.alerts.length === 0 ? (
-                  <div className="empty-state">
-                    <Shield size={48} />
-                    <h3>No Alerts Detected</h3>
-                    <p>The analysis did not find any security concerns in the provided logs.</p>
-                  </div>
-                ) : (
-                  <div className="alerts-list">
-                    {data.alerts.map((alert) => (
-                      <div key={alert.id} className={`alert-card severity-${alert.severity}`}>
-                        <div className="alert-header">
-                          <span className="alert-icon">{ATTACK_TYPE_ICONS[alert.type] || '?'}</span>
-                          <span className="alert-title">{alert.title}</span>
-                          <span className={`badge badge-${alert.severity === 'high' || alert.severity === 'critical' ? 'error' : 'warning'}`}>
-                            {alert.severity}
-                          </span>
-                        </div>
-                        <p className="alert-description">{alert.description}</p>
-                        <div className="alert-meta">
-                          <span>Confidence: {alert.confidence}</span>
-                          {alert.sourceIps.length > 0 && (
-                            <span>Sources: {alert.sourceIps.join(', ')}</span>
-                          )}
-                          {alert.targetUsers.length > 0 && (
-                            <span>Users: {alert.targetUsers.join(', ')}</span>
-                          )}
-                        </div>
+                {/* Get all suspicious entries (ML-detected attacks) */}
+                {(() => {
+                  // Use mlAttacks array directly for more accurate data
+                  const mlAttacksFromApi = data.mlAttacks || [];
+                  const mlAttacks = data.entries.filter(e => e.attackType).map(entry => {
+                    const fromApi = mlAttacksFromApi.find((a: any) => a.entry?.id === entry.id);
+                    return {
+                      ...entry,
+                      _confidence: fromApi?.confidence || entry.attackConfidence || 0
+                    };
+                  });
+                  const totalAlerts = data.alerts.length + mlAttacks.length;
+
+                  if (totalAlerts === 0) {
+                    return (
+                      <div className="empty-state">
+                        <Shield size={48} />
+                        <h3>No Suspicious Activity Detected</h3>
+                        <p>The analysis did not find any security concerns or ML-detected attacks in the provided logs.</p>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  }
+
+                  return (
+                    <>
+                      {/* Attack Pattern Stats */}
+                      {(() => {
+                        const attackTypeCounts: Record<string, number> = {};
+                        mlAttacks.forEach((e: any) => {
+                          const type = e.attackType?.replace(/_/g, ' ') || 'Unknown';
+                          attackTypeCounts[type] = (attackTypeCounts[type] || 0) + 1;
+                        });
+                        const sortedAttackTypes = Object.entries(attackTypeCounts)
+                          .sort(([, a], [, b]) => b - a)
+                          .slice(0, 3);
+
+                        return (
+                          <div className="alerts-stats-section">
+                            {sortedAttackTypes.length > 0 && (
+                              <div className="attack-frequency-card">
+                                <h4 className="attack-frequency-title">Top Attack Patterns</h4>
+                                <div className="attack-frequency-list">
+                                  {sortedAttackTypes.map(([type, count], idx) => (
+                                    <div key={type} className="attack-frequency-item">
+                                      <span className="attack-frequency-rank">#{idx + 1}</span>
+                                      <span className="attack-frequency-type">{type}</span>
+                                      <span className="attack-frequency-count">{count} occurrences</span>
+                                      <div className="attack-frequency-bar">
+                                        <div
+                                          className="attack-frequency-fill"
+                                          style={{
+                                            width: `${(count / mlAttacks.length) * 100}%`,
+                                            background: idx === 0 ? '#ef4444' : idx === 1 ? '#f59e0b' : '#3b82f6'
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Source IPs with most attacks */}
+                            {(() => {
+                              const ipCounts: Record<string, number> = {};
+                              mlAttacks.forEach((e: any) => {
+                                if (e.source?.ip) {
+                                  ipCounts[e.source.ip] = (ipCounts[e.source.ip] || 0) + 1;
+                                }
+                              });
+                              const topIps = Object.entries(ipCounts)
+                                .sort(([, a], [, b]) => b - a)
+                                .slice(0, 5);
+
+                              if (topIps.length > 0) {
+                                return (
+                                  <div className="attack-source-card">
+                                    <h4 className="attack-frequency-title">Top Attacker IPs</h4>
+                                    <div className="attack-frequency-list">
+                                      {topIps.map(([ip, count], idx) => (
+                                        <div key={ip} className="attack-frequency-item">
+                                          <span className="attack-frequency-rank">#{idx + 1}</span>
+                                          <span className="attack-frequency-type mono">{ip}</span>
+                                          <span className="attack-frequency-count">{count} attacks</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        );
+                      })()}
+
+                      {/* ML-Detected Attacks Section */}
+                      {mlAttacks.length > 0 && (
+                        <div className="ml-attacks-section">
+                          <h3 className="section-title">
+                            <span className="ml-badge">ML</span>
+                            ML-Detected Attacks ({mlAttacks.length})
+                          </h3>
+                          <div className="ml-attacks-grid">
+                            {mlAttacks.map((entryWithConf: any) => (
+                              <div
+                                key={entryWithConf.id}
+                                className="ml-attack-card"
+                                onClick={() => setSelectedEntry(entryWithConf)}
+                              >
+                                <div className="ml-attack-header">
+                                  <span className="ml-attack-icon">🎯</span>
+                                  <span className="ml-attack-type">
+                                    {entryWithConf.attackType?.replace(/_/g, ' ').toUpperCase()}
+                                  </span>
+                                  <span className="ml-attack-confidence" style={{
+                                    color: entryWithConf._confidence >= 0.8 ? '#22c55e' : entryWithConf._confidence >= 0.5 ? '#f59e0b' : '#ef4444'
+                                  }}>
+                                    {(entryWithConf._confidence * 100).toFixed(0)}%
+                                  </span>
+                                </div>
+                                <p className="ml-attack-message">
+                                  {(entryWithConf.message || '').substring(0, 150)}
+                                  {(entryWithConf.message || '').length > 150 ? '...' : ''}
+                                </p>
+                                <div className="ml-attack-meta">
+                                  {entryWithConf.source?.ip && (
+                                    <span className="ml-attack-ip">Source: {entryWithConf.source.ip}</span>
+                                  )}
+                                  <span className="ml-attack-time">{entryWithConf.timestamp}</span>
+                                </div>
+                                {entryWithConf.mitreTactics && entryWithConf.mitreTactics.length > 0 && (
+                                  <div className="ml-attack-mitre">
+                                    {entryWithConf.mitreTactics.slice(0, 2).map((tactic: string, i: number) => (
+                                      <span key={i} className="mitre-tag">{tactic}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Traditional Alerts Section */}
+                      {data.alerts.length > 0 && (
+                        <div className="traditional-alerts-section">
+                          <h3 className="section-title">Rule-Based Alerts ({data.alerts.length})</h3>
+                          <div className="alerts-list">
+                            {data.alerts.map((alert) => (
+                              <div key={alert.id} className={`alert-card severity-${alert.severity}`}>
+                                <div className="alert-header">
+                                  <span className="alert-icon">{ATTACK_TYPE_ICONS[alert.type] || '?'}</span>
+                                  <span className="alert-title">{alert.title}</span>
+                                  <span className={`badge badge-${alert.severity === 'high' || alert.severity === 'critical' ? 'error' : 'warning'}`}>
+                                    {alert.severity}
+                                  </span>
+                                </div>
+                                <p className="alert-description">{alert.description}</p>
+                                <div className="alert-meta">
+                                  <span>Confidence: {alert.confidence}</span>
+                                  {alert.sourceIps.length > 0 && (
+                                    <span>Sources: {alert.sourceIps.join(', ')}</span>
+                                  )}
+                                  {alert.targetUsers.length > 0 && (
+                                    <span>Users: {alert.targetUsers.join(', ')}</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
 
             {/* Stats Tab */}
             {activeTab === 'stats' && (
               <div className="stats-section">
-                {/* Attack Types Detected (for correlation) */}
-                {summary && summary.attackTypesDetected.length > 0 && (
-                  <div className="chart-card full-width">
-                    <h3>Attack Types Detected</h3>
-                    <div className="attack-types-grid">
-                      {summary.attackTypesDetected.map((type) => (
-                        <div key={type} className="attack-type-chip">
-                          <span className="attack-type-icon">{ATTACK_TYPE_ICONS[type]}</span>
-                          <span>{type.replace(/_/g, ' ')}</span>
-                        </div>
-                      ))}
-                    </div>
+                {/* Quick Stats Row */}
+                <div className="quick-stats-row">
+                  <div className="quick-stat-card">
+                    <span className="quick-stat-value">{data?.totalLines || 0}</span>
+                    <span className="quick-stat-label">Total Lines</span>
                   </div>
-                )}
-
-                {/* Timeline Chart */}
-                {(data?.stats.timeline || []).length > 0 && (
-                  <div className="chart-card">
-                    <h3>Event Timeline</h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <LineChart data={data?.stats.timeline}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                        <XAxis dataKey="time" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                        <YAxis stroke="#94a3b8" />
-                        <Tooltip 
-                          contentStyle={{ background: '#1e293b', border: '1px solid #334155' }}
-                          labelStyle={{ color: '#f1f5f9' }}
-                        />
-                        <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <div className="quick-stat-card">
+                    <span className="quick-stat-value">{data?.parsedLines || 0}</span>
+                    <span className="quick-stat-label">Parsed</span>
                   </div>
-                )}
-
-                <div className="stats-grid">
-                  {/* Severity Distribution */}
-                  <div className="chart-card">
-                    <h3>Severity Distribution</h3>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie
-                          data={Object.entries(data?.stats.bySeverity || correlationData?.stats.bySeverity || {}).map(([name, value]) => ({ name, value }))}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={80}
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          {Object.entries(data?.stats.bySeverity || correlationData?.stats.bySeverity || {}).map(([severity]) => (
-                            <Cell key={severity} fill={SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] || '#94a3b8'} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="legend">
-                      {Object.entries(data?.stats.bySeverity || correlationData?.stats.bySeverity || {}).map(([severity, count]) => (
-                        <div key={severity} className="legend-item">
-                          <span className="legend-color" style={{ background: SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] }}></span>
-                          <span>{severity}: {count}</span>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="quick-stat-card">
+                    <span className="quick-stat-value">{data?.entries.filter(e => e.attackType).length || 0}</span>
+                    <span className="quick-stat-label">Attacks</span>
                   </div>
+                  <div className="quick-stat-card">
+                    <span className="quick-stat-value">{data?.alerts.length || 0}</span>
+                    <span className="quick-stat-label">Alerts</span>
+                  </div>
+                  <div className="quick-stat-card">
+                    <span className="quick-stat-value">{data?.attackSummary?.riskScore || 0}</span>
+                    <span className="quick-stat-label">Risk Score</span>
+                  </div>
+                </div>
 
-                  {/* Top Sources */}
-                  <div className="chart-card">
-                    <h3>Top Source IPs</h3>
-                    <div className="top-list">
-                      {(summary?.mostActiveSourceIps || data?.stats.topSources || []).slice(0, 10).map((item, i) => {
-                        const ip = 'ip' in item ? item.ip : '';
-                        const threatScore = 'threatScore' in item ? (item.threatScore as number) : 0;
+                {/* Attack Types Overview */}
+                {data?.attackSummary?.attackTypes && data.attackSummary.attackTypes.length > 0 && (
+                  <div className="analytics-section">
+                    <h3 className="analytics-section-title">Attack Types Overview</h3>
+                    <div className="attack-types-overview">
+                      {data.attackSummary.attackTypes.map((type) => {
+                        const count = data.entries.filter(e => e.attackType === type).length;
+                        const percent = Math.round((count / data.entries.length) * 100);
                         return (
-                          <div key={ip || i} className="top-item">
-                            <span className="rank">{i + 1}</span>
-                            <span className="mono">{ip}</span>
-                            <span className="count">{item.count}</span>
-                            {threatScore > 0 && (
-                              <span className="threat-score" style={{ 
-                                color: threatScore > 0.7 ? '#ef4444' : threatScore > 0.4 ? '#f59e0b' : '#22c55e' 
-                              }}>
-                                {(threatScore * 100).toFixed(0)}% threat
-                              </span>
-                            )}
+                          <div key={type} className="attack-type-overview-item">
+                            <div className="attack-type-overview-header">
+                              <span className="attack-type-icon">{ATTACK_TYPE_ICONS[type] || '⚠️'}</span>
+                              <span className="attack-type-name">{type.replace(/_/g, ' ')}</span>
+                              <span className="attack-type-count">{count}</span>
+                            </div>
+                            <div className="attack-type-overview-bar">
+                              <div
+                                className="attack-type-overview-fill"
+                                style={{
+                                  width: `${percent}%`,
+                                  background: percent > 50 ? '#ef4444' : percent > 25 ? '#f59e0b' : '#22c55e'
+                                }}
+                              />
+                            </div>
                           </div>
                         );
                       })}
-                      {(summary?.mostActiveSourceIps || data?.stats.topSources || []).length === 0 && (
+                    </div>
+                  </div>
+                )}
+
+                {/* Timeline and Severity Row */}
+                <div className="analytics-row">
+                  {/* Timeline Chart */}
+                  {(data?.stats.timeline || []).length > 0 && (
+                    <div className="chart-card">
+                      <h3>Event Timeline</h3>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={data?.stats.timeline}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                          <XAxis dataKey="time" stroke="#94a3b8" tick={{ fontSize: 10 }} />
+                          <YAxis stroke="#94a3b8" tick={{ fontSize: 10 }} />
+                          <Tooltip
+                            contentStyle={{ background: '#1e293b', border: '1px solid #334155' }}
+                            labelStyle={{ color: '#f1f5f9' }}
+                          />
+                          <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Severity Distribution */}
+                  {Object.keys(data?.stats.bySeverity || {}).length > 0 && (
+                    <div className="chart-card">
+                      <h3>Severity Distribution</h3>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={Object.entries(data?.stats.bySeverity || {}).map(([name, value]) => ({ name, value }))}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
+                            outerRadius={70}
+                            paddingAngle={2}
+                            dataKey="value"
+                          >
+                            {Object.entries(data?.stats.bySeverity || {}).map(([severity]) => (
+                              <Cell key={severity} fill={SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] || '#94a3b8'} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="legend compact">
+                        {Object.entries(data?.stats.bySeverity || {}).map(([severity, count]) => (
+                          <div key={severity} className="legend-item">
+                            <span className="legend-color" style={{ background: SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] }}></span>
+                            <span>{severity}: {count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Top Sources and Users Row */}
+                <div className="analytics-row">
+                  {/* Top Source IPs */}
+                  <div className="chart-card">
+                    <h3>Top Source IPs</h3>
+                    <div className="top-list compact">
+                      {(data?.stats.topSources || []).slice(0, 8).map((item, i) => {
+                        const ip = item.ip || '';
+                        return (
+                          <div key={ip || i} className="top-item">
+                            <span className="rank">{i + 1}</span>
+                            <span className="mono">{ip || '-'}</span>
+                            <span className="count">{item.count}</span>
+                          </div>
+                        );
+                      })}
+                      {(data?.stats.topSources || []).length === 0 && (
                         <div className="empty-list">No IP addresses found</div>
                       )}
                     </div>
@@ -853,16 +1081,16 @@ function App() {
 
                   {/* Top Users */}
                   <div className="chart-card">
-                    <h3>Top Users</h3>
-                    <div className="top-list">
-                      {(summary?.mostTargetedUsers || data?.stats.topUsers || []).slice(0, 10).map((item, i) => (
+                    <h3>Top Target Users</h3>
+                    <div className="top-list compact">
+                      {(data?.stats.topUsers || []).slice(0, 8).map((item, i) => (
                         <div key={item.user} className="top-item">
                           <span className="rank">{i + 1}</span>
-                          <span>{item.user}</span>
+                          <span>{item.user || '-'}</span>
                           <span className="count">{item.count}</span>
                         </div>
                       ))}
-                      {(summary?.mostTargetedUsers || data?.stats.topUsers || []).length === 0 && (
+                      {(data?.stats.topUsers || []).length === 0 && (
                         <div className="empty-list">No users found</div>
                       )}
                     </div>
@@ -926,6 +1154,12 @@ function App() {
                   <label>Action</label>
                   <span>{selectedEntry.action || 'N/A'}</span>
                 </div>
+                {selectedEntry.attackType && (
+                  <div className="detail-item">
+                    <label>ML Detection</label>
+                    <span className="attack-badge">{selectedEntry.attackType.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
                 <div className="detail-item full-width">
                   <label>Tags</label>
                   <div className="tags">
@@ -948,6 +1182,136 @@ function App() {
                     <pre className="mono">{JSON.stringify(selectedEntry.fields, null, 2)}</pre>
                   </div>
                 )}
+
+                {/* Feedback Section */}
+                <div className="detail-item full-width modal-feedback-section">
+                  <label>Classification Feedback</label>
+                  <div className="modal-feedback-actions">
+                    <button
+                      className="modal-feedback-btn safe"
+                      onClick={async () => {
+                        if (!selectedEntry?.id) return;
+                        try {
+                          const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/feedback`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              entry_id: selectedEntry.id,
+                              user_label: 'safe',
+                              original_prediction: selectedEntry.attackType || 'normal',
+                              confidence: selectedEntry.attackConfidence || 0,
+                              log_message: selectedEntry.message,
+                              source_ip: selectedEntry.source?.ip || '',
+                              log_type: selectedEntry.logType,
+                              mitre_tactics: selectedEntry.mitreTactics || [],
+                              mitre_techniques: selectedEntry.mitreTechniques || [],
+                            }),
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            setSelectedEntryFeedback(prev => ({ ...prev, [selectedEntry.id]: 'safe' }));
+                          }
+                        } catch (error) {
+                          console.error('Feedback error:', error);
+                        }
+                      }}
+                      disabled={selectedEntryFeedback[selectedEntry.id] === 'safe'}
+                    >
+                      {selectedEntryFeedback[selectedEntry.id] === 'safe' ? '✓ Marked Safe' : 'Mark as Safe (False Positive)'}
+                    </button>
+                    <button
+                      className="modal-feedback-btn unsafe"
+                      onClick={async () => {
+                        if (!selectedEntry?.id) return;
+                        try {
+                          const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/feedback`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              entry_id: selectedEntry.id,
+                              user_label: 'unsafe',
+                              original_prediction: selectedEntry.attackType || 'normal',
+                              confidence: selectedEntry.attackConfidence || 0,
+                              log_message: selectedEntry.message,
+                              source_ip: selectedEntry.source?.ip || '',
+                              log_type: selectedEntry.logType,
+                              mitre_tactics: selectedEntry.mitreTactics || [],
+                              mitre_techniques: selectedEntry.mitreTechniques || [],
+                            }),
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            setSelectedEntryFeedback(prev => ({ ...prev, [selectedEntry.id]: 'unsafe' }));
+                          }
+                        } catch (error) {
+                          console.error('Feedback error:', error);
+                        }
+                      }}
+                      disabled={selectedEntryFeedback[selectedEntry.id] === 'unsafe'}
+                    >
+                      {selectedEntryFeedback[selectedEntry.id] === 'unsafe' ? '✓ Marked Unsafe' : 'Mark as Unsafe (Confirmed Attack)'}
+                    </button>
+                    <div className="modal-attack-pattern-dropdown">
+                      <button
+                        className="modal-feedback-btn attack-pattern"
+                        onClick={() => setShowAttackTypeDropdown(!showAttackTypeDropdown)}
+                        disabled={selectedEntryFeedback[selectedEntry.id] === 'attack_pattern'}
+                      >
+                        {selectedEntryFeedback[selectedEntry.id] === 'attack_pattern' ? '✓ Marked as Attack' : 'Mark as Attack Pattern'}
+                      </button>
+                      {showAttackTypeDropdown && (
+                        <div className="modal-attack-type-dropdown">
+                          {ATTACK_TYPE_OPTIONS.map(option => (
+                            <button
+                              key={option.type}
+                              className="modal-attack-type-option"
+                              onClick={async () => {
+                                if (!selectedEntry?.id) return;
+                                try {
+                                  const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/feedback`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      entry_id: selectedEntry.id,
+                                      user_label: 'attack_pattern',
+                                      original_prediction: selectedEntry.attackType || 'normal',
+                                      confidence: selectedEntry.attackConfidence || 0,
+                                      log_message: selectedEntry.message,
+                                      source_ip: selectedEntry.source?.ip || '',
+                                      log_type: selectedEntry.logType,
+                                      mitre_tactics: selectedEntry.mitreTactics || [],
+                                      mitre_techniques: selectedEntry.mitreTechniques || [],
+                                      feedback_metadata: { corrected_attack_type: option.type },
+                                    }),
+                                  });
+                                  const data = await response.json();
+                                  if (data.success) {
+                                    setSelectedEntryFeedback(prev => ({ ...prev, [selectedEntry.id]: 'attack_pattern' }));
+                                    setSelectedEntryAttackType(option.label);
+                                    setShowAttackTypeDropdown(false);
+                                  }
+                                } catch (error) {
+                                  console.error('Feedback error:', error);
+                                }
+                              }}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {selectedEntryFeedback[selectedEntry.id] && (
+                    <span className={`modal-feedback-status ${selectedEntryFeedback[selectedEntry.id]}`}>
+                      {selectedEntryFeedback[selectedEntry.id] === 'safe'
+                        ? '✓ Log marked as safe - will help reduce false positives'
+                        : selectedEntryFeedback[selectedEntry.id] === 'unsafe'
+                        ? '✓ Log marked as unsafe - will help improve detection'
+                        : `✓ Log marked as ${selectedEntryAttackType || 'attack'} pattern - will help detect similar attacks`}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -48,6 +48,10 @@ export interface ParsedLogEntry {
   rawLine: string;
   fields: Record<string, string | number | boolean | null>;
   tags: string[];
+  attackType?: string;
+  attackConfidence?: number;
+  mitreTactics?: string[];
+  mitreTechniques?: string[];
 }
 
 export interface Alert {
@@ -79,6 +83,36 @@ export interface ParseResponse {
     topSources: Array<{ ip: string; count: number }>;
     topUsers: Array<{ user: string; count: number }>;
     timeline: Array<{ time: string; count: number }>;
+  };
+  mlAttacks?: Array<{
+    entry: ParsedLogEntry;
+    attackType: string;
+    confidence: number;
+    mitreTactics: string[];
+    mitreTechniques: string[];
+  }>;
+  attackChains?: Array<{
+    id: string;
+    attackType: string;
+    stage: string;
+    events: ParsedLogEntry[];
+    sourceIps: string[];
+    targetUsers: string[];
+    startTime: string;
+    endTime: string;
+    prediction: {
+      confidence: number;
+      explanation: string[];
+    };
+    mitreTactics: string[];
+    mitreTechniques: string[];
+    recommendation: string;
+  }>;
+  attackSummary?: {
+    totalAttacks: number;
+    attackTypes: string[];
+    uniqueSources: number;
+    riskScore: number;
   };
 }
 
