@@ -104,3 +104,23 @@ export function normalizeUser(user: string): { name?: string; domain?: string } 
   
   return { name: user.toLowerCase() };
 }
+
+// Preprocess single-line JSON array to multiline format
+export function preprocessJsonArray(content: string): string {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith('[[') || !trimmed.endsWith(']]')) {
+    return content;
+  }
+
+  try {
+    const data = JSON.parse(trimmed);
+    if (!Array.isArray(data)) {
+      return content;
+    }
+
+    const lines = data.map((entry: any) => JSON.stringify(entry));
+    return lines.join('\n');
+  } catch {
+    return content;
+  }
+}

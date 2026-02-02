@@ -118,6 +118,7 @@ class LogDetector:
     MAILSCANNER_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+MailScanner\[\d+\]:\s+.+$')
     MACOS_PF_RE = re.compile(r'^\d{2}:\d{2}:\d{2}\.\d+\s+rule\s+\d+\/\d+\s+\((?:match)\):\s+(?:block|pass)\s+(?:in|out)\s+on\s+\S+:\s+(?:\d{1,3}\.){3}\d{1,3}\.\d+\s+>\s+(?:\d{1,3}\.){3}\d{1,3}\.\d+.*$')
     MACOS_APP_FW_RE = re.compile(r'^Firewall:\s+(?:Blocked|Allowed)\s+(?:incoming|outgoing)\s+connection from\s+(?:\d{1,3}\.){3}\d{1,3}\s+to\s+app\s+\S+.*$')
+    MOODLE_LMS_RE = re.compile(r'^\[\["19(?:\\\/)?\d{2}(?:\\\/)?\d{2},\s+\d{2}:\d{2}"')
 
     @staticmethod
     def is_express_json(line: str) -> bool:
@@ -290,6 +291,10 @@ class LogDetector:
             return isinstance(j, list) and len(j) > 0
         except:
             return False
+
+    @staticmethod
+    def is_moodle_lms(line: str) -> bool:
+        return bool(LogDetector.MOODLE_LMS_RE.match(line))
 
     @staticmethod
     def is_apache_error(line: str) -> bool:
@@ -519,6 +524,7 @@ class LogDetector:
             ("Azure NSG Flow Logs", LogDetector.is_azure_nsg),
             ("GCP VPC Firewall", LogDetector.is_gcp_vpc),
             ("Disk Traffic", LogDetector.is_disk_traffic),
+            ("Moodle LMS", LogDetector.is_moodle_lms),
             ("Application Logs JSON", LogDetector.is_application_json),
             ("MySQL Error", LogDetector.is_mysql_error),
             ("MySQL Query", LogDetector.is_mysql_query),
@@ -604,6 +610,7 @@ class LogDetector:
             "Azure NSG Flow Logs": LogDetector.is_azure_nsg,
             "GCP VPC Firewall": LogDetector.is_gcp_vpc,
             "Disk Traffic": LogDetector.is_disk_traffic,
+            "Moodle LMS": LogDetector.is_moodle_lms,
             "Application Logs JSON": LogDetector.is_application_json,
             "MySQL Error": LogDetector.is_mysql_error,
             "MySQL Query": LogDetector.is_mysql_query,
@@ -641,35 +648,50 @@ class LogDetector:
             return func(line)
         return False
 
+    CANDIDATE_SAMPLE_LINES = 10
+
     @staticmethod
     def detect(content: str) -> str:
-        scores = {}
-        for log_type, _ in LogDetector.get_priority_order():
-            scores[log_type] = 0
+        lines = [line.strip() for line in content.split('\n')][:LogDetector.SAMPLE_LINES]
+        
+        if not lines or not lines[0]:
+            return 'Custom / Raw'
+
+        priority_order = LogDetector.get_priority_order()
+        scores = {log_type: 0 for log_type, _ in priority_order}
         scores["Custom / Raw"] = 0
 
-        lines = [line.strip() for line in content.split('\n')][:LogDetector.SAMPLE_LINES]
+        phase1_lines = min(LogDetector.CANDIDATE_SAMPLE_LINES, len(lines))
+        phase2_start = phase1_lines
 
-        if lines and lines[0]:
-            for log_type, check_func in LogDetector.get_priority_order():
-                if check_func(lines[0]):
+        for i in range(phase1_lines):
+            line = lines[i]
+            if not line or line.startswith('#'):
+                continue
+            
+            for log_type, check_func in priority_order:
+                if check_func(line):
                     scores[log_type] += 3
-                    break
 
-        for i, line in enumerate(lines[1:], 1):
+        if phase2_start >= len(lines):
+            best_type = 'Custom / Raw'
+            best_score = 0
+            for log_type, score in scores.items():
+                if score > best_score:
+                    best_score = score
+                    best_type = log_type
+            return best_type if best_score >= 3 else 'Custom / Raw'
+
+        candidate_types = [k for k, v in scores.items() if v > 0 and k != 'Custom / Raw']
+        candidate_types = candidate_types if candidate_types else ['Custom / Raw']
+
+        for i in range(phase2_start, len(lines)):
+            line = lines[i]
             if not line or line.startswith('#'):
                 continue
 
-            sorted_types = sorted(
-                [(k, v) for k, v in scores.items() if k != 'Custom / Raw'],
-                key=lambda x: -x[1]
-            )
-            priority = [k for k, _ in sorted_types] + ['Custom / Raw']
-
             matched = False
-            for log_type in priority:
-                if log_type == 'Custom / Raw':
-                    continue
+            for log_type in candidate_types:
                 if LogDetector.check_line(line, log_type):
                     scores[log_type] += 3
                     matched = True
@@ -685,3 +707,21 @@ class LogDetector:
                 best_score = score
                 best_type = log_type
         return best_type if best_score >= 3 else 'Custom / Raw'
+
+
+def preprocess_json_array(content: str) -> str:
+    """Convert single-line JSON array to multiline format."""
+    trimmed = content.strip()
+    if not trimmed.startswith('[[') or not trimmed.endswith(']]'):
+        return content
+
+    try:
+        data = json.loads(trimmed)
+        if not isinstance(data, list):
+            return content
+
+        lines = [json.dumps(entry) for entry in data]
+        return '\n'.join(lines)
+    except:
+        return content
+

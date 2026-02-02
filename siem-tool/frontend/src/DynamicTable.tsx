@@ -49,6 +49,34 @@ const getColumnsForLogType = (logType: string, sampleEntries: ParsedLogEntry[]):
       const size = e.fields.size !== undefined ? e.fields.size : e.fields.bytes;
       return size !== undefined ? size.toString() : '-';
     }});
+  } else if (lowerType.includes('apache error') || lowerType.includes('apache_error') || (lowerType.includes('apache') && lowerType.includes('error'))) {
+    columns.push({ key: 'fields_module', label: 'Module', width: 120, visible: true, sortable: true, getValue: (e) => e.fields.module || e.fields.level || '-' });
+    columns.push({ key: 'fields_level', label: 'Level', width: 100, visible: true, sortable: true, getValue: (e) => e.fields.level || e.severity || '-' });
+    if (hasPid) columns.push({ key: 'source_pid', label: 'PID', width: 80, visible: true, sortable: true, getValue: (e) => e.source.pid?.toString() || e.fields.pid?.toString() || '-' });
+    columns.push({ key: 'fields_client', label: 'Client', width: 150, visible: false, sortable: true, getValue: (e) => e.fields.client || e.fields.client_ip || '-' });
+  } else if (lowerType.includes('disk traffic') || lowerType.includes('disk_traffic') || (lowerType.includes('disk') && lowerType.includes('traffic'))) {
+    columns.push({ key: 'fields_srcip', label: 'Source IP', width: 140, visible: true, sortable: true, getValue: (e) => e.source.ip || e.fields.srcip || e.fields.src_ip || '-' });
+    columns.push({ key: 'fields_srcport', label: 'Src Port', width: 90, visible: true, sortable: true, getValue: (e) => e.fields.srcport?.toString() || e.fields.src_port?.toString() || '-' });
+    columns.push({ key: 'fields_dstip', label: 'Dest IP', width: 140, visible: true, sortable: true, getValue: (e) => e.destination?.ip || e.fields.dstip || e.fields.dst_ip || '-' });
+    columns.push({ key: 'fields_dstport', label: 'Dst Port', width: 90, visible: true, sortable: true, getValue: (e) => e.fields.dstport?.toString() || e.fields.dst_port?.toString() || '-' });
+    columns.push({ key: 'fields_proto', label: 'Proto', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.proto?.toString() || e.fields.protocol?.toString() || e.fields.proto || '-' });
+    columns.push({ key: 'fields_action', label: 'Action', width: 90, visible: true, sortable: true, getValue: (e) => e.fields.action || e.outcome || '-' });
+    columns.push({ key: 'fields_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.fields.service || '-' });
+    columns.push({ key: 'fields_policyid', label: 'Policy ID', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.policyid?.toString() || e.fields.policy_id?.toString() || '-' });
+    columns.push({ key: 'fields_policytype', label: 'Policy Type', width: 130, visible: false, sortable: true, getValue: (e) => e.fields.policytype || e.fields.policy_type || '-' });
+    columns.push({ key: 'fields_sessionid', label: 'Session ID', width: 120, visible: false, sortable: true, getValue: (e) => e.fields.sessionid?.toString() || e.fields.session_id?.toString() || '-' });
+    columns.push({ key: 'fields_sentbyte', label: 'Sent Bytes', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.sentbyte?.toString() || e.fields.sent_bytes?.toString() || '-' });
+    columns.push({ key: 'fields_rcvdbyte', label: 'Rcvd Bytes', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.rcvdbyte?.toString() || e.fields.rcvd_bytes?.toString() || '-' });
+    columns.push({ key: 'fields_duration', label: 'Duration', width: 90, visible: false, sortable: true, getValue: (e) => e.fields.duration?.toString() || '-' });
+    columns.push({ key: 'fields_srccountry', label: 'Src Country', width: 120, visible: false, sortable: true, getValue: (e) => e.fields.srccountry || e.fields.src_country || '-' });
+    columns.push({ key: 'fields_dstcountry', label: 'Dst Country', width: 120, visible: false, sortable: true, getValue: (e) => e.fields.dstcountry || e.fields.dst_country || '-' });
+    columns.push({ key: 'fields_app', label: 'Application', width: 150, visible: false, sortable: true, getValue: (e) => e.fields.app || e.fields.application || '-' });
+    columns.push({ key: 'fields_appcat', label: 'App Category', width: 120, visible: false, sortable: true, getValue: (e) => e.fields.appcat || e.fields.app_category || '-' });
+    columns.push({ key: 'fields_vd', label: 'VD', width: 80, visible: false, sortable: true, getValue: (e) => e.fields.vd || e.fields.vdom || '-' });
+    columns.push({ key: 'fields_subtype', label: 'Subtype', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.subtype || '-' });
+    columns.push({ key: 'fields_trandisp', label: 'Trans Disposition', width: 140, visible: false, sortable: true, getValue: (e) => e.fields.trandisp || e.fields.tran_disp || '-' });
+    columns.push({ key: 'fields_crlevel', label: 'CR Level', width: 100, visible: false, sortable: true, getValue: (e) => e.fields.crlevel || e.fields.cr_level || '-' });
+    columns.push({ key: 'fields_crscore', label: 'CR Score', width: 90, visible: false, sortable: true, getValue: (e) => e.fields.crscore?.toString() || e.fields.cr_score?.toString() || '-' });
   } else if (lowerType.includes('postfix') || lowerType.includes('sendmail') || lowerType.includes('exim') || lowerType.includes('dovecot') || lowerType.includes('exchange') || lowerType.includes('mail') || lowerType.includes('smtp')) {
     if (hasHostname) columns.push({ key: 'source_hostname', label: 'Host', width: 140, visible: true, sortable: true, getValue: (e) => e.source.hostname || '-' });
     columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || '-' });

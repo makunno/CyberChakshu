@@ -248,25 +248,29 @@ input::placeholder {
   background: var(--bg-card);
   box-shadow: var(--shadow);
   position: relative;
+  overflow: hidden;
 }
 
 .table-scroll-wrapper {
   overflow-x: auto;
+  overflow-y: visible;
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) var(--bg-tertiary);
+  max-width: 100%;
 }
 
 .table-scroll-wrapper::-webkit-scrollbar {
-  height: 8px;
+  height: 10px;
 }
 
 .table-scroll-wrapper::-webkit-scrollbar-track {
   background: var(--bg-tertiary);
+  border-radius: 5px;
 }
 
 .table-scroll-wrapper::-webkit-scrollbar-thumb {
   background: var(--text-secondary);
-  border-radius: 4px;
+  border-radius: 5px;
 }
 
 .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
@@ -274,10 +278,10 @@ input::placeholder {
 }
 
 .dynamic-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  min-width: 600px;
 }
 
 .dynamic-table thead {

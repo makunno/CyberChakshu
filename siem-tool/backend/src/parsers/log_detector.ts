@@ -2,6 +2,7 @@
 
 export class LogDetector {
   private static readonly SAMPLE_LINES = 50;
+  private static readonly CANDIDATE_SAMPLE_LINES = 10;
 
   // ===========================
   // Precompiled Regex Patterns
@@ -79,6 +80,7 @@ export class LogDetector {
   private static readonly HAPROXY_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+haproxy\[\d+\]:\s+(?:GET|POST|PUT|DELETE)\s+\S+\s+\d{3}$/;
   private static readonly SPRING_BOOT_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(?:INFO|WARN|ERROR|DEBUG)\s+\S+\s+-\s+(?:GET|POST|PUT|DELETE|PATCH)\s+\S+\s+\d{3}$/;
   private static readonly ASPNET_CORE_RE = /^(?:info|warn|error|debug):\s+Microsoft\.AspNetCore/i;
+  private static readonly MOODLE_LMS_RE = /^\[\["19(?:\\\/)?\d{2}(?:\\\/)?\d{2},\s+\d{2}:\d{2}"/;
 
   // ===========================
   // is_*() Methods for Detection
@@ -176,6 +178,7 @@ export class LogDetector {
   static isIisFtp(line: string): boolean { return !!LogDetector.IIS_FTP_RE.test(line); }
   static isXferlog(line: string): boolean { return !!LogDetector.XFERLOG_RE.test(line); }
   static isFastapiJson(line: string): boolean { return !!LogDetector.FASTAPI_JSON_RE.test(line); }
+  static isMoodleLms(line: string): boolean { return !!LogDetector.MOODLE_LMS_RE.test(line); }
 
   // ===========================
   // Priority-based Check Functions
@@ -226,6 +229,7 @@ export class LogDetector {
       ["Azure NSG Flow Logs", LogDetector.isAzureNsg],
       ["GCP VPC Firewall", LogDetector.isGcpVpc],
       ["Disk Traffic", LogDetector.isDiskTraffic],
+      ["Moodle LMS", LogDetector.isMoodleLms],
       ["Application Logs JSON", LogDetector.isApplicationJson],
       ["MySQL Error", LogDetector.isMysqlError],
       ["MySQL Query", LogDetector.isMysqlQuery],
@@ -300,8 +304,9 @@ export class LogDetector {
       "Azure NSG Flow Logs": LogDetector.isAzureNsg,
       "GCP VPC Firewall": LogDetector.isGcpVpc,
       "Disk Traffic": LogDetector.isDiskTraffic,
-      "Application Logs JSON": LogDetector.isApplicationJson,
-      "MySQL Error": LogDetector.isMysqlError,
+       "Application Logs JSON": LogDetector.isApplicationJson,
+       "Moodle LMS": LogDetector.isMoodleLms,
+       "MySQL Error": LogDetector.isMysqlError,
       "MySQL Query": LogDetector.isMysqlQuery,
       "MySQL Slow Query": LogDetector.isMysqlSlow,
       "PostgreSQL Error": LogDetector.isPostgresError,
@@ -337,101 +342,59 @@ export class LogDetector {
   }
 
   static detect(content: string): string {
-    const scores: Record<string, number> = {
-      "Apache": 0,
-      "Apache Error": 0,
-      "Django": 0,
-      "Flask": 0,
-      "Node.js": 0,
-      "Express.js": 0,
-      "FastAPI": 0,
-      "Laravel": 0,
-      "Ruby on Rails": 0,
-      "Gunicorn": 0,
-      "Uvicorn": 0,
-      "PHP-FPM": 0,
-      "NGINX": 0,
-      "Caddy": 0,
-      "HAProxy": 0,
-      "Spring Boot": 0,
-      "ASP.NET Core": 0,
-      "IIS": 0,
-      "Postfix": 0,
-      "Sendmail": 0,
-      "Exim": 0,
-      "Dovecot": 0,
-      "Courier": 0,
-      "Microsoft Exchange": 0,
-      "SMTP Server": 0,
-      "Amavis": 0,
-      "SpamAssassin": 0,
-      "MailScanner": 0,
-      "Windows Firewall": 0,
-      "iptables": 0,
-      "UFW": 0,
-      "nftables": 0,
-      "firewalld": 0,
-      "macOS PF": 0,
-      "macOS App Firewall": 0,
-      "Palo Alto Firewall": 0,
-      "FortiGate": 0,
-      "Cisco ASA": 0,
-      "Check Point Firewall": 0,
-      "AWS VPC Flow Logs": 0,
-      "Azure NSG Flow Logs": 0,
-      "GCP VPC Firewall": 0,
-      "Disk Traffic": 0,
-      "Application Logs JSON": 0,
-      "MySQL Error": 0,
-      "MySQL Query": 0,
-      "MySQL Slow Query": 0,
-      "PostgreSQL Error": 0,
-      "PostgreSQL Auth": 0,
-      "PostgreSQL Statement": 0,
-      "Oracle Alert": 0,
-      "Oracle Listener": 0,
-      "Oracle Audit": 0,
-      "SQL Server Error": 0,
-      "SQL Server Audit": 0,
-      "SQL Server Transaction": 0,
-      "MongoDB Server": 0,
-      "MongoDB Audit": 0,
-      "Linux SSHD Failed": 0,
-      "Linux SSHD Accepted": 0,
-      "Linux Syslog": 0,
-      "Linux Systemd": 0,
-      "Linux Kernel": 0,
-      "Linux Audit": 0,
-      "Linux Package": 0,
-      "Windows Text": 0,
-      "FileZilla FTP": 0,
-      "IIS FTP": 0,
-      "xferlog": 0,
-      "Custom / Raw": 0,
-    };
-
     const lines = this.readSampleLines(content);
 
-    if (lines.length > 0 && lines[0]) {
-      for (const [logType, checkFunc] of this.getPriorityOrder()) {
-        if (checkFunc(lines[0])) {
+    if (lines.length === 0 || !lines[0]) {
+      return 'Custom / Raw';
+    }
+
+    const priorityOrder = this.getPriorityOrder();
+    const scores: Record<string, number> = {};
+    for (const [logType] of priorityOrder) {
+      scores[logType] = 0;
+    }
+    scores['Custom / Raw'] = 0;
+
+    const phase1Lines = Math.min(LogDetector.CANDIDATE_SAMPLE_LINES, lines.length);
+    const phase2Start = phase1Lines;
+
+    for (let i = 0; i < phase1Lines; i++) {
+      const line = lines[i];
+      if (!line || line.startsWith('#')) continue;
+
+      for (const [logType, checkFunc] of priorityOrder) {
+        if (checkFunc(line)) {
           scores[logType] += 3;
-          break;
         }
       }
     }
 
-    for (let i = 1; i < lines.length; i++) {
+    if (phase2Start >= lines.length) {
+      let bestType = 'Custom / Raw';
+      let bestScore = 0;
+      for (const [logType, score] of Object.entries(scores)) {
+        if (score > bestScore) {
+          bestScore = score;
+          bestType = logType;
+        }
+      }
+      return bestScore >= 3 ? bestType : 'Custom / Raw';
+    }
+
+    const candidateTypes = Object.entries(scores)
+      .filter(([type, score]) => score > 0 && type !== 'Custom / Raw')
+      .map(([type]) => type);
+
+    if (candidateTypes.length === 0) {
+      return 'Custom / Raw';
+    }
+
+    for (let i = phase2Start; i < lines.length; i++) {
       const line = lines[i];
       if (!line || line.startsWith('#')) continue;
 
-      const sortedTypes = Object.entries(scores)
-        .filter(([type]) => type !== 'Custom / Raw')
-        .sort(([, a], [, b]) => b - a)
-        .map(([type]) => type);
-
       let matched = false;
-      for (const logType of sortedTypes) {
+      for (const logType of candidateTypes) {
         if (this.checkLine(line, logType)) {
           scores[logType] += 3;
           matched = true;
@@ -444,10 +407,15 @@ export class LogDetector {
       }
     }
 
-    const bestType = Object.entries(scores).reduce((a, b) => 
-      scores[b[0]] > scores[a[0]] ? b : a
-    )[0];
+    let bestType = 'Custom / Raw';
+    let bestScore = 0;
+    for (const [logType, score] of Object.entries(scores)) {
+      if (score > bestScore) {
+        bestScore = score;
+        bestType = logType;
+      }
+    }
 
-    return scores[bestType] >= 3 ? bestType : 'Custom / Raw';
+    return bestScore >= 3 ? bestType : 'Custom / Raw';
   }
 }

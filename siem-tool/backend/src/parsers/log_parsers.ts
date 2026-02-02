@@ -363,6 +363,83 @@ export class LogParsers {
     return { timestamp: null, message: line };
   }
 
+  static apacheError(line: string): Record<string, any> | null {
+    const match = line.match(/^\[(\w{3}\s+\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+(\d{4})\]\s+\[(\S+):(\w+)\]\s+\[pid\s+(\d+):tid\s+(\d+)\](?:\s+\[client\s+([^\]]+)\])?\s+(.*)$/);
+    if (!match) return null;
+
+    const [, timestamp, year, module, level, pid, tid, client, message] = match;
+    return {
+      timestamp: `${timestamp} ${year}`,
+      module,
+      level,
+      pid: parseInt(pid),
+      tid: parseInt(tid),
+      client: client || null,
+      message
+    };
+  }
+
+  static diskTraffic(line: string): Record<string, any> | null {
+    if (!line.includes('type="traffic"')) return null;
+
+    const getValue = (key: string): string | null => {
+      const regex = new RegExp(`${key}=("([^"]*)"|(\\S+))`);
+      const m = line.match(regex);
+      if (m) return m[2] || m[3];
+      return null;
+    };
+
+    const getInt = (key: string): number | null => {
+      const v = getValue(key);
+      return v ? parseInt(v) : null;
+    };
+
+    return {
+      date: getValue('date'),
+      time: getValue('time'),
+      srcip: getValue('srcip'),
+      srcport: getInt('srcport'),
+      dstip: getValue('dstip'),
+      dstport: getInt('dstport'),
+      srccountry: getValue('srccountry'),
+      dstcountry: getValue('dstcountry'),
+      sessionid: getInt('sessionid'),
+      proto: getInt('proto'),
+      action: getValue('action'),
+      policyid: getInt('policyid'),
+      service: getValue('service'),
+      app: getValue('app'),
+      duration: getInt('duration'),
+      sentbyte: getInt('sentbyte'),
+      rcvdbyte: getInt('rcvdbyte'),
+      crlevel: getValue('crlevel'),
+      msg: getValue('msg')
+    };
+  }
+
+  static moodleLms(line: string): Record<string, any> | null {
+    try {
+      const data = JSON.parse(line);
+      if (!Array.isArray(data) || data.length !== 9) return null;
+
+      const [timestamp, user1, user2, module, component, event, description, source, ip] = data;
+
+      return {
+        timestamp,
+        user1: user1 === '-' ? null : user1,
+        user2: user2 === '-' ? null : user2,
+        module,
+        component,
+        event,
+        description,
+        source,
+        ip
+      };
+    } catch {
+      return null;
+    }
+  }
+
   static raw(line: string): Record<string, any> {
     return { timestamp: null, host: null, service: null, pid: null, message: line };
   }

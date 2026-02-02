@@ -243,6 +243,18 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.logs-section .dynamic-table-container {
+  overflow: visible;
+}
+
+.logs-section .table-scroll-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
 }
 
 .filters {
