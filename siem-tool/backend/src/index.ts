@@ -17,9 +17,9 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 // Enable CORS for frontend with specific origins
 app.use('*', cors({
-  origin: '*',
+  origin: 'https://freekhana-frontend.pages.dev',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'CF-Access-Client-Id', 'CF-Access-Signature'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
   exposeHeaders: ['Content-Length', 'X-Custom-Header'],
   maxAge: 86400,
   credentials: false,
@@ -28,9 +28,9 @@ app.use('*', cors({
 // Handle preflight OPTIONS requests explicitly
 app.options('*', (c) => {
   return c.text('', 200, {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': 'https://freekhana-frontend.pages.dev',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin, X-Requested-With, CF-Access-Client-Id, CF-Access-Signature',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin, X-Requested-With',
     'Access-Control-Max-Age': '86400',
   });
 });
