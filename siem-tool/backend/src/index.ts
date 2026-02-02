@@ -146,7 +146,11 @@ app.post('/parse', async (c) => {
       }
     } else if (contentType.includes('application/json')) {
       const json = await c.req.json();
-      content = json.content || json.logs || '';
+      if (Array.isArray(json)) {
+        content = JSON.stringify(json);
+      } else {
+        content = json.content || json.logs || '';
+      }
       forceType = json.type;
     } else {
       content = await c.req.text();
@@ -576,7 +580,6 @@ app.get('/feedback/attack-types', (c) => {
 
 // Get feedback statistics
 app.get('/feedback/stats', (c) => {
-  // In a real implementation, this would query a database
   return c.json({
     success: true,
     stats: {
@@ -587,6 +590,60 @@ app.get('/feedback/stats', (c) => {
       by_attack_type: {}
     }
   });
+});
+
+// Chunked upload for large files
+app.post('/parse/chunked', async (c) => {
+  try {
+    const json = await c.req.json();
+    const { chunks, fileName } = json;
+    
+    if (!chunks || !Array.isArray(chunks) || chunks.length === 0) {
+      return c.json({ error: 'No chunks provided' }, 400);
+    }
+    
+    const content = chunks.join('');
+    
+    if (!content || content.trim().length === 0) {
+      return c.json({ error: 'No log content provided' }, 400);
+    }
+    
+    const { detectedType, entries, stats: parseStats } = autoParse(content);
+    const alerts = runDetections(entries);
+    const enrichedEntries = enrichEntriesWithAttacks(entries);
+    const detectedAttacks = detectAttacksInEntries(enrichedEntries);
+    
+    const attackTypes = [...new Set(detectedAttacks.map(a => a.attack.attackType))];
+    const attackSummary = {
+      totalAttacks: detectedAttacks.length,
+      attackTypes,
+      uniqueSources: new Set(entries.map(e => e.source.ip).filter(Boolean)).size,
+      riskScore: Math.min(detectedAttacks.length * 10, 100),
+    };
+    
+    const stats = generateStats(entries);
+
+    return c.json({
+      success: true,
+      detectedType,
+      totalLines: parseStats.totalLines,
+      parsedLines: parseStats.parsedLines,
+      failedLines: parseStats.failedLines,
+      entries: enrichedEntries,
+      alerts,
+      stats,
+      mlAttacks: detectedAttacks,
+      attackSummary,
+      fileName,
+    });
+  } catch (error) {
+    console.error('Chunked parse error:', error);
+    return c.json({ 
+      success: false,
+      error: 'Failed to parse logs', 
+      details: String(error) 
+    }, 500);
+  }
 });
 
 // Export for Cloudflare Workers

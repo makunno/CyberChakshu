@@ -3,8 +3,41 @@
 import type { ParseResponse, CorrelateResponse } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://siem-backend.tanubhavj.workers.dev';
+const CHUNK_SIZE = 50 * 1024; // 50KB chunks (well under 100KB limit)
+
+async function uploadInChunks(file: File): Promise<ParseResponse> {
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  const chunks: string[] = [];
+  
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const chunk = await file.slice(start, end).text();
+    chunks.push(chunk);
+  }
+  
+  const response = await fetch(`${API_URL}/parse/chunked`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chunks,
+      fileName: file.name,
+      totalSize: file.size
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to parse logs: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
 
 export async function parseLogsFromFile(file: File): Promise<ParseResponse> {
+  if (file.size > CHUNK_SIZE) {
+    return uploadInChunks(file);
+  }
+  
   const formData = new FormData();
   formData.append('file', file);
 
