@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react';
 import { 
-  Upload, Shield, AlertTriangle, Activity, FileText, 
-  Download, RefreshCw, ChevronDown, X, Search, Terminal,
-  Layers, Clock, Target, Zap, TrendingUp
+   Upload, Shield, AlertTriangle, Activity, FileText, 
+   Download, RefreshCw, ChevronDown, X, Search, Terminal,
+   Layers, Clock, Target, Zap, TrendingUp
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { parseLogsFromFile, parseLogsFromText, correlateMultipleFiles } from './api';
 import type { ParseResponse, ParsedLogEntry, CorrelateResponse, AttackChain, TimelineEvent } from './types';
+import { DynamicTable } from './DynamicTable';
 import './App.css';
 
 const SEVERITY_COLORS = {
@@ -704,37 +705,12 @@ function App() {
                   </select>
                 </div>
 
-                {/* Logs Table */}
-                <div className="table-container">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Timestamp</th>
-                        <th>Severity</th>
-                        <th>Source</th>
-                        <th>User</th>
-                        <th>Action</th>
-                        <th>Message</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredEntries.slice(0, 500).map((entry) => (
-                        <tr key={entry.id} onClick={() => setSelectedEntry(entry)}>
-                          <td className="mono">{entry.timestamp?.substring(0, 19).replace('T', ' ') || '-'}</td>
-                          <td>
-                            <span className={`badge badge-${entry.severity === 'error' || entry.severity === 'critical' ? 'error' : entry.severity === 'warning' ? 'warning' : 'info'}`}>
-                              {entry.severity}
-                            </span>
-                          </td>
-                          <td>{entry.source.ip || entry.source.hostname || entry.source.service || '-'}</td>
-                          <td>{entry.user?.name || '-'}</td>
-                          <td>{entry.action || '-'}</td>
-                          <td className="message-cell mono">{entry.message.substring(0, 100)}{entry.message.length > 100 ? '...' : ''}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                {/* Dynamic Logs Table */}
+                <DynamicTable
+                  entries={filteredEntries.slice(0, 500)}
+                  detectedType={data?.detectedType || 'unknown'}
+                  onEntryClick={setSelectedEntry}
+                />
                 {filteredEntries.length > 500 && (
                   <div className="table-info">Showing 500 of {filteredEntries.length} entries</div>
                 )}

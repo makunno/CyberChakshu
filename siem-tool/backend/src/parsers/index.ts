@@ -1,9 +1,16 @@
-// Parser Registry - Combines all parsers and provides detection/parsing functionality
+// Parser Registry - MIGRATED: Uses ISEA-style detection and parsing
 
 import { Parser, ParsedLogEntry, LogType } from '../types';
 import { generateId } from '../utils/helpers';
 
-// Import all parser groups
+// Import ISEA-style detection and parsing
+import { LogDetector } from './log_detector';
+import { LogParsers } from './log_parsers';
+import { parseWithLegacyParser } from './legacy_parser';
+import { TYPE_MAPPING } from './type_mapping';
+import { isMultiLineLog, parseMultiLineBlock } from './multiline_parser';
+
+// Import all parser groups (keep for backward compatibility)
 import { databaseParsers } from './database';
 import { webserverParsers } from './webserver';
 import { systemParsers } from './system';
@@ -28,60 +35,16 @@ export const allParsers: Parser[] = [
 const rawParser: Parser = dynamicParser;
 
 /**
- * Detect log type by sampling lines
- * Returns the most likely log type based on pattern matching
+ * Detect log type using ISEA-style LogDetector
+ * Returns FreeKhana LogType enum value
  */
-export function detectLogType(lines: string[], sampleSize = 50): LogType {
-  const scores: Record<string, number> = {};
-  
-  // Initialize scores
-  allParsers.forEach(p => {
-    scores[p.logType] = 0;
-  });
-  scores['raw'] = 0;
-
-  // Sample lines for detection
-  const samplesToCheck = lines.slice(0, sampleSize);
-  
-  for (const line of samplesToCheck) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    let matched = false;
-    for (const parser of allParsers) {
-      if (parser.detect(trimmed)) {
-        scores[parser.logType] = (scores[parser.logType] || 0) + 1;
-        matched = true;
-        break; // First match wins for this line
-      }
-    }
-    
-    if (!matched) {
-      scores['raw']++;
-    }
-  }
-
-  // Find the highest scoring log type
-  let bestType: LogType = 'unknown';
-  let bestScore = 0;
-  
-  for (const [logType, score] of Object.entries(scores)) {
-    if (score > bestScore) {
-      bestScore = score;
-      bestType = logType as LogType;
-    }
-  }
-
-  // If too few matches, return unknown
-  if (bestScore < 3) {
-    return 'unknown';
-  }
-
-  return bestType;
+export function detectLogType(content: string): LogType {
+  const iseaType = LogDetector.detect(content);
+  return TYPE_MAPPING[iseaType] || 'unknown';
 }
 
 /**
- * Get parser for a specific log type
+ * Get parser for a specific log type (backward compatibility)
  */
 export function getParser(logType: LogType): Parser | null {
   if (logType === 'raw' || logType === 'unknown') {
@@ -91,7 +54,7 @@ export function getParser(logType: LogType): Parser | null {
 }
 
 /**
- * Get ALL parsers for a specific log type
+ * Get ALL parsers for a specific log type (backward compatibility)
  * Some log types (like ssh_auth) have multiple parsers for different patterns
  */
 export function getParsersForType(logType: LogType): Parser[] {
@@ -102,7 +65,7 @@ export function getParsersForType(logType: LogType): Parser[] {
 }
 
 /**
- * Try parsing a line with multiple parsers of the same type
+ * Try parsing a line with multiple parsers of same type (backward compatibility)
  */
 function tryParsersForLine(line: string, parsers: Parser[]): ParsedLogEntry | null {
   const trimmed = line.trim();
@@ -116,8 +79,7 @@ function tryParsersForLine(line: string, parsers: Parser[]): ParsedLogEntry | nu
 }
 
 /**
- * Auto-detect and parse a single line
- * Tries all parsers until one matches
+ * Auto-detect and parse a single line (backward compatibility)
  */
 export function autoParseLineSingle(line: string): ParsedLogEntry {
   const trimmed = line.trim();
@@ -136,7 +98,7 @@ export function autoParseLineSingle(line: string): ParsedLogEntry {
 }
 
 /**
- * Parse multiple lines with a specific parser
+ * Parse multiple lines with a specific parser (backward compatibility)
  */
 export function parseLines(lines: string[], logType: LogType): ParsedLogEntry[] {
   const parser = getParser(logType);
@@ -163,9 +125,10 @@ export function parseLines(lines: string[], logType: LogType): ParsedLogEntry[] 
 }
 
 /**
- * Auto-detect log type and parse all lines
+ * Parse using ISEA-style parsers with support for multi-line logs
+ * Returns detected FreeKhana LogType and parsed entries with statistics
  */
-export function autoParse(content: string): {
+export function parseWithISEA(content: string): {
   detectedType: LogType;
   entries: ParsedLogEntry[];
   stats: {
@@ -175,39 +138,66 @@ export function autoParse(content: string): {
   };
 } {
   const lines = content.split('\n').filter(l => l.trim());
-  const detectedType = detectLogType(lines);
+  const detectedType = detectLogType(content);
   
-  let entries: ParsedLogEntry[];
+  let entries: ParsedLogEntry[] = [];
   let parsedCount = 0;
   let failedCount = 0;
 
-  if (detectedType === 'unknown' || detectedType === 'raw') {
-    // Auto-parse each line individually
-    entries = lines.map(line => {
-      const result = autoParseLineSingle(line);
-      if (result.logType !== 'raw') {
-        parsedCount++;
+  // Check if this is a multi-line log type
+  if (isMultiLineLog(detectedType)) {
+    // Parse multi-line blocks
+    let currentBlock: string[] = [];
+    const blockStartPatterns: Record<string, RegExp> = {
+      'mysql_slow': /^# Time:/,
+      'oracle_alert': /^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{2}\s+\d{2}:\d{2}\s+\d{4}/,
+      'oracle_audit': /^Audit record generated/,
+    };
+    
+    const startPattern = blockStartPatterns[detectedType];
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      
+      if (startPattern && startPattern.test(trimmed)) {
+        // Parse previous block
+        if (currentBlock.length > 0) {
+          const parsed = parseMultiLineBlock(currentBlock, detectedType);
+          if (parsed) {
+            entries.push(parsed);
+            parsedCount++;
+          }
+        }
+        currentBlock = [trimmed];
       } else {
-        failedCount++;
+        currentBlock.push(trimmed);
       }
-      return result;
-    });
+    }
+    
+    // Don't forget the last block
+    if (currentBlock.length > 0) {
+      const parsed = parseMultiLineBlock(currentBlock, detectedType);
+      if (parsed) {
+        entries.push(parsed);
+        parsedCount++;
+      }
+    }
   } else {
-    // Get ALL parsers for this log type (some types like ssh_auth have multiple)
-    const parsers = getParsersForType(detectedType);
+    // Single-line parsing - use ISEA-style LogParsers
+    const iseaType = LogDetector.detect(content);
     entries = [];
     
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) continue;
-
-      // Try all parsers for this log type
-      const parsed = tryParsersForLine(trimmed, parsers);
+      
+      const parsed = parseWithLegacyParser(iseaType, trimmed);
       if (parsed) {
         entries.push(parsed);
         parsedCount++;
       } else {
-        // If none of the type-specific parsers worked, try auto-parsing
+        // Fallback to auto-parsing
         const autoParsed = autoParseLineSingle(trimmed);
         entries.push(autoParsed);
         if (autoParsed.logType !== 'raw') {
@@ -228,6 +218,22 @@ export function autoParse(content: string): {
       failedLines: failedCount,
     },
   };
+}
+
+/**
+ * Auto-detect log type and parse all lines (MIGRATED - uses ISEA detection/parsing)
+ * Returns detected FreeKhana LogType and parsed entries with statistics
+ */
+export function autoParse(content: string): {
+  detectedType: LogType;
+  entries: ParsedLogEntry[];
+  stats: {
+    totalLines: number;
+    parsedLines: number;
+    failedLines: number;
+  };
+} {
+  return parseWithISEA(content);
 }
 
 // Export individual parser groups for direct access

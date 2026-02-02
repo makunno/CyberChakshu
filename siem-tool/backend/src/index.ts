@@ -29,10 +29,10 @@ app.use('*', cors({
     ];
 
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return true;
+    if (!origin) return '*';
 
     // Return the origin if it's allowed, otherwise return false
-    return allowedOrigins.includes(origin) ? origin : false;
+    return allowedOrigins.includes(origin) ? origin : '*';
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
@@ -125,7 +125,7 @@ app.post('/detect', async (c) => {
     }
 
     const lines = body.split('\n').filter(l => l.trim());
-    const detectedType = detectLogType(lines);
+    const detectedType = detectLogType(body);
 
     return c.json({
       detectedType,
@@ -432,7 +432,7 @@ app.post('/analyze', async (c) => {
     const analysis = analyzeLogStructureAndSuggestLabels(lines);
 
     // Detect log type using existing parsers
-    const detectedType = detectLogType(lines);
+    const detectedType = detectLogType(content);
 
     return c.json({
       success: true,

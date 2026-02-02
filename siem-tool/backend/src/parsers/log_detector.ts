@@ -1,0 +1,453 @@
+// LogDetector - ISEA-style log detection with precompiled regex patterns
+
+export class LogDetector {
+  private static readonly SAMPLE_LINES = 50;
+
+  // ===========================
+  // Precompiled Regex Patterns
+  // ===========================
+  
+  private static readonly EXPRESS_JSON_RE = /^\{/;
+  private static readonly APACHE_RE = /\S+ - - \[.*?\] ".*?" \d+ \d+/;
+  private static readonly LARAVEL_RE = /\[\d{4}-\d{2}-\d{2} .*?\] \w+\.\w+:/;
+  private static readonly NODE_RE = /\w+\s+\S+\s+\d+\s+\d+ms/;
+  private static readonly DJANGO_RE = /\[.*?\] "\w+\s+\S+"\s+\d+/;
+  private static readonly FLASK_RE = /(?:GET|POST|PUT|DELETE)\s+\S+\s+\d+/;
+  private static readonly RAILS_RE = /Processing by/;
+  private static readonly GUNICORN_RE = /\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.*\] \[\d+\] \[(?:INFO|ERROR|WARNING)\]/;
+  private static readonly UVICORN_RE = /INFO:\s+.* - "\w+ .* HTTP\/\d\.\d" \d{3}/;
+  private static readonly NGINX_RE = /\S+ - \S+ \[.*?\] ".*?" \d+ \d+/;
+  private static readonly CADDY_RE = /^(?:\d{1,3}\.){3}\d{1,3}\s+-\s+-\s+\[INFO\]\s+http\.log:\s+handled\s+(?:GET|POST|PUT|DELETE)\s+\S+\s+\d{3}$/;
+  private static readonly IIS_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{1,3}(?:\.\d{1,3}){3}\s+(?:GET|POST|PUT|DELETE)\s+\/\S*\s+.*\s+\d{3}\s*/;
+  private static readonly POSTFIX_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+postfix\/(?:smtpd|smtp|cleanup|qmgr)\[\d+\]:\s+.+$/;
+  private static readonly SENDMAIL_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+sendmail\[\d+\]:\s+.+$/;
+  private static readonly EXIM_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+[A-Z0-9]{6,}\s+(?:<=|=>|\*\*)\s+\S+.*$/;
+  private static readonly DOVECOT_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+dovecot:\s+(?:imap|pop3)-login:\s+.+$/;
+  private static readonly COURIER_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+courier(?:imap|pop3):\s+.+$/;
+  private static readonly EXCHANGE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z,SMTP(?:Receive|Send|Deliver),.+$/;
+  private static readonly AMAVIS_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+amavis\[\d+\]:\s+.+$/;
+  private static readonly SPAMASSASSIN_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+spamd\[\d+\]:\s+.+$/;
+  private static readonly MAILSCANNER_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+MailScanner\[\d+\]:\s+.+$/;
+  private static readonly SMTP_GENERIC_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+SMTP\s+(?:connect|disconnect|from=|to=).+$/;
+  private static readonly WINDOWS_FW_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+(?:ALLOW|DROP|BLOCK)\s+(?:TCP|UDP|ICMP)\s+(?:\d{1,3}\.){3}\d{1,3}\s+(?:\d{1,3}\.){3}\d{1,3}\s+\d+\s+\d+.*$/;
+  private static readonly IPTABLES_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+kernel:\s+IPTABLES-(?:DROP|ACCEPT):\s+IN=\S*\s+OUT=\S*\s+.*SRC=(?:\d{1,3}\.){3}\d{1,3}\s+DST=(?:\d{1,3}\.){3}\d{1,3}.*PROTO=(?:TCP|UDP|ICMP).*$/;
+  private static readonly UFW_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+ufw\[\d+\]:\s+\[UFW (?:ALLOW|BLOCK)\]\s+IN=\S*\s+OUT=\S*\s+SRC=(?:\d{1,3}\.){3}\d{1,3}\s+DST=(?:\d{1,3}\.){3}\d{1,3}.*$/;
+  private static readonly NFTABLES_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+kernel:\s+nftables:\s+rule\s+(?:accept|drop|reject)\s+.*(?:tcp|udp|icmp).*$/;
+  private static readonly FIREWALLD_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+firewalld:\s+(?:INFO|WARNING|ERROR):\s+.*$/;
+  private static readonly MACOS_PF_RE = /^\d{2}:\d{2}:\d{2}\.\d+\s+rule\s+\d+\/\d+\s+\((?:match)\):\s+(?:block|pass)\s+(?:in|out)\s+on\s+\S+:\s+(?:\d{1,3}\.){3}\d{1,3}\.\d+\s+>\s+(?:\d{1,3}\.){3}\d{1,3}\.\d+.*$/;
+  private static readonly MACOS_APP_FW_RE = /^Firewall:\s+(?:Blocked|Allowed)\s+(?:incoming|outgoing)\s+connection from\s+(?:\d{1,3}\.){3}\d{1,3}\s+to\s+app\s+\S+.*$/;
+  private static readonly PALO_ALTO_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s+(?:allow|deny|drop)\s+(?:tcp|udp|icmp)\s+(?:\d{1,3}\.){3}\d{1,3}\s+(?:\d{1,3}\.){3}\d{1,3}\s+rule=\S+.*$/;
+  private static readonly FORTIGATE_RE = /^date=\d{4}-\d{2}-\d{2}\s+time=\d{2}:\d{2}:\d{2}\s+action=(?:allow|deny)\s+srcip=(?:\d{1,3}\.){3}\d{1,3}\s+dstip=(?:\d{1,3}\.){3}\d{1,3}.*$/;
+  private static readonly CISCO_ASA_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+%ASA-\d-\d+:\s+access-list\s+\S+\s+(?:denied|permitted)\s+(?:tcp|udp|icmp)\s+\S+\/(?:\d{1,3}\.){3}\d{1,3}\s+to\s+\S+\/(?:\d{1,3}\.){3}\d{1,3}.*$/;
+  private static readonly CHECKPOINT_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+(?:accept|drop|reject)\s+(?:TCP|UDP|ICMP)\s+src=(?:\d{1,3}\.){3}\d{1,3}\s+dst=(?:\d{1,3}\.){3}\d{1,3}\s+rule=\S+.*$/;
+  private static readonly AWS_VPC_RE = /^(\d+)\s+(\d+)\s+(?:eni-\S+)\s+(?:(?:\d{1,3}\.){3}\d{1,3})\s+(?:(?:\d{1,3}\.){3}\d{1,3})\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(?:ACCEPT|REJECT)\s+(\S+)$/;
+  private static readonly AZURE_NSG_RE = /^\{(?=.*"time"\s*:\s*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z")(?=.*"properties"\s*:\s*\{)(?=.*"flows"\s*:\s*\[)(?=.*"flowTuples"\s*:\s*\[).*\}$/;
+  private static readonly GCP_VPC_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s+(?:allow|deny)\s+(?:tcp|udp|icmp)\s+(?:\d{1,3}\.){3}\d{1,3}:\d+\s+(?:\d{1,3}\.){3}\d{1,3}:\d+.*$/;
+  private static readonly APPLICATION_JSON_RE = /^\[\[.*\]\]$/;
+  private static readonly APACHE_ERROR_RES = [
+    /^\[.*?\] \[.*?:.*?\] \[pid \d+:tid \d+\] .*/,
+    /^\[.*?\] \[.*?:.*?\] \[pid \d+\] .*/,
+    /^\[.*?\] \[.*?:.*?\] \[pid \d+:tid \d+\] \[client .*?\] .*/,
+  ];
+  private static readonly MYSQL_ERROR_RE = /(\S+Z)\s+(\d+)\s+\[ERROR\]\s+\[MY-(\d+)\]\s+\[Server\]\s+(.*)/;
+  private static readonly MYSQL_QUERY_RE = /(\S+Z)\s+(\d+)\s+Query\s+(.*);/;
+  private static readonly MYSQL_SLOW_RE = /^# Time:/;
+  private static readonly POSTGRES_ERROR_RE = /^(?:\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?\s+\w+)\s+\[(\d+)\]\s+(?:\S+@\S+\s+)?(?:ERROR|FATAL):\s+([0-9A-Z]{5}):\s+(.*)$/;
+  private static readonly POSTGRES_AUTH_RE = /(\S+)\s+(\S+)\s+\[(\d+)\].*user=(\w+)\s+database=(\w+)/;
+  private static readonly POSTGRES_STATEMENT_RE = /(\S+)\s+(\S+)\s+\[(\d+)\]\s+STATEMENT:\s+(.*);/;
+  private static readonly ORACLE_ALERT_RE = /^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}/;
+  private static readonly ORACLE_LISTENER_RE = /(.*?)\s+\*.*SERVICE_NAME=(\w+).*PROTOCOL=(\w+).*HOST=(\d+\.\d+\.\d+\.\d+).*PORT=(\d+).*\*\s+(\d+)/;
+  private static readonly ORACLE_AUDIT_RE = /^Audit record generated/;
+  private static readonly SQLSERVER_ERROR_RE = /(.*?) Server Error: (\d+), Severity: (\d+), State: (\d+)/;
+  private static readonly SQLSERVER_AUDIT_RE = /action_id=(\w+).*name=(\w+).*database_name=(\w+).*statement=(.*)/;
+  private static readonly SQLSERVER_TRANSACTION_RE = /\((\d+):(\d+):(\d+)\).*Operation:\s+(.*)/;
+  private static readonly MONGODB_SERVER_RE = /^\{.*"t".*:.*"s".*:.*"c".*:.*"msg".*.*\}$/;
+  private static readonly MONGODB_AUDIT_RE = /^\{.*"atype".*:.*"ts".*.*\}$/;
+  private static readonly LINUX_SSHD_FAILED_RE = /^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+(?:sshd)\[\d+\]:\s+Failed\s+\w+\s+for\s+(?:invalid\s+user\s+)?(\S+)\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})\s+port\s+(\d+)/;
+  private static readonly LINUX_SSHD_ACCEPTED_RE = /^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+(?:sshd)\[\d+\]:\s+Accepted\s+\w+\s+for\s+(\S+)\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})\s+port\s+(\d+)/;
+  private static readonly LINUX_SYSLOG_RE = /(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+([\w\-\/]+)\[(\d+)\]:\s+(.*)/;
+  private static readonly LINUX_SYSTEMD_RE = /(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+systemd\[(\d+)\]:\s+(.*)/;
+  private static readonly LINUX_KERNEL_RE = /(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+kernel:\s+(.*)/;
+  private static readonly LINUX_AUDIT_RE = /type=(\w+)\s+msg=audit\((\d+)\.\d+:(\d+)\):\s*(.*)/;
+  private static readonly LINUX_PACKAGE_RE = /(\d{4}-\d{2}-\d{2})\s+(.*)/;
+  private static readonly WINDOWS_TEXT_RE = /(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}),\s*([^,]+),\s*([^,]+),\s*(\d+),\s*(.*)/;
+  private static readonly FILEZILLA_RE = /\(\d+\)(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+-\s+(\S+)\s+\(([\d\.]+)\)>\s+(\d+)\s+(.*)/;
+  private static readonly IIS_FTP_RE = /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([\d\.]+)\s+([\w\-]+)\s+[\d\.]+\s+\d+\s+(\w+)\s+([\S]*)\s+(\d+)/;
+  private static readonly XFERLOG_RE = /(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+\d+\s+([\d\.]+)\s+\d+\s+(\S+)\s+[ab]\s+[_]\s+([io])\s+[ra]\s+(\S+)\s+\w+\s+[01]\s+\*\s+([ci])/;
+  private static readonly FASTAPI_JSON_RE = /^\{"time":\s*".*?",\s*"framework":\s*"FastAPI"/;
+  private static readonly PHP_FPM_RE = /\[\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}\]\s+(?:NOTICE|WARNING|ERROR):/;
+  private static readonly HAPROXY_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+haproxy\[\d+\]:\s+(?:GET|POST|PUT|DELETE)\s+\S+\s+\d{3}$/;
+  private static readonly SPRING_BOOT_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(?:INFO|WARN|ERROR|DEBUG)\s+\S+\s+-\s+(?:GET|POST|PUT|DELETE|PATCH)\s+\S+\s+\d{3}$/;
+  private static readonly ASPNET_CORE_RE = /^(?:info|warn|error|debug):\s+Microsoft\.AspNetCore/i;
+
+  // ===========================
+  // is_*() Methods for Detection
+  // ===========================
+
+  static isExpressJson(line: string): boolean { return !!LogDetector.EXPRESS_JSON_RE.test(line); }
+  static isApache(line: string): boolean { return !!LogDetector.APACHE_RE.test(line); }
+  static isLaravel(line: string): boolean { return !!LogDetector.LARAVEL_RE.test(line); }
+  static isNode(line: string): boolean { return !!LogDetector.NODE_RE.test(line); }
+  static isDjango(line: string): boolean { return !!LogDetector.DJANGO_RE.test(line); }
+  static isFlask(line: string): boolean { return !!LogDetector.FLASK_RE.test(line); }
+  static isRails(line: string): boolean { return line.includes("Processing by") || line.includes("Started GET"); }
+  static isGunicorn(line: string): boolean { return !!LogDetector.GUNICORN_RE.test(line); }
+  static isUvicorn(line: string): boolean { return !!LogDetector.UVICORN_RE.test(line); }
+  static isPhpFpm(line: string): boolean { return line.includes("[pool ") || !!LogDetector.PHP_FPM_RE.test(line); }
+  static isNginx(line: string): boolean { return !!LogDetector.NGINX_RE.test(line); }
+  static isCaddy(line: string): boolean { return !!LogDetector.CADDY_RE.test(line); }
+  static isHaproxy(line: string): boolean { return !!LogDetector.HAPROXY_RE.test(line); }
+  static isSpringBoot(line: string): boolean { return !!LogDetector.SPRING_BOOT_RE.test(line); }
+  static isAspnetCore(line: string): boolean { return !!LogDetector.ASPNET_CORE_RE.test(line); }
+  static isIis(line: string): boolean { return !!LogDetector.IIS_RE.test(line); }
+  static isPostfix(line: string): boolean { return !!LogDetector.POSTFIX_RE.test(line); }
+  static isSendmail(line: string): boolean { return !!LogDetector.SENDMAIL_RE.test(line); }
+  static isExim(line: string): boolean { return !!LogDetector.EXIM_RE.test(line); }
+  static isDovecot(line: string): boolean { return !!LogDetector.DOVECOT_RE.test(line); }
+  static isCourier(line: string): boolean { return !!LogDetector.COURIER_RE.test(line); }
+  static isExchange(line: string): boolean { return !!LogDetector.EXCHANGE_RE.test(line); }
+  static isAmavis(line: string): boolean { return !!LogDetector.AMAVIS_RE.test(line); }
+  static isSpamassassin(line: string): boolean { return !!LogDetector.SPAMASSASSIN_RE.test(line); }
+  static isMailscanner(line: string): boolean { return !!LogDetector.MAILSCANNER_RE.test(line); }
+  static isSmtpGeneric(line: string): boolean { return !!LogDetector.SMTP_GENERIC_RE.test(line); }
+  static isWindowsFw(line: string): boolean { return !!LogDetector.WINDOWS_FW_RE.test(line); }
+  static isIptables(line: string): boolean { return !!LogDetector.IPTABLES_RE.test(line); }
+  static isUfw(line: string): boolean { return !!LogDetector.UFW_RE.test(line); }
+  static isNftables(line: string): boolean { return !!LogDetector.NFTABLES_RE.test(line); }
+  static isFirewalld(line: string): boolean { return !!LogDetector.FIREWALLD_RE.test(line); }
+  static isMacosPf(line: string): boolean { return !!LogDetector.MACOS_PF_RE.test(line); }
+  static isMacosAppFw(line: string): boolean { return !!LogDetector.MACOS_APP_FW_RE.test(line); }
+  static isPaloAlto(line: string): boolean { return !!LogDetector.PALO_ALTO_RE.test(line); }
+  static isFortigate(line: string): boolean { return !!LogDetector.FORTIGATE_RE.test(line); }
+  static isCiscoAsa(line: string): boolean { return !!LogDetector.CISCO_ASA_RE.test(line); }
+  static isCheckpoint(line: string): boolean { return !!LogDetector.CHECKPOINT_RE.test(line); }
+  static isAwsVpc(line: string): boolean { return !!LogDetector.AWS_VPC_RE.test(line); }
+  static isAzureNsg(line: string): boolean { return !!LogDetector.AZURE_NSG_RE.test(line); }
+  static isGcpVpc(line: string): boolean { return !!LogDetector.GCP_VPC_RE.test(line); }
+  static isDiskTraffic(line: string): boolean { return line.includes('type="traffic"'); }
+  static isApplicationJson(line: string): boolean {
+    try {
+      const j = JSON.parse(line);
+      return Array.isArray(j) && j.length > 0 && Array.isArray(j[0]);
+    } catch {
+      return false;
+    }
+  }
+  static isApacheError(line: string): boolean {
+    return LogDetector.APACHE_ERROR_RES.some(pattern => pattern.test(line));
+  }
+  static isMysqlError(line: string): boolean { return !!LogDetector.MYSQL_ERROR_RE.test(line); }
+  static isMysqlQuery(line: string): boolean { return !!LogDetector.MYSQL_QUERY_RE.test(line); }
+  static isMysqlSlow(line: string): boolean { return !!LogDetector.MYSQL_SLOW_RE.test(line); }
+  static isPostgresError(line: string): boolean { return !!LogDetector.POSTGRES_ERROR_RE.test(line); }
+  static isPostgresAuth(line: string): boolean { return !!LogDetector.POSTGRES_AUTH_RE.test(line); }
+  static isPostgresStatement(line: string): boolean { return !!LogDetector.POSTGRES_STATEMENT_RE.test(line); }
+  static isOracleAlert(line: string): boolean { return !!LogDetector.ORACLE_ALERT_RE.test(line); }
+  static isOracleListener(line: string): boolean { return !!LogDetector.ORACLE_LISTENER_RE.test(line); }
+  static isOracleAudit(line: string): boolean { return !!LogDetector.ORACLE_AUDIT_RE.test(line); }
+  static isSqlserverError(line: string): boolean { return !!LogDetector.SQLSERVER_ERROR_RE.test(line); }
+  static isSqlserverAudit(line: string): boolean { return !!LogDetector.SQLSERVER_AUDIT_RE.test(line); }
+  static isSqlserverTransaction(line: string): boolean { return !!LogDetector.SQLSERVER_TRANSACTION_RE.test(line); }
+  static isMongodbServer(line: string): boolean {
+    try {
+      JSON.parse(line);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  static isMongodbAudit(line: string): boolean {
+    try {
+      const j = JSON.parse(line);
+      return "atype" in j && "ts" in j;
+    } catch {
+      return false;
+    }
+  }
+  static isLinuxSshdFailed(line: string): boolean { return !!LogDetector.LINUX_SSHD_FAILED_RE.test(line); }
+  static isLinuxSshdAccepted(line: string): boolean { return !!LogDetector.LINUX_SSHD_ACCEPTED_RE.test(line); }
+  static isLinuxSyslog(line: string): boolean { return !!LogDetector.LINUX_SYSLOG_RE.test(line); }
+  static isLinuxSystemd(line: string): boolean { return !!LogDetector.LINUX_SYSTEMD_RE.test(line); }
+  static isLinuxKernel(line: string): boolean { return !!LogDetector.LINUX_KERNEL_RE.test(line); }
+  static isLinuxAudit(line: string): boolean { return !!LogDetector.LINUX_AUDIT_RE.test(line); }
+  static isLinuxPackage(line: string): boolean { return !!LogDetector.LINUX_PACKAGE_RE.test(line); }
+  static isWindowsText(line: string): boolean { return !!LogDetector.WINDOWS_TEXT_RE.test(line); }
+  static isFilezilla(line: string): boolean { return !!LogDetector.FILEZILLA_RE.test(line); }
+  static isIisFtp(line: string): boolean { return !!LogDetector.IIS_FTP_RE.test(line); }
+  static isXferlog(line: string): boolean { return !!LogDetector.XFERLOG_RE.test(line); }
+  static isFastapiJson(line: string): boolean { return !!LogDetector.FASTAPI_JSON_RE.test(line); }
+
+  // ===========================
+  // Priority-based Check Functions
+  // ===========================
+
+  private static getPriorityOrder(): Array<[string, (line: string) => boolean]> {
+    return [
+      ["Apache", LogDetector.isApache],
+      ["Apache Error", LogDetector.isApacheError],
+      ["Django", LogDetector.isDjango],
+      ["Flask", LogDetector.isFlask],
+      ["Node.js", LogDetector.isNode],
+      ["Express.js", LogDetector.isExpressJson],
+      ["FastAPI", LogDetector.isFastapiJson],
+      ["Laravel", LogDetector.isLaravel],
+      ["Ruby on Rails", LogDetector.isRails],
+      ["Gunicorn", LogDetector.isGunicorn],
+      ["Uvicorn", LogDetector.isUvicorn],
+      ["PHP-FPM", LogDetector.isPhpFpm],
+      ["NGINX", LogDetector.isNginx],
+      ["Caddy", LogDetector.isCaddy],
+      ["HAProxy", LogDetector.isHaproxy],
+      ["Spring Boot", LogDetector.isSpringBoot],
+      ["ASP.NET Core", LogDetector.isAspnetCore],
+      ["IIS", LogDetector.isIis],
+      ["Postfix", LogDetector.isPostfix],
+      ["Sendmail", LogDetector.isSendmail],
+      ["Exim", LogDetector.isExim],
+      ["Dovecot", LogDetector.isDovecot],
+      ["Courier", LogDetector.isCourier],
+      ["Microsoft Exchange", LogDetector.isExchange],
+      ["SMTP Server", LogDetector.isSmtpGeneric],
+      ["Amavis", LogDetector.isAmavis],
+      ["SpamAssassin", LogDetector.isSpamassassin],
+      ["MailScanner", LogDetector.isMailscanner],
+      ["Windows Firewall", LogDetector.isWindowsFw],
+      ["iptables", LogDetector.isIptables],
+      ["UFW", LogDetector.isUfw],
+      ["nftables", LogDetector.isNftables],
+      ["firewalld", LogDetector.isFirewalld],
+      ["macOS PF", LogDetector.isMacosPf],
+      ["macOS App Firewall", LogDetector.isMacosAppFw],
+      ["Palo Alto Firewall", LogDetector.isPaloAlto],
+      ["FortiGate", LogDetector.isFortigate],
+      ["Cisco ASA", LogDetector.isCiscoAsa],
+      ["Check Point Firewall", LogDetector.isCheckpoint],
+      ["AWS VPC Flow Logs", LogDetector.isAwsVpc],
+      ["Azure NSG Flow Logs", LogDetector.isAzureNsg],
+      ["GCP VPC Firewall", LogDetector.isGcpVpc],
+      ["Disk Traffic", LogDetector.isDiskTraffic],
+      ["Application Logs JSON", LogDetector.isApplicationJson],
+      ["MySQL Error", LogDetector.isMysqlError],
+      ["MySQL Query", LogDetector.isMysqlQuery],
+      ["MySQL Slow Query", LogDetector.isMysqlSlow],
+      ["PostgreSQL Error", LogDetector.isPostgresError],
+      ["PostgreSQL Auth", LogDetector.isPostgresAuth],
+      ["PostgreSQL Statement", LogDetector.isPostgresStatement],
+      ["Oracle Alert", LogDetector.isOracleAlert],
+      ["Oracle Listener", LogDetector.isOracleListener],
+      ["Oracle Audit", LogDetector.isOracleAudit],
+      ["SQL Server Error", LogDetector.isSqlserverError],
+      ["SQL Server Audit", LogDetector.isSqlserverAudit],
+      ["SQL Server Transaction", LogDetector.isSqlserverTransaction],
+      ["MongoDB Server", LogDetector.isMongodbServer],
+      ["MongoDB Audit", LogDetector.isMongodbAudit],
+      ["Linux SSHD Failed", LogDetector.isLinuxSshdFailed],
+      ["Linux SSHD Accepted", LogDetector.isLinuxSshdAccepted],
+      ["Linux Syslog", LogDetector.isLinuxSyslog],
+      ["Linux Systemd", LogDetector.isLinuxSystemd],
+      ["Linux Kernel", LogDetector.isLinuxKernel],
+      ["Linux Audit", LogDetector.isLinuxAudit],
+      ["Linux Package", LogDetector.isLinuxPackage],
+      ["Windows Text", LogDetector.isWindowsText],
+      ["FileZilla FTP", LogDetector.isFilezilla],
+      ["IIS FTP", LogDetector.isIisFtp],
+      ["xferlog", LogDetector.isXferlog],
+    ];
+  }
+
+  private static checkLine(line: string, logType: string): boolean {
+    const checkFunctions: Record<string, (line: string) => boolean> = {
+      "Apache": LogDetector.isApache,
+      "Apache Error": LogDetector.isApacheError,
+      "Django": LogDetector.isDjango,
+      "Flask": LogDetector.isFlask,
+      "Node.js": LogDetector.isNode,
+      "Express.js": LogDetector.isExpressJson,
+      "FastAPI": LogDetector.isFastapiJson,
+      "Laravel": LogDetector.isLaravel,
+      "Ruby on Rails": LogDetector.isRails,
+      "Gunicorn": LogDetector.isGunicorn,
+      "Uvicorn": LogDetector.isUvicorn,
+      "PHP-FPM": LogDetector.isPhpFpm,
+      "NGINX": LogDetector.isNginx,
+      "Caddy": LogDetector.isCaddy,
+      "HAProxy": LogDetector.isHaproxy,
+      "Spring Boot": LogDetector.isSpringBoot,
+      "ASP.NET Core": LogDetector.isAspnetCore,
+      "IIS": LogDetector.isIis,
+      "Postfix": LogDetector.isPostfix,
+      "Sendmail": LogDetector.isSendmail,
+      "Exim": LogDetector.isExim,
+      "Dovecot": LogDetector.isDovecot,
+      "Courier": LogDetector.isCourier,
+      "Microsoft Exchange": LogDetector.isExchange,
+      "SMTP Server": LogDetector.isSmtpGeneric,
+      "Amavis": LogDetector.isAmavis,
+      "SpamAssassin": LogDetector.isSpamassassin,
+      "MailScanner": LogDetector.isMailscanner,
+      "Windows Firewall": LogDetector.isWindowsFw,
+      "iptables": LogDetector.isIptables,
+      "UFW": LogDetector.isUfw,
+      "nftables": LogDetector.isNftables,
+      "firewalld": LogDetector.isFirewalld,
+      "macOS PF": LogDetector.isMacosPf,
+      "macOS App Firewall": LogDetector.isMacosAppFw,
+      "Palo Alto Firewall": LogDetector.isPaloAlto,
+      "FortiGate": LogDetector.isFortigate,
+      "Cisco ASA": LogDetector.isCiscoAsa,
+      "Check Point Firewall": LogDetector.isCheckpoint,
+      "AWS VPC Flow Logs": LogDetector.isAwsVpc,
+      "Azure NSG Flow Logs": LogDetector.isAzureNsg,
+      "GCP VPC Firewall": LogDetector.isGcpVpc,
+      "Disk Traffic": LogDetector.isDiskTraffic,
+      "Application Logs JSON": LogDetector.isApplicationJson,
+      "MySQL Error": LogDetector.isMysqlError,
+      "MySQL Query": LogDetector.isMysqlQuery,
+      "MySQL Slow Query": LogDetector.isMysqlSlow,
+      "PostgreSQL Error": LogDetector.isPostgresError,
+      "PostgreSQL Auth": LogDetector.isPostgresAuth,
+      "PostgreSQL Statement": LogDetector.isPostgresStatement,
+      "Oracle Alert": LogDetector.isOracleAlert,
+      "Oracle Listener": LogDetector.isOracleListener,
+      "Oracle Audit": LogDetector.isOracleAudit,
+      "SQL Server Error": LogDetector.isSqlserverError,
+      "SQL Server Audit": LogDetector.isSqlserverAudit,
+      "SQL Server Transaction": LogDetector.isSqlserverTransaction,
+      "MongoDB Server": LogDetector.isMongodbServer,
+      "MongoDB Audit": LogDetector.isMongodbAudit,
+      "Linux SSHD Failed": LogDetector.isLinuxSshdFailed,
+      "Linux SSHD Accepted": LogDetector.isLinuxSshdAccepted,
+      "Linux Syslog": LogDetector.isLinuxSyslog,
+      "Linux Systemd": LogDetector.isLinuxSystemd,
+      "Linux Kernel": LogDetector.isLinuxKernel,
+      "Linux Audit": LogDetector.isLinuxAudit,
+      "Linux Package": LogDetector.isLinuxPackage,
+      "Windows Text": LogDetector.isWindowsText,
+      "FileZilla FTP": LogDetector.isFilezilla,
+      "IIS FTP": LogDetector.isIisFtp,
+      "xferlog": LogDetector.isXferlog,
+    };
+    
+    return checkFunctions[logType]?.(line) ?? false;
+  }
+
+  private static readSampleLines(content: string): string[] {
+    const lines = content.split('\n').map(l => l.trim());
+    return lines.slice(0, LogDetector.SAMPLE_LINES);
+  }
+
+  static detect(content: string): string {
+    const scores: Record<string, number> = {
+      "Apache": 0,
+      "Apache Error": 0,
+      "Django": 0,
+      "Flask": 0,
+      "Node.js": 0,
+      "Express.js": 0,
+      "FastAPI": 0,
+      "Laravel": 0,
+      "Ruby on Rails": 0,
+      "Gunicorn": 0,
+      "Uvicorn": 0,
+      "PHP-FPM": 0,
+      "NGINX": 0,
+      "Caddy": 0,
+      "HAProxy": 0,
+      "Spring Boot": 0,
+      "ASP.NET Core": 0,
+      "IIS": 0,
+      "Postfix": 0,
+      "Sendmail": 0,
+      "Exim": 0,
+      "Dovecot": 0,
+      "Courier": 0,
+      "Microsoft Exchange": 0,
+      "SMTP Server": 0,
+      "Amavis": 0,
+      "SpamAssassin": 0,
+      "MailScanner": 0,
+      "Windows Firewall": 0,
+      "iptables": 0,
+      "UFW": 0,
+      "nftables": 0,
+      "firewalld": 0,
+      "macOS PF": 0,
+      "macOS App Firewall": 0,
+      "Palo Alto Firewall": 0,
+      "FortiGate": 0,
+      "Cisco ASA": 0,
+      "Check Point Firewall": 0,
+      "AWS VPC Flow Logs": 0,
+      "Azure NSG Flow Logs": 0,
+      "GCP VPC Firewall": 0,
+      "Disk Traffic": 0,
+      "Application Logs JSON": 0,
+      "MySQL Error": 0,
+      "MySQL Query": 0,
+      "MySQL Slow Query": 0,
+      "PostgreSQL Error": 0,
+      "PostgreSQL Auth": 0,
+      "PostgreSQL Statement": 0,
+      "Oracle Alert": 0,
+      "Oracle Listener": 0,
+      "Oracle Audit": 0,
+      "SQL Server Error": 0,
+      "SQL Server Audit": 0,
+      "SQL Server Transaction": 0,
+      "MongoDB Server": 0,
+      "MongoDB Audit": 0,
+      "Linux SSHD Failed": 0,
+      "Linux SSHD Accepted": 0,
+      "Linux Syslog": 0,
+      "Linux Systemd": 0,
+      "Linux Kernel": 0,
+      "Linux Audit": 0,
+      "Linux Package": 0,
+      "Windows Text": 0,
+      "FileZilla FTP": 0,
+      "IIS FTP": 0,
+      "xferlog": 0,
+      "Custom / Raw": 0,
+    };
+
+    const lines = this.readSampleLines(content);
+
+    if (lines.length > 0 && lines[0]) {
+      for (const [logType, checkFunc] of this.getPriorityOrder()) {
+        if (checkFunc(lines[0])) {
+          scores[logType] += 3;
+          break;
+        }
+      }
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line || line.startsWith('#')) continue;
+
+      const sortedTypes = Object.entries(scores)
+        .filter(([type]) => type !== 'Custom / Raw')
+        .sort(([, a], [, b]) => b - a)
+        .map(([type]) => type);
+
+      let matched = false;
+      for (const logType of sortedTypes) {
+        if (this.checkLine(line, logType)) {
+          scores[logType] += 3;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        scores['Custom / Raw'] += 1;
+      }
+    }
+
+    const bestType = Object.entries(scores).reduce((a, b) => 
+      scores[b[0]] > scores[a[0]] ? b : a
+    )[0];
+
+    return scores[bestType] >= 3 ? bestType : 'Custom / Raw';
+  }
+}

@@ -565,6 +565,54 @@ class RailsParser(Parser):
         return LogEntry(line, log_type=self.log_type, severity=Severity.INFO, message=line)
 
 
+class FastAPIParser(Parser):
+    """Parser for FastAPI Log"""
+
+    def __init__(self):
+        super().__init__("FastAPI Log", LogType.FASTAPI)
+
+    def detect(self, line: str) -> bool:
+        return bool(re.search(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(INFO|WARNING|ERROR|DEBUG).*?"(GET|POST|PUT|DELETE|PATCH)\s+\S+\s+HTTP/\d\.\d"\s+\d{3}', line))
+
+    def parse(self, line: str) -> LogEntry:
+        match = re.search(
+            r'(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+(INFO|WARNING|ERROR|DEBUG).*?"(GET|POST|PUT|DELETE|PATCH)\s+(\S+)\s+HTTP/\d\.\d"\s+(\d{3})',
+            line
+        )
+        if not match:
+            return LogEntry(line, log_type=self.log_type, severity=Severity.INFO, message=line)
+
+        timestamp, level, method, path, status = match.groups()
+        status_code = int(status)
+
+        return LogEntry(
+            line,
+            timestamp=timestamp,
+            log_type=self.log_type,
+            severity=self._parse_fastapi_severity(level),
+            source={'service': 'fastapi'},
+            action=method,
+            outcome='success' if status_code < 400 else 'failure',
+            message=f"{method} {path} - {status}",
+            fields={
+                'level': level,
+                'method': method,
+                'path': path,
+                'status': status_code,
+            },
+            tags=['webserver', 'fastapi', 'python', 'http']
+        )
+
+    def _parse_fastapi_severity(self, level: str) -> Severity:
+        level_upper = level.upper()
+        if level_upper == 'ERROR':
+            return Severity.ERROR
+        elif level_upper == 'WARNING':
+            return Severity.WARNING
+        else:
+            return Severity.INFO
+
+
 # Export all webserver parsers
 PARSERS = [
     ApacheParser(),
@@ -577,4 +625,5 @@ PARSERS = [
     GunicornParser(),
     UvicornParser(),
     RailsParser(),
+    FastAPIParser(),
 ]
