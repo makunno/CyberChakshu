@@ -1,250 +1,101 @@
-"""Parser Registry - Combines all parsers and provides detection/parsing functionality
-MIGRATED: Now uses ISEA-style LogDetector for detection"""
-
-import re
-from collections import Counter
-from typing import List, Tuple, Optional
-from .base import Parser
-from .types import LogType, LogEntry, Severity
-
-# Import ISEA-style detection and parsing
-from .log_detector import LogDetector
-from .log_parsers import LogParsers
-from .legacy_parser import parse_with_legacy_parser
-
-# Import type mapping and use alias for LogType to avoid conflicts
-from . import type_mapping
-LocalLogType = type_mapping.LogType
-TYPE_MAPPING = type_mapping.TYPE_MAPPING
-
-# Import dynamic parser utilities (fallback)
-try:
-    from . import dynamic as dynamic_parser
-    RAW_PARSER = dynamic_parser.DynamicParser()
-except ImportError:
-    # Fallback if dynamic parser fails
-    class FallbackParser(Parser):
-        def __init__(self):
-            super().__init__("Fallback", LocalLogType.UNKNOWN)
-
-        def detect(self, line: str) -> bool:
-            return True
-
-        def parse(self, line: str) -> LogEntry:
-            return LogEntry(line, log_type=self.log_type, severity=Severity.INFO, message=line)
-
-    RAW_PARSER = FallbackParser()
-
-
-def detect_log_type(content: str) -> LocalLogType:
-    """Detect log type using ISEA-style LogDetector"""
-    iseat_type = LogDetector.detect(content)
-    return TYPE_MAPPING.get(iseat_type, LocalLogType.UNKNOWN)
-
-
-def get_parser(log_type: LocalLogType) -> Parser:
-    """Get parser for a specific log type"""
-    if log_type in [LocalLogType.UNKNOWN, LocalLogType.UNKNOWN]:
-        return RAW_PARSER
-    
-    # Get old-style parsers from modules for backward compatibility
-    try:
-        from . import auth as auth_module
-        parsers = getattr(auth_module, 'PARSERS', [])
-        for p in parsers:
-            if p.log_type == log_type:
-                return p
-    except ImportError:
-        pass
-    
-    try:
-        from . import firewall as firewall_module
-        parsers = getattr(firewall_module, 'PARSERS', [])
-        for p in parsers:
-            if p.log_type == log_type:
-                return p
-    except ImportError:
-        pass
-    
-    try:
-        from . import mail as mail_module
-        parsers = getattr(mail_module, 'PARSERS', [])
-        for p in parsers:
-            if p.log_type == log_type:
-                return p
-    except ImportError:
-        pass
-    
-    try:
-        from . import database as database_module
-        parsers = getattr(database_module, 'PARSERS', [])
-        for p in parsers:
-            if p.log_type == log_type:
-                return p
-    except ImportError:
-        pass
-    
-    try:
-        from . import webserver as webserver_module
-        parsers = getattr(webserver_module, 'PARSERS', [])
-        for p in parsers:
-            if p.log_type == log_type:
-                return p
-    except ImportError:
-        pass
-    
-    try:
-        from . import system as system_module
-        parsers = getattr(system_module, 'PARSERS', [])
-        for p in parsers:
-            if p.log_type == log_type:
-                return p
-    except ImportError:
-        pass
-    
-    return RAW_PARSER
-
-
-def auto_parse_line(line: str) -> LogEntry:
-    """Auto-detect and parse a single line"""
-    trimmed = line.strip()
-    if not trimmed:
-        return RAW_PARSER.parse(line)
-
-    # Try ISEA-style parsing with LogDetector
-    iseat_type = LogDetector.detect(line)
-    if iseat_type != 'Custom / Raw':
-        parsed = parse_with_legacy_parser(iseat_type, trimmed)
-        if parsed:
-            return parsed
-
-    # Fallback to old parsers for backward compatibility
-    try:
-        from . import auth as auth_module
-        parsers = getattr(auth_module, 'PARSERS', [])
-        for p in parsers:
-            if p.detect(trimmed):
-                result = p.parse(trimmed)
-                if result:
-                    return result
-    except ImportError:
-        pass
-
-    try:
-        from . import firewall as firewall_module
-        parsers = getattr(firewall_module, 'PARSERS', [])
-        for p in parsers:
-            if p.detect(trimmed):
-                result = p.parse(trimmed)
-                if result:
-                    return result
-    except ImportError:
-        pass
-
-    try:
-        from . import mail as mail_module
-        parsers = getattr(mail_module, 'PARSERS', [])
-        for p in parsers:
-            if p.detect(trimmed):
-                result = p.parse(trimmed)
-                if result:
-                    return result
-    except ImportError:
-        pass
-
-    try:
-        from . import database as database_module
-        parsers = getattr(database_module, 'PARSERS', [])
-        for p in parsers:
-            if p.detect(trimmed):
-                result = p.parse(trimmed)
-                if result:
-                    return result
-    except ImportError:
-        pass
-
-    try:
-        from . import webserver as webserver_module
-        parsers = getattr(webserver_module, 'PARSERS', [])
-        for p in parsers:
-            if p.detect(trimmed):
-                result = p.parse(trimmed)
-                if result:
-                    return result
-    except ImportError:
-        pass
-
-    try:
-        from . import system as system_module
-        parsers = getattr(system_module, 'PARSERS', [])
-        for p in parsers:
-            if p.detect(trimmed):
-                result = p.parse(trimmed)
-                if result:
-                    return result
-    except ImportError:
-        pass
-
-    return RAW_PARSER.parse(line)
-
-
-def auto_parse(content: str) -> dict:
-    """Auto-detect log type and parse all lines
-MIGRATED: Now uses ISEA-style detection and parsing"""
-    lines = [l for l in content.split('\n') if l.strip()]
-    detected_type = detect_log_type(content)
-
-    entries = []
-    parsed_count = 0
-    failed_count = 0
-
-    if detected_type in [LocalLogType.UNKNOWN, LocalLogType.UNKNOWN]:
-        # Auto-parse each line individually using ISEA-style parsers
-        iseat_type = detected_type.value if detected_type != LocalLogType.UNKNOWN else 'Custom / Raw'
-        for line in lines:
-            trimmed = line.strip()
-            if not trimmed or trimmed.startswith('#'):
-                continue
-            
-            parsed = parse_with_legacy_parser(iseat_type, trimmed)
-            if parsed:
-                entries.append(parsed)
-                parsed_count += 1
-            else:
-                # Fallback to raw parsing
-                result = auto_parse_line(trimmed)
-                entries.append(result)
-                if result.log_type != LocalLogType.UNKNOWN and result.log_type != LocalLogType.UNKNOWN:
-                    parsed_count += 1
-                else:
-                    failed_count += 1
-    else:
-        # Use ISEA-style parser for this log type
-        iseat_type = detected_type.value if detected_type != LocalLogType.UNKNOWN else 'Custom / Raw'
-        for line in lines:
-            trimmed = line.strip()
-            if not trimmed or trimmed.startswith('#'):
-                continue
-            
-            parsed = parse_with_legacy_parser(iseat_type, trimmed)
-            if parsed:
-                entries.append(parsed)
-                parsed_count += 1
-            else:
-                # Fallback to auto-parsing
-                result = auto_parse_line(trimmed)
-                entries.append(result)
-                if result.log_type != LocalLogType.UNKNOWN and result.log_type != LocalLogType.UNKNOWN:
-                    parsed_count += 1
-                else:
-                    failed_count += 1
-
-    return {
-        'detectedType': detected_type.value,
-        'entries': [e.to_dict() for e in entries],
-        'stats': {
-            'totalLines': len(lines),
-            'parsedLines': parsed_count,
-            'failedLines': failed_count,
-        },
-    }
+"""Parser Registry - Synced from siem-tool"""
+# All parsers from siem-tool
+ALL_PARSERS = [
+    # Web Server (18 types)
+    {'name': 'Apache', 'logType': 'apache', 'category': 'webserver'},
+    {'name': 'Apache Error', 'logType': 'apache_error', 'category': 'webserver'},
+    {'name': 'NGINX', 'logType': 'nginx', 'category': 'webserver'},
+    {'name': 'NGINX Error', 'logType': 'nginx_error', 'category': 'webserver'},
+    {'name': 'IIS', 'logType': 'iis', 'category': 'webserver'},
+    {'name': 'Django', 'logType': 'django', 'category': 'webserver'},
+    {'name': 'Flask', 'logType': 'flask', 'category': 'webserver'},
+    {'name': 'Laravel', 'logType': 'laravel', 'category': 'webserver'},
+    {'name': 'Rails', 'logType': 'rails', 'category': 'webserver'},
+    {'name': 'Express.js', 'logType': 'express', 'category': 'webserver'},
+    {'name': 'FastAPI', 'logType': 'fastapi', 'category': 'webserver'},
+    {'name': 'Gunicorn', 'logType': 'gunicorn', 'category': 'webserver'},
+    {'name': 'Uvicorn', 'logType': 'uvicorn', 'category': 'webserver'},
+    {'name': 'PHP-FPM', 'logType': 'php_fpm', 'category': 'webserver'},
+    {'name': 'Caddy', 'logType': 'caddy', 'category': 'webserver'},
+    {'name': 'HAProxy', 'logType': 'haproxy', 'category': 'webserver'},
+    {'name': 'Spring Boot', 'logType': 'spring_boot', 'category': 'webserver'},
+    {'name': 'ASP.NET Core', 'logType': 'aspnet_core', 'category': 'webserver'},
+    # Database (14 types)
+    {'name': 'MySQL Error', 'logType': 'mysql_error', 'category': 'database'},
+    {'name': 'MySQL Query', 'logType': 'mysql_query', 'category': 'database'},
+    {'name': 'MySQL Slow', 'logType': 'mysql_slow', 'category': 'database'},
+    {'name': 'PostgreSQL Error', 'logType': 'postgres_error', 'category': 'database'},
+    {'name': 'PostgreSQL Auth', 'logType': 'postgres_auth', 'category': 'database'},
+    {'name': 'PostgreSQL Stmt', 'logType': 'postgres_statement', 'category': 'database'},
+    {'name': 'Oracle Alert', 'logType': 'oracle_alert', 'category': 'database'},
+    {'name': 'Oracle Listener', 'logType': 'oracle_listener', 'category': 'database'},
+    {'name': 'Oracle Audit', 'logType': 'oracle_audit', 'category': 'database'},
+    {'name': 'SQL Server Error', 'logType': 'sqlserver_error', 'category': 'database'},
+    {'name': 'SQL Server Audit', 'logType': 'sqlserver_audit', 'category': 'database'},
+    {'name': 'SQL Server Tx', 'logType': 'sqlserver_transaction', 'category': 'database'},
+    {'name': 'MongoDB', 'logType': 'mongodb_server', 'category': 'database'},
+    {'name': 'MongoDB Audit', 'logType': 'mongodb_audit', 'category': 'database'},
+    # Firewall (12 types)
+    {'name': 'Windows FW', 'logType': 'windows_firewall', 'category': 'firewall'},
+    {'name': 'iptables', 'logType': 'iptables', 'category': 'firewall'},
+    {'name': 'UFW', 'logType': 'ufw', 'category': 'firewall'},
+    {'name': 'nftables', 'logType': 'nftables', 'category': 'firewall'},
+    {'name': 'firewalld', 'logType': 'firewalld', 'category': 'firewall'},
+    {'name': 'Palo Alto', 'logType': 'palo_alto', 'category': 'firewall'},
+    {'name': 'FortiGate', 'logType': 'fortigate', 'category': 'firewall'},
+    {'name': 'Cisco ASA', 'logType': 'cisco_asa', 'category': 'firewall'},
+    {'name': 'Check Point', 'logType': 'checkpoint', 'category': 'firewall'},
+    {'name': 'AWS VPC', 'logType': 'aws_vpc_flow', 'category': 'firewall'},
+    {'name': 'Azure NSG', 'logType': 'azure_nsg', 'category': 'firewall'},
+    {'name': 'GCP VPC', 'logType': 'gcp_vpc', 'category': 'firewall'},
+    # Mail (9 types)
+    {'name': 'Postfix', 'logType': 'postfix', 'category': 'mail'},
+    {'name': 'Sendmail', 'logType': 'sendmail', 'category': 'mail'},
+    {'name': 'Exim', 'logType': 'exim', 'category': 'mail'},
+    {'name': 'Dovecot', 'logType': 'dovecot', 'category': 'mail'},
+    {'name': 'Courier', 'logType': 'courier', 'category': 'mail'},
+    {'name': 'Exchange', 'logType': 'exchange', 'category': 'mail'},
+    {'name': 'Amavis', 'logType': 'amavis', 'category': 'mail'},
+    {'name': 'SpamAssassin', 'logType': 'spamassassin', 'category': 'mail'},
+    {'name': 'MailScanner', 'logType': 'mailscanner', 'category': 'mail'},
+    # Auth (2 types)
+    {'name': 'SSH Auth', 'logType': 'ssh_auth', 'category': 'auth'},
+    {'name': 'PAM', 'logType': 'pam', 'category': 'auth'},
+    # System (5 types)
+    {'name': 'Syslog', 'logType': 'syslog', 'category': 'system'},
+    {'name': 'Systemd', 'logType': 'systemd', 'category': 'system'},
+    {'name': 'Kernel', 'logType': 'kernel', 'category': 'system'},
+    {'name': 'Audit', 'logType': 'audit', 'category': 'system'},
+    {'name': 'Windows Sys', 'logType': 'windows_system', 'category': 'system'},
+    # Network (5 types)
+    {'name': 'FileZilla', 'logType': 'filezilla', 'category': 'network'},
+    {'name': 'vsftpd', 'logType': 'vsftpd', 'category': 'network'},
+    {'name': 'ProFTPD', 'logType': 'proftpd', 'category': 'network'},
+    {'name': 'xferlog', 'logType': 'xferlog', 'category': 'network'},
+    {'name': 'IIS FTP', 'logType': 'iis_ftp', 'category': 'network'},
+    # Cloud (5 types)
+    {'name': 'Cloudflare', 'logType': 'cloudflare', 'category': 'cloud'},
+    {'name': 'AWS CloudTrail', 'logType': 'aws_cloudtrail', 'category': 'cloud'},
+    {'name': 'AWS GuardDuty', 'logType': 'aws_guardduty', 'category': 'cloud'},
+    {'name': 'Azure', 'logType': 'azure_activity', 'category': 'cloud'},
+    {'name': 'GCP Audit', 'logType': 'gcp_audit', 'category': 'cloud'},
+    # Container (2 types)
+    {'name': 'Kubernetes', 'logType': 'kubernetes', 'category': 'container'},
+    {'name': 'Docker', 'logType': 'docker', 'category': 'container'},
+    # Application (7 types)
+    {'name': 'Elasticsearch', 'logType': 'elasticsearch', 'category': 'application'},
+    {'name': 'Redis', 'logType': 'redis', 'category': 'application'},
+    {'name': 'RabbitMQ', 'logType': 'rabbitmq', 'category': 'application'},
+    {'name': 'Kafka', 'logType': 'kafka', 'category': 'application'},
+    {'name': 'Zookeeper', 'logType': 'zookeeper', 'category': 'application'},
+    {'name': 'Moodle', 'logType': 'moodle_lms', 'category': 'application'},
+    {'name': 'Squid', 'logType': 'squid', 'category': 'application'},
+    # Security (5 types)
+    {'name': 'Suricata', 'logType': 'suricata', 'category': 'security'},
+    {'name': 'Zeek', 'logType': 'zeek', 'category': 'security'},
+    {'name': 'Ossec', 'logType': 'ossec', 'category': 'security'},
+    {'name': 'Fail2ban', 'logType': 'fail2ban', 'category': 'security'},
+    {'name': 'Auth0', 'logType': 'auth0', 'category': 'security'},
+    # Generic
+    {'name': 'Unknown', 'logType': 'unknown', 'category': 'generic'},
+]

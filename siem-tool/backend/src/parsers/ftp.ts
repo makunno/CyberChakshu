@@ -66,13 +66,12 @@ export class FTPParsers {
 
   static filezilla(line: string): Record<string, any> | null {
     const match = line.match(
-      /^\((\d+)\)(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2}:\d{2}\s+(?:AM|PM))\s+-\s+\((.+?)\)\s+\(([\d\.]+)\)(?:\s+>\s+)?(\d{3})(?:\s+(.+))?$/
+      /^\((\d+)\)(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2}:\d{2})\s+-\s+(.+?)\s+\(([\d\.]+)\)(?:\s+>\s+)?(\d{3})(?:\s+(.+))?$/
     );
     if (!match) return null;
     
-    const [, seqNum, month, day, year, timeAmpm, user, ip, code, message] = match;
-    const time24 = FTPParsers.convertTo24Hour(timeAmpm);
-    const timestamp = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${time24}`;
+    const [, seqNum, month, day, year, time, user, ip, code, message] = match;
+    const timestamp = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${time}`;
     
     const result: Record<string, any> = {
       timestamp,
@@ -98,11 +97,11 @@ export class FTPParsers {
 
   static xferlog(line: string): Record<string, any> | null {
     const match = line.match(
-      /^(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+(\d+)\s+(\S+)\s+(\d+)\s+([a-z])\s+(\d+)\s+\?\s+(\S+)\s+([a-z])\s+(\d+)\s+\*\s+(\d+)$/
+      /^(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+(\d+)\s+(\S+)\s+(\d+)\s+([a-z])\s+(\d+)\s+(\S+)\s+([a-z])\s+(\S+)\s+(\S+)\s+(\d+)\s+(\*?)\s+([a-z])$/
     );
     if (!match) return null;
     
-    const [, wday, month, day, time, year, transferId, user, fileSize, transferMode, bytesReceived, code, filename, direction, accessMode, restartOffset, completionStatus] = match;
+    const [, wday, month, day, time, year, transferId, user, fileSize, bytesReceived, code, filename, direction, accessMode, serviceName, restartOffset, completionFlag, completionStatus] = match;
     const timestamp = `${year}-${FTPParsers.monthToNum(month)}-${day.padStart(2, '0')} ${time}`;
     
     return {
@@ -114,7 +113,15 @@ export class FTPParsers {
       bytes: parseInt(fileSize),
       direction: direction === 'o' ? 'upload' : direction === 'i' ? 'download' : null,
       access_mode: accessMode,
-      completion_status: completionStatus === 'c' ? 'complete' : 'incomplete'
+      completion_status: completionStatus === 'c' ? 'complete' : 'incomplete',
+      fields: {
+        transfer_id: parseInt(transferId),
+        bytes_received: parseInt(bytesReceived),
+        code,
+        service: serviceName,
+        restart_offset: parseInt(restartOffset),
+        completion_flag: completionFlag
+      }
     };
   }
 

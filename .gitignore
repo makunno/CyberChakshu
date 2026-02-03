@@ -156,4 +156,4 @@ venv.bak/
 *.temp
 .cache/
 
-data/unsw-nb15.csv
+data/

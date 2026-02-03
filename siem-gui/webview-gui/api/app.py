@@ -50,21 +50,35 @@ def health():
         'name': 'FreeKhana SIEM Desktop API',
         'version': '2.0.0',
         'features': [
-            'Multi-log parsing (SSH, Apache, and more)',
+            'Multi-log parsing (50+ log types)',
             'ML-based anomaly detection',
             'Cross-log correlation',
             'Attack chain detection',
             'False positive filtering',
             'MITRE ATT&CK mapping',
+            'Stream parsing',
+            'Chunked upload for large files',
+            'Federated learning feedback',
         ],
         'endpoints': [
             'GET / - Main app',
             'GET /health - Health check',
             'GET /parsers - List available parsers',
             'POST /parse - Parse single log file',
+            'POST /parse/chunked - Chunked upload for large files',
             'POST /correlate - Multi-log correlation with ML',
             'POST /detect - Detect log type only',
+            'POST /stream - Stream parsing (line by line)',
             'POST /analyze - Dynamic field detection',
+            'GET /attacks - Attack types reference',
+            'POST /detect-attack - ML-based attack detection',
+            'POST /feedback - Submit feedback',
+            'POST /feedback/bulk - Bulk feedback',
+            'GET /feedback/attack-types - Available attack types',
+            'GET /feedback/stats - Feedback statistics',
+            'POST /feedback/retrain - Trigger retraining',
+            'GET /feedback/versions - List model versions',
+            'POST /feedback/rollback - Rollback model version',
         ],
     })
 
@@ -74,15 +88,55 @@ def list_parsers():
     """List available parsers"""
     parsers = [
         {'name': 'SSH Authentication', 'logType': 'ssh_auth', 'category': 'auth'},
+        {'name': 'PAM Authentication', 'logType': 'pam', 'category': 'auth'},
         {'name': 'Apache Access', 'logType': 'apache', 'category': 'webserver'},
+        {'name': 'Apache Error', 'logType': 'apache_error', 'category': 'webserver'},
         {'name': 'Nginx Access', 'logType': 'nginx', 'category': 'webserver'},
+        {'name': 'Nginx Error', 'logType': 'nginx_error', 'category': 'webserver'},
+        {'name': 'IIS', 'logType': 'iis', 'category': 'webserver'},
+        {'name': 'Django', 'logType': 'django', 'category': 'webserver'},
+        {'name': 'Flask', 'logType': 'flask', 'category': 'webserver'},
+        {'name': 'Express.js', 'logType': 'express', 'category': 'webserver'},
+        {'name': 'FastAPI', 'logType': 'fastapi', 'category': 'webserver'},
+        {'name': 'MySQL Error', 'logType': 'mysql_error', 'category': 'database'},
+        {'name': 'MySQL Query', 'logType': 'mysql_query', 'category': 'database'},
+        {'name': 'PostgreSQL Error', 'logType': 'postgres_error', 'category': 'database'},
+        {'name': 'PostgreSQL Auth', 'logType': 'postgres_auth', 'category': 'database'},
+        {'name': 'PostgreSQL Statement', 'logType': 'postgres_statement', 'category': 'database'},
+        {'name': 'SQL Server', 'logType': 'sqlserver_error', 'category': 'database'},
+        {'name': 'MongoDB', 'logType': 'mongodb_server', 'category': 'database'},
+        {'name': 'Oracle Alert', 'logType': 'oracle_alert', 'category': 'database'},
+        {'name': 'iptables', 'logType': 'iptables', 'category': 'firewall'},
+        {'name': 'UFW', 'logType': 'ufw', 'category': 'firewall'},
+        {'name': 'nftables', 'logType': 'nftables', 'category': 'firewall'},
+        {'name': 'Windows Firewall', 'logType': 'windows_firewall', 'category': 'firewall'},
+        {'name': 'Palo Alto', 'logType': 'palo_alto', 'category': 'firewall'},
+        {'name': 'FortiGate', 'logType': 'fortigate', 'category': 'firewall'},
+        {'name': 'Cisco ASA', 'logType': 'cisco_asa', 'category': 'firewall'},
+        {'name': 'Postfix', 'logType': 'postfix', 'category': 'mail'},
+        {'name': 'Sendmail', 'logType': 'sendmail', 'category': 'mail'},
+        {'name': 'Exim', 'logType': 'exim', 'category': 'mail'},
+        {'name': 'Dovecot', 'logType': 'dovecot', 'category': 'mail'},
+        {'name': 'Syslog', 'logType': 'syslog', 'category': 'system'},
+        {'name': 'Systemd', 'logType': 'systemd', 'category': 'system'},
+        {'name': 'Kernel', 'logType': 'kernel', 'category': 'system'},
+        {'name': 'Audit', 'logType': 'audit', 'category': 'system'},
+        {'name': 'Cron', 'logType': 'cron', 'category': 'system'},
+        {'name': 'FileZilla FTP', 'logType': 'filezilla', 'category': 'network'},
+        {'name': 'vsftpd', 'logType': 'vsftpd', 'category': 'network'},
+        {'name': 'xferlog', 'logType': 'xferlog', 'category': 'network'},
         {'name': 'Dynamic Parser', 'logType': 'unknown', 'category': 'general'},
     ]
 
     # Group by category
     categories = {
-        'auth': [p for p in parsers if p['category'] == 'auth'],
+        'database': [p for p in parsers if p['category'] == 'database'],
         'webserver': [p for p in parsers if p['category'] == 'webserver'],
+        'system': [p for p in parsers if p['category'] == 'system'],
+        'auth': [p for p in parsers if p['category'] == 'auth'],
+        'firewall': [p for p in parsers if p['category'] == 'firewall'],
+        'mail': [p for p in parsers if p['category'] == 'mail'],
+        'network': [p for p in parsers if p['category'] == 'network'],
         'general': [p for p in parsers if p['category'] == 'general'],
     }
 
@@ -511,6 +565,227 @@ def rollback_version(version_id):
             }), 404
     except Exception as e:
         return jsonify({'success': False, 'error': 'Failed to rollback', 'details': str(e)}), 500
+
+
+@app.route('/attacks', methods=['GET'])
+def list_attacks():
+    """List available attack types for detection"""
+    return jsonify({
+        'attackTypes': [
+            {'type': 'bruteforce', 'description': 'Multiple failed login attempts to same account'},
+            {'type': 'password_spray', 'description': 'Same password tried against multiple accounts'},
+            {'type': 'credential_stuffing', 'description': 'Automated login attempts with stolen credentials'},
+            {'type': 'mfa_bypass', 'description': 'Attempts to circumvent multi-factor authentication'},
+            {'type': 'mfa_fatigue', 'description': 'Repeated MFA push notifications to exhaust user'},
+            {'type': 'session_hijacking', 'description': 'Unauthorized use of valid session tokens'},
+            {'type': 'privilege_escalation', 'description': 'Attempts to gain elevated access'},
+            {'type': 'lateral_movement', 'description': 'Movement between systems in network'},
+            {'type': 'data_exfiltration', 'description': 'Unauthorized data transfer out of network'},
+            {'type': 'sql_injection', 'description': 'SQL commands injected into application'},
+            {'type': 'xss_attack', 'description': 'Cross-site scripting attack'},
+            {'type': 'path_traversal', 'description': 'Directory traversal to access restricted files'},
+            {'type': 'command_injection', 'description': 'OS commands injected into application'},
+            {'type': 'port_scan', 'description': 'Network reconnaissance scanning ports'},
+            {'type': 'ddos', 'description': 'Distributed denial of service attack'},
+            {'type': 'reconnaissance', 'description': 'Information gathering activity'},
+            {'type': 'malware_activity', 'description': 'Potential malware execution detected'},
+            {'type': 'c2_communication', 'description': 'Command and control server communication'},
+            {'type': 'insider_threat', 'description': 'Suspicious activity from authorized user'},
+            {'type': 'account_takeover', 'description': 'Unauthorized account access'},
+            {'type': 'log4shell', 'description': 'Log4j JNDI injection (CVE-2021-44228)'},
+            {'type': 'file_inclusion', 'description': 'Remote/Local file inclusion'},
+            {'type': 'ssrf_attack', 'description': 'Server-side request forgery'},
+            {'type': 'xxe_attack', 'description': 'XML external entity injection'},
+        ],
+        'mitreTactics': [
+            'TA0001 - Initial Access',
+            'TA0002 - Execution',
+            'TA0003 - Persistence',
+            'TA0004 - Privilege Escalation',
+            'TA0005 - Defense Evasion',
+            'TA0006 - Credential Access',
+            'TA0007 - Discovery',
+            'TA0008 - Lateral Movement',
+            'TA0009 - Collection',
+            'TA0010 - Exfiltration',
+            'TA0011 - Command and Control',
+            'TA0040 - Impact',
+            'TA0043 - Reconnaissance',
+        ],
+    })
+
+
+@app.route('/feedback/attack-types', methods=['GET'])
+def list_attack_types():
+    """Get available attack types for manual classification"""
+    return jsonify({
+        'attackTypes': [
+            {'type': 'sql_injection', 'label': 'SQL Injection', 'description': 'SQL commands injected into application queries'},
+            {'type': 'xss_attack', 'label': 'Cross-Site Scripting (XSS)', 'description': 'Malicious scripts injected into web pages'},
+            {'type': 'command_injection', 'label': 'Command Injection', 'description': 'OS commands injected through application input'},
+            {'type': 'path_traversal', 'label': 'Path Traversal', 'description': 'Directory traversal to access restricted files'},
+            {'type': 'file_inclusion', 'label': 'File Inclusion', 'description': 'Remote/local file inclusion attacks'},
+            {'type': 'bruteforce', 'label': 'Brute Force', 'description': 'Multiple failed login attempts to same account'},
+            {'type': 'password_spray', 'label': 'Password Spray', 'description': 'Same password tried against multiple accounts'},
+            {'type': 'credential_stuffing', 'label': 'Credential Stuffing', 'description': 'Automated login with stolen credentials'},
+            {'type': 'port_scan', 'label': 'Port Scan', 'description': 'Network reconnaissance scanning ports'},
+            {'type': 'ddos', 'label': 'DDoS', 'description': 'Distributed denial of service attack'},
+            {'type': 'reconnaissance', 'label': 'Reconnaissance', 'description': 'Information gathering activity'},
+            {'type': 'privilege_escalation', 'label': 'Privilege Escalation', 'description': 'Attempts to gain elevated access'},
+            {'type': 'lateral_movement', 'label': 'Lateral Movement', 'description': 'Movement between systems in network'},
+            {'type': 'data_exfiltration', 'label': 'Data Exfiltration', 'description': 'Unauthorized data transfer out of network'},
+            {'type': 'c2_communication', 'label': 'C2 Communication', 'description': 'Command and control server communication'},
+            {'type': 'malware_activity', 'label': 'Malware Activity', 'description': 'Potential malware execution detected'},
+            {'type': 'insider_threat', 'label': 'Insider Threat', 'description': 'Suspicious activity from authorized user'},
+            {'type': 'account_takeover', 'label': 'Account Takeover', 'description': 'Unauthorized account access'},
+            {'type': 'mfa_bypass', 'label': 'MFA Bypass', 'description': 'Attempts to circumvent multi-factor authentication'},
+            {'type': 'session_hijacking', 'label': 'Session Hijacking', 'description': 'Unauthorized use of valid session tokens'},
+            {'type': 'log4shell', 'label': 'Log4Shell', 'description': 'Log4j JNDI injection attack'},
+            {'type': 'ssrf_attack', 'label': 'SSRF', 'description': 'Server-side request forgery'},
+            {'type': 'xxe_attack', 'label': 'XXE', 'description': 'XML external entity injection'},
+        ]
+    })
+
+
+@app.route('/feedback/bulk', methods=['POST'])
+def bulk_feedback():
+    """Submit bulk feedback for multiple entries"""
+    try:
+        from ml.federated_learning import FederatedLearningManager, UserFeedback
+        import uuid
+        from datetime import datetime
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No feedback data provided'}), 400
+
+        required_fields = ['entries', 'user_label']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+
+        if data['user_label'] not in ['safe', 'unsafe', 'attack_pattern']:
+            return jsonify({'error': 'user_label must be "safe", "unsafe", or "attack_pattern"'}), 400
+
+        if data['user_label'] == 'attack_pattern' and not data.get('attack_type'):
+            return jsonify({'error': 'attack_type is required when user_label is "attack_pattern"'}), 400
+
+        fl_manager = FederatedLearningManager()
+        results = []
+
+        for entry in data['entries']:
+            feedback = UserFeedback(
+                entry_id=entry.get('entry_id', f'anonymous_{uuid.uuid4().hex[:8]}'),
+                user_id=entry.get('user_id', f'anonymous_{uuid.uuid4().hex[:8]}'),
+                timestamp=datetime.now().isoformat(),
+                original_prediction=entry.get('original_prediction', {}),
+                user_label=data['user_label'],
+                confidence=entry.get('confidence', 0.0),
+                log_message=entry.get('log_message', ''),
+                source_ip=entry.get('source_ip', ''),
+                log_type=entry.get('log_type', ''),
+                mitre_tactics=entry.get('mitre_tactics', []),
+                mitre_techniques=entry.get('mitre_techniques', []),
+                feedback_metadata=data.get('feedback_metadata', {})
+            )
+            
+            if data['user_label'] == 'attack_pattern':
+                feedback.feedback_metadata['corrected_attack_type'] = data.get('attack_type')
+            
+            fl_manager.add_feedback(feedback)
+            results.append({'id': feedback.entry_id, 'success': True})
+
+        return jsonify({
+            'success': True,
+            'message': f'Bulk feedback submitted for {len(results)} entries',
+            'results': results
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to submit bulk feedback', 'details': str(e)}), 500
+
+
+@app.route('/stream', methods=['POST'])
+def stream_parse():
+    """Stream parsing - parse a single line or batch of lines"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        lines = data.get('lines', [])
+        if not lines:
+            line = data.get('line') or data.get('content', '')
+            lines = [line] if line else []
+
+        if not lines or not lines[0]:
+            return jsonify({'error': 'No lines provided'}), 400
+
+        content = '\n'.join(lines)
+        parse_result = auto_parse(content)
+
+        alerts = run_detections(parse_result['entries'])
+
+        return jsonify({
+            'success': True,
+            'detectedType': parse_result['detectedType'],
+            'entries': parse_result['entries'],
+            'alerts': alerts,
+            'stats': {
+                'totalLines': parse_result['stats']['totalLines'],
+                'parsedLines': parse_result['stats']['parsedLines'],
+                'failedLines': parse_result['stats']['failedLines'],
+            },
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to parse stream', 'details': str(e)}), 500
+
+
+@app.route('/parse/chunked', methods=['POST'])
+def parse_chunked():
+    """Chunked upload for large files"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        chunks = data.get('chunks', [])
+        if not chunks or not isinstance(chunks, list):
+            return jsonify({'error': 'No chunks provided'}), 400
+
+        content = ''.join(chunks)
+        if not content or not content.strip():
+            return jsonify({'error': 'No log content provided'}), 400
+
+        parse_result = auto_parse(content)
+
+        alerts = run_detections(parse_result['entries'])
+
+        from ml.correlation import detect_attack_types, correlate_attacks
+        attacks = detect_attack_types(parse_result['entries'])
+        attack_chains = correlate_attacks(parse_result['entries'], attacks)
+
+        attack_summary = {
+            'totalAttacks': len(attacks),
+            'attackTypes': list(set(a.get('attackType', 'unknown') for a in attacks)),
+            'uniqueSources': len(set(e.get('source', {}).get('ip', '') for e in parse_result['entries'] if e.get('source', {}).get('ip'))),
+            'riskScore': min(len(attacks) * 10, 100),
+        }
+
+        return jsonify({
+            'success': True,
+            'detectedType': parse_result['detectedType'],
+            'totalLines': parse_result['stats']['totalLines'],
+            'parsedLines': parse_result['stats']['parsedLines'],
+            'failedLines': parse_result['stats']['failedLines'],
+            'entries': parse_result['entries'],
+            'alerts': alerts,
+            'mlAttacks': attacks,
+            'attackChains': attack_chains,
+            'attackSummary': attack_summary,
+            'fileName': data.get('fileName', 'uploaded_file'),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to parse chunks', 'details': str(e)}), 500
 
 
 if __name__ == '__main__':
