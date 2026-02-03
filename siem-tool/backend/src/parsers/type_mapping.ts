@@ -86,6 +86,7 @@ export const TYPE_MAPPING: Record<string, LogType> = {
 
   // Application
   'Application Logs JSON': 'raw',
+  'Moodle LMS': 'moodle_lms',
 
   // Unknown/Raw
   'Custom / Raw': 'raw',

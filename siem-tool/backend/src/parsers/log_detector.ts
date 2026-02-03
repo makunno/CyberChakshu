@@ -45,6 +45,7 @@ export class LogDetector {
   private static readonly AZURE_NSG_RE = /^\{(?=.*"time"\s*:\s*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z")(?=.*"properties"\s*:\s*\{)(?=.*"flows"\s*:\s*\[)(?=.*"flowTuples"\s*:\s*\[).*\}$/;
   private static readonly GCP_VPC_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s+(?:allow|deny)\s+(?:tcp|udp|icmp)\s+(?:\d{1,3}\.){3}\d{1,3}:\d+\s+(?:\d{1,3}\.){3}\d{1,3}:\d+.*$/;
   private static readonly APPLICATION_JSON_RE = /^\[\[.*\]\]$/;
+  private static readonly MOODLE_LMS_RE = /^\[\["19(?:\\\/)?\d{2}(?:\\\/)?\d{2},\s+\d{2}:\d{2}"/;
   private static readonly APACHE_ERROR_RES = [
     /^\[.*?\] \[.*?:.*?\] \[pid \d+:tid \d+\] .*/,
     /^\[.*?\] \[.*?:.*?\] \[pid \d+\] .*/,
@@ -80,7 +81,6 @@ export class LogDetector {
   private static readonly HAPROXY_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+haproxy\[\d+\]:\s+(?:GET|POST|PUT|DELETE)\s+\S+\s+\d{3}$/;
   private static readonly SPRING_BOOT_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(?:INFO|WARN|ERROR|DEBUG)\s+\S+\s+-\s+(?:GET|POST|PUT|DELETE|PATCH)\s+\S+\s+\d{3}$/;
   private static readonly ASPNET_CORE_RE = /^(?:info|warn|error|debug):\s+Microsoft\.AspNetCore/i;
-  private static readonly MOODLE_LMS_RE = /^\[\["19(?:\\\/)?\d{2}(?:\\\/)?\d{2},\s+\d{2}:\d{2}"/;
   private static readonly CLOUDFLARE_RE = /^\{.*"timestamp".*"?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*".*\}?$/;
   private static readonly AWS_CLOUDTRAIL_RE = /^\{.*"eventTime".*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z".*"eventSource".*"aws\..*".*\}$/;
   private static readonly AWS_GUARDDUTY_RE = /^\{.*"detectorId".*"createdAt".*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z".*"severity".*\d+.*\}$/;
@@ -148,12 +148,8 @@ export class LogDetector {
   static isGcpVpc(line: string): boolean { return !!LogDetector.GCP_VPC_RE.test(line); }
   static isDiskTraffic(line: string): boolean { return line.includes('type="traffic"'); }
   static isApplicationJson(line: string): boolean {
-    try {
-      const j = JSON.parse(line);
-      return Array.isArray(j) && j.length > 0 && Array.isArray(j[0]);
-    } catch {
-      return false;
-    }
+    // Check pattern without full JSON.parse for large files
+    return LogDetector.APPLICATION_JSON_RE.test(line.slice(0, 100));
   }
   static isApacheError(line: string): boolean {
     return LogDetector.APACHE_ERROR_RES.some(pattern => pattern.test(line));
@@ -198,7 +194,9 @@ export class LogDetector {
   static isIisFtp(line: string): boolean { return !!LogDetector.IIS_FTP_RE.test(line); }
   static isXferlog(line: string): boolean { return !!LogDetector.XFERLOG_RE.test(line); }
   static isFastapiJson(line: string): boolean { return !!LogDetector.FASTAPI_JSON_RE.test(line); }
-  static isMoodleLms(line: string): boolean { return !!LogDetector.MOODLE_LMS_RE.test(line); }
+  static isMoodleLms(line: string): boolean {
+    return line.startsWith('[[') && LogDetector.MOODLE_LMS_RE.test(line.slice(0, 50));
+  }
   static isCloudflare(line: string): boolean { return !!LogDetector.CLOUDFLARE_RE.test(line); }
   static isAwsCloudtrail(line: string): boolean { return !!LogDetector.AWS_CLOUDTRAIL_RE.test(line); }
   static isAwsGuardduty(line: string): boolean { return !!LogDetector.AWS_GUARDDUTY_RE.test(line); }
@@ -417,6 +415,18 @@ export class LogDetector {
   }
 
   private static readSampleLines(content: string): string[] {
+    // For very large single-line JSON arrays, extract just the first few entries
+    const trimmed = content.trim();
+    if (trimmed.startsWith('[[') && trimmed.length > 10000) {
+      // Extract first 5000 chars and close the partial JSON
+      const sample = trimmed.slice(0, 5000);
+      // Try to find a complete entry pattern
+      const bracketCount = (sample.match(/\[/g) || []).length;
+      if (bracketCount > 10) {
+        // Find a reasonable sample point - after first few complete entries
+        return [sample];
+      }
+    }
     const lines = content.split('\n').map(l => l.trim());
     return lines.slice(0, LogDetector.SAMPLE_LINES);
   }

@@ -125,9 +125,9 @@ export function parseLines(lines: string[], logType: LogType): ParsedLogEntry[] 
 }
 
 /**
- * Parse using ISEA-style parsers with support for multi-line logs
- * Returns detected FreeKhana LogType and parsed entries with statistics
- */
+  * Parse using ISEA-style parsers with support for multi-line logs
+  * Returns detected FreeKhana LogType and parsed entries with statistics
+  */
 export function parseWithISEA(content: string): {
   detectedType: LogType;
   entries: ParsedLogEntry[];
@@ -137,13 +137,72 @@ export function parseWithISEA(content: string): {
     failedLines: number;
   };
 } {
-  const lines = content.split('\n').filter(l => l.trim());
   const detectedType = detectLogType(content);
   
   let entries: ParsedLogEntry[] = [];
   let parsedCount = 0;
   let failedCount = 0;
 
+  if (detectedType === 'moodle_lms') {
+    try {
+      const data = JSON.parse(content);
+      if (Array.isArray(data) && data.length > 0) {
+        for (const item of data) {
+          if (Array.isArray(item) && item.length >= 9) {
+            const [timestamp, user1, user2, module, component, event, description, source, ip] = item;
+            
+            const entry: ParsedLogEntry = {
+              id: generateId(),
+              timestamp: typeof timestamp === 'string' ? timestamp : null,
+              logType: 'moodle_lms',
+              severity: 'info',
+              source: {
+                ip: typeof ip === 'string' ? ip : undefined,
+                hostname: typeof source === 'string' ? source : undefined
+              },
+              user: {
+                name: typeof user1 === 'string' && user1 !== '-' ? user1 : undefined
+              },
+              action: typeof event === 'string' ? event : undefined,
+              message: typeof description === 'string' ? description : JSON.stringify(item),
+              rawLine: JSON.stringify(item),
+              fields: {
+                timestamp,
+                user: typeof user1 === 'string' ? user1 : undefined,
+                relatedUser: typeof user2 === 'string' && user2 !== '-' ? user2 : undefined,
+                module: typeof module === 'string' ? module : undefined,
+                component: typeof component === 'string' ? component : undefined,
+                event: typeof event === 'string' ? event : undefined,
+                description: typeof description === 'string' ? description : undefined,
+                source: typeof source === 'string' ? source : undefined,
+                ip: typeof ip === 'string' ? ip : undefined
+              },
+              tags: ['moodle', 'lms', 'education']
+            };
+            
+            entries.push(entry);
+            parsedCount++;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse Moodle LMS JSON:', e);
+      failedCount = 1;
+    }
+    
+    return {
+      detectedType,
+      entries,
+      stats: {
+        totalLines: entries.length,
+        parsedLines: parsedCount,
+        failedLines: failedCount,
+      },
+    };
+  }
+
+  const lines = content.split('\n').filter(l => l.trim());
+  
   // Check if this is a multi-line log type
   if (isMultiLineLog(detectedType)) {
     // Parse multi-line blocks

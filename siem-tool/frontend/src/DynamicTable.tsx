@@ -138,6 +138,13 @@ const getColumnsForLogType = (logType: string, sampleEntries: ParsedLogEntry[]):
     columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || e.fields.program || '-' });
   } else if (lowerType.includes('windows') || lowerType.includes('security') || lowerType.includes('system')) {
     if (hasUser) columns.push({ key: 'user', label: 'User', width: 120, visible: true, sortable: true, getValue: (e) => e.user?.name || e.fields.accountname || '-' });
+  } else if (lowerType.includes('moodle') || lowerType.includes('lms')) {
+    columns.push({ key: 'fields_user', label: 'User', width: 180, visible: true, sortable: true, getValue: (e) => e.fields?.user || e.user?.name || '-' });
+    columns.push({ key: 'fields_module', label: 'Module', width: 150, visible: true, sortable: true, getValue: (e) => e.fields?.module || '-' });
+    columns.push({ key: 'fields_component', label: 'Component', width: 120, visible: true, sortable: true, getValue: (e) => e.fields?.component || '-' });
+    columns.push({ key: 'fields_event', label: 'Event', width: 150, visible: true, sortable: true, getValue: (e) => e.fields?.event || e.action || '-' });
+    columns.push({ key: 'fields_description', label: 'Description', width: 300, visible: true, sortable: false, getValue: (e) => e.fields?.description || e.message || '-' });
+    if (hasIp) columns.push({ key: 'source_ip', label: 'IP', width: 130, visible: true, sortable: true, getValue: (e) => e.fields?.ip || e.source?.ip || '-' });
   } else {
     if (hasIp) columns.push({ key: 'source_ip', label: 'IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
     if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 90, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
