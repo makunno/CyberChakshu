@@ -71,17 +71,37 @@ export const sendmailParser: Parser = {
 
     const [, timestamp, host, pid, message] = match;
 
+    const fromMatch = message.match(/from=<([^>]+)>/);
+    const toMatch = message.match(/to=<([^>]+)>/);
+    const statMatch = message.match(/stat=(\S+)/);
+    
+    const from = fromMatch ? fromMatch[1] : null;
+    const to = toMatch ? toMatch[1] : null;
+    const stat = statMatch ? statMatch[1] : null;
+
+    let outcome: 'success' | 'failure' | 'unknown' = 'unknown';
+    if (stat) {
+      if (/sent|deferred/i.test(stat)) outcome = 'success';
+      else if (/bounced|reject|fail/i.test(stat)) outcome = 'failure';
+    }
+
     return {
       id: generateId(),
       timestamp: parseTimestamp(timestamp),
       logType: 'sendmail',
-      severity: /error|fail|reject/i.test(message) ? 'error' : 'info',
+      severity: /error|fail|reject|bounced/i.test(message) ? 'error' : 'info',
       source: { hostname: host, service: 'sendmail', pid: parseInt(pid) },
+      user: from ? { name: from } : undefined,
+      action: 'send',
+      outcome,
       message,
       rawLine: line,
       fields: {
         host,
         pid: parseInt(pid),
+        from,
+        to,
+        stat,
       },
       tags: ['mail', 'sendmail', 'smtp'],
     };

@@ -45,6 +45,10 @@ const ATTACK_TYPE_OPTIONS: AttackTypeOption[] = [
   { type: 'account_takeover', label: 'Account Takeover', description: 'Unauthorized account access' },
 ];
 
+const formatFieldLabel = (key: string): string => {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
 const getColumnsForLogType = (logType: string, sampleEntries: ParsedLogEntry[]): Column[] => {
   const hasAttacks = sampleEntries.some(e => e.attackType);
   const hasEntries = sampleEntries.length > 0;
@@ -102,56 +106,44 @@ const getColumnsForLogType = (logType: string, sampleEntries: ParsedLogEntry[]):
     });
   }
 
-  columns.push({
-    key: 'message',
-    label: 'Message',
-    width: MIN_COLUMN_WIDTH,
-    visible: true,
-    sortable: false,
-    getValue: (e) => e.message
+  const usedKeys = new Set<string>([
+    'select', 'timestamp', 'severity', 'attack', 'message',
+    'source', 'destination', 'user', 'action', 'outcome', 'fields', 
+    'rawLine', 'id', 'logType', 'tags', 'attackType', 'attackConfidence'
+  ]);
+
+  const allFieldKeys = new Set<string>();
+  
+  sampleEntries.forEach(entry => {
+    if (entry.fields) {
+      Object.keys(entry.fields).forEach(key => {
+        if (key === '_detected_fields') return;
+        const value = entry.fields[key];
+        if (value !== null && value !== undefined && value !== '') {
+          allFieldKeys.add(key);
+        }
+      });
+    }
   });
 
-  const lowerType = logType.toLowerCase();
-  const hasIp = sampleEntries.some(e => e.source?.ip);
-  const hasPath = sampleEntries.some(e => e.fields?.path || e.fields?.url);
-  const hasStatus = sampleEntries.some(e => e.fields?.status !== undefined);
-  const hasSize = sampleEntries.some(e => e.fields?.size !== undefined || e.fields?.bytes !== undefined);
-  const hasMethod = sampleEntries.some(e => e.action || e.fields?.method);
-  const hasUser = sampleEntries.some(e => e.user?.name);
-
-  if (lowerType.includes('ssh') || lowerType.includes('auth') || lowerType.includes('sshd')) {
-    if (hasIp) columns.push({ key: 'source_ip', label: 'Source IP', width: 140, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
-    if (hasUser) columns.push({ key: 'user', label: 'User', width: 140, visible: true, sortable: true, getValue: (e) => e.user?.name || '-' });
-    columns.push({ key: 'outcome', label: 'Outcome', width: 100, visible: true, sortable: true, getValue: (e) => e.outcome || '-' });
-    columns.push({ key: 'action', label: 'Action', width: 120, visible: true, sortable: true, getValue: (e) => e.action || '-' });
-  } else if (lowerType.includes('apache') || lowerType.includes('nginx') || lowerType.includes('iis') || lowerType.includes('web')) {
-    if (hasIp) columns.push({ key: 'source_ip', label: 'IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
-    if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 90, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
-    if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || e.fields.url || e.fields.endpoint || '-' });
-    if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
-    if (hasSize) columns.push({ key: 'fields_size', label: 'Size', width: 90, visible: false, sortable: true, getValue: (e) => {
-      const size = e.fields.size ?? e.fields.bytes;
-      return size !== null && size !== undefined ? String(size) : '-';
-    }});
-  } else if (lowerType.includes('syslog') || lowerType.includes('systemd') || lowerType.includes('kernel') || lowerType.includes('audit')) {
-    if (hasIp) columns.push({ key: 'source_ip', label: 'Source IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
-    columns.push({ key: 'source_service', label: 'Service', width: 120, visible: true, sortable: true, getValue: (e) => e.source.service || e.fields.program || '-' });
-  } else if (lowerType.includes('windows') || lowerType.includes('security') || lowerType.includes('system')) {
-    if (hasUser) columns.push({ key: 'user', label: 'User', width: 120, visible: true, sortable: true, getValue: (e) => e.user?.name || e.fields.accountname || '-' });
-  } else if (lowerType.includes('moodle') || lowerType.includes('lms')) {
-    columns.push({ key: 'fields_user', label: 'User', width: 180, visible: true, sortable: true, getValue: (e) => e.fields?.user || e.user?.name || '-' });
-    columns.push({ key: 'fields_module', label: 'Module', width: 150, visible: true, sortable: true, getValue: (e) => e.fields?.module || '-' });
-    columns.push({ key: 'fields_component', label: 'Component', width: 120, visible: true, sortable: true, getValue: (e) => e.fields?.component || '-' });
-    columns.push({ key: 'fields_event', label: 'Event', width: 150, visible: true, sortable: true, getValue: (e) => e.fields?.event || e.action || '-' });
-    columns.push({ key: 'fields_description', label: 'Description', width: 300, visible: true, sortable: false, getValue: (e) => e.fields?.description || e.message || '-' });
-    if (hasIp) columns.push({ key: 'source_ip', label: 'IP', width: 130, visible: true, sortable: true, getValue: (e) => e.fields?.ip || e.source?.ip || '-' });
-  } else {
-    if (hasIp) columns.push({ key: 'source_ip', label: 'IP', width: 130, visible: true, sortable: true, getValue: (e) => e.source.ip || '-' });
-    if (hasMethod) columns.push({ key: 'action', label: 'Method', width: 90, visible: true, sortable: true, getValue: (e) => e.action || e.fields.method || '-' });
-    if (hasPath) columns.push({ key: 'fields_path', label: 'Endpoint', width: 200, visible: true, sortable: true, getValue: (e) => e.fields.path || e.fields.url || '-' });
-    if (hasStatus) columns.push({ key: 'fields_status', label: 'Status', width: 80, visible: true, sortable: true, getValue: (e) => e.fields.status?.toString() || '-' });
-    if (hasUser) columns.push({ key: 'user', label: 'User', width: 120, visible: true, sortable: true, getValue: (e) => e.user?.name || '-' });
-  }
+  const sortedFields = Array.from(allFieldKeys).sort();
+  
+  sortedFields.forEach(key => {
+    columns.push({
+      key: `fields_${key}`,
+      label: formatFieldLabel(key),
+      width: 150,
+      visible: true,
+      sortable: true,
+      getValue: (e) => {
+        const val = e.fields?.[key];
+        if (val === null || val === undefined) return '-';
+        if (typeof val === 'object') return JSON.stringify(val);
+        return String(val);
+      }
+    });
+    usedKeys.add(key);
+  });
 
   return columns;
 };
