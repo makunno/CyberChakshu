@@ -57,7 +57,7 @@ export class LogDetector {
   private static readonly POSTGRES_ERROR_RE = /^(?:\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?\s+\w+)\s+\[(\d+)\]\s+(?:\S+@\S+\s+)?(?:ERROR|FATAL):\s+([0-9A-Z]{5}):\s+(.*)$/;
   private static readonly POSTGRES_AUTH_RE = /(\S+)\s+(\S+)\s+\[(\d+)\].*user=(\w+)\s+database=(\w+)/;
   private static readonly POSTGRES_STATEMENT_RE = /(\S+)\s+(\S+)\s+\[(\d+)\]\s+STATEMENT:\s+(.*);/;
-  private static readonly ORACLE_ALERT_RE = /^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}/;
+  private static readonly ORACLE_ALERT_RE = /^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}\s+(?:TIMESTAMP|Thread|SID|Instance|Network|Error|ORA-)/;
   private static readonly ORACLE_LISTENER_RE = /(.*?)\s+\*.*SERVICE_NAME=(\w+).*PROTOCOL=(\w+).*HOST=(\d+\.\d+\.\d+\.\d+).*PORT=(\d+).*\*\s+(\d+)/;
   private static readonly ORACLE_AUDIT_RE = /^Audit record generated/;
   private static readonly SQLSERVER_ERROR_RE = /(.*?) Server Error: (\d+), Severity: (\d+), State: (\d+)/;
@@ -73,9 +73,15 @@ export class LogDetector {
   private static readonly LINUX_AUDIT_RE = /type=(\w+)\s+msg=audit\((\d+)\.\d+:(\d+)\):\s*(.*)/;
   private static readonly LINUX_PACKAGE_RE = /(\d{4}-\d{2}-\d{2})\s+(.*)/;
   private static readonly WINDOWS_TEXT_RE = /(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}),\s*([^,]+),\s*([^,]+),\s*(\d+),\s*(.*)/;
-  private static readonly FILEZILLA_RE = /\(\d+\)(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+-\s+(\S+)\s+\(([\d\.]+)\)>\s+(\d+)\s+(.*)/;
+  private static readonly WINDOWS_APPLICATION_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Application\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)/;
+  private static readonly WINDOWS_SYSTEM_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+System\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)/;
+  private static readonly WINDOWS_SECURITY_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Security\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)/;
+  private static readonly WINDOWS_SETUP_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Setup\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)/;
+  private static readonly WINDOWS_FORWARDED_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+ForwardedEvents\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)/;
+  private static readonly JSON_FTP_RE = /^\[\s*\{\s*"timestamp":/;
+  private static readonly FILEZILLA_RE = /^\(\d+\).*?(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2}:\d{2})\s*(?:AM|PM)?\s*-\s+.*?\s+\(([\d\.]+)\)\s*(?:>\s*)?(\d{3})/;
   private static readonly IIS_FTP_RE = /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([\d\.]+)\s+([\w\-]+)\s+[\d\.]+\s+\d+\s+(\w+)\s+([\S]*)\s+(\d+)/;
-  private static readonly XFERLOG_RE = /(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+\d+\s+([\d\.]+)\s+\d+\s+(\S+)\s+[ab]\s+[_]\s+([io])\s+[ra]\s+(\S+)\s+\w+\s+[01]\s+\*\s+([ci])/;
+  private static readonly XFERLOG_RE = /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) .* \d{4} .* ftp .* [*] c$/;
   private static readonly FASTAPI_JSON_RE = /^\{"time":\s*".*?",\s*"framework":\s*"FastAPI"/;
   private static readonly PHP_FPM_RE = /\[\d{2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}\]\s+(?:NOTICE|WARNING|ERROR):/;
   private static readonly HAPROXY_RE = /^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+haproxy\[\d+\]:\s+(?:GET|POST|PUT|DELETE)\s+\S+\s+\d{3}$/;
@@ -190,6 +196,12 @@ export class LogDetector {
   static isLinuxAudit(line: string): boolean { return !!LogDetector.LINUX_AUDIT_RE.test(line); }
   static isLinuxPackage(line: string): boolean { return !!LogDetector.LINUX_PACKAGE_RE.test(line); }
   static isWindowsText(line: string): boolean { return !!LogDetector.WINDOWS_TEXT_RE.test(line); }
+  static isWindowsApplication(line: string): boolean { return !!LogDetector.WINDOWS_APPLICATION_RE.test(line); }
+  static isWindowsSystem(line: string): boolean { return !!LogDetector.WINDOWS_SYSTEM_RE.test(line); }
+  static isWindowsSecurity(line: string): boolean { return !!LogDetector.WINDOWS_SECURITY_RE.test(line); }
+  static isWindowsSetup(line: string): boolean { return !!LogDetector.WINDOWS_SETUP_RE.test(line); }
+  static isWindowsForwarded(line: string): boolean { return !!LogDetector.WINDOWS_FORWARDED_RE.test(line); }
+  static isJsonFTPLogs(line: string): boolean { return !!LogDetector.JSON_FTP_RE.test(line); }
   static isFilezilla(line: string): boolean { return !!LogDetector.FILEZILLA_RE.test(line); }
   static isIisFtp(line: string): boolean { return !!LogDetector.IIS_FTP_RE.test(line); }
   static isXferlog(line: string): boolean { return !!LogDetector.XFERLOG_RE.test(line); }
@@ -291,6 +303,12 @@ export class LogDetector {
       ["Linux Audit", LogDetector.isLinuxAudit],
       ["Linux Package", LogDetector.isLinuxPackage],
       ["Windows Text", LogDetector.isWindowsText],
+      ["Windows Application", LogDetector.isWindowsApplication],
+      ["Windows System", LogDetector.isWindowsSystem],
+      ["Windows Security", LogDetector.isWindowsSecurity],
+      ["Windows Setup", LogDetector.isWindowsSetup],
+      ["Windows Forwarded Events", LogDetector.isWindowsForwarded],
+      ["JSON FTP Logs", LogDetector.isJsonFTPLogs],
       ["FileZilla FTP", LogDetector.isFilezilla],
       ["IIS FTP", LogDetector.isIisFtp],
       ["xferlog", LogDetector.isXferlog],
@@ -386,6 +404,12 @@ export class LogDetector {
       "Linux Audit": LogDetector.isLinuxAudit,
       "Linux Package": LogDetector.isLinuxPackage,
       "Windows Text": LogDetector.isWindowsText,
+      "Windows Application": LogDetector.isWindowsApplication,
+      "Windows System": LogDetector.isWindowsSystem,
+      "Windows Security": LogDetector.isWindowsSecurity,
+      "Windows Setup": LogDetector.isWindowsSetup,
+      "Windows Forwarded Events": LogDetector.isWindowsForwarded,
+      "JSON FTP Logs": LogDetector.isJsonFTPLogs,
       "FileZilla FTP": LogDetector.isFilezilla,
       "IIS FTP": LogDetector.isIisFtp,
       "xferlog": LogDetector.isXferlog,
@@ -415,8 +439,14 @@ export class LogDetector {
   }
 
   private static readSampleLines(content: string): string[] {
-    // For very large single-line JSON arrays, extract just the first few entries
     const trimmed = content.trim();
+    
+    // Handle JSON arrays (including JSON FTP logs) - return full content as single "line"
+    if (trimmed.startsWith('[') && trimmed.length > 1000) {
+      return [trimmed];
+    }
+    
+    // For very large single-line JSON arrays, extract just the first few entries
     if (trimmed.startsWith('[[') && trimmed.length > 10000) {
       // Extract first 5000 chars and close the partial JSON
       const sample = trimmed.slice(0, 5000);
@@ -432,6 +462,11 @@ export class LogDetector {
   }
 
   static detect(content: string): string {
+    // First, check for JSON FTP logs using full content
+    if (LogDetector.isJsonFTPLogs(content)) {
+      return 'JSON FTP Logs';
+    }
+    
     const lines = this.readSampleLines(content);
 
     if (lines.length === 0 || !lines[0]) {

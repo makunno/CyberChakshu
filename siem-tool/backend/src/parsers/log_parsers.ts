@@ -440,6 +440,91 @@ export class LogParsers {
     }
   }
 
+  static windowsApplication(line: string): Record<string, any> | null {
+    const match = line.match(
+      /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+Application\s+(\d+)\s+(INFO|WARNING|ERROR|CRITICAL)(?:\s+(\S[^:]*))?(?::\s*(.+))?$/
+    );
+    if (!match) return null;
+
+    const [, timestamp, eventId, level, source, message] = match;
+    return {
+      timestamp,
+      event_id: parseInt(eventId),
+      level: level.toLowerCase(),
+      source: source?.trim(),
+      message: message?.trim() || '',
+      log_name: 'Application'
+    };
+  }
+
+  static windowsSystem(line: string): Record<string, any> | null {
+    const match = line.match(
+      /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+System\s+(\d+)\s+(INFO|WARNING|ERROR|CRITICAL)(?:\s+(\S[^:]*))?(?::\s*(.+))?$/
+    );
+    if (!match) return null;
+
+    const [, timestamp, eventId, level, sourceName, message] = match;
+    return {
+      timestamp,
+      event_id: parseInt(eventId),
+      level: level.toLowerCase(),
+      source: sourceName?.trim(),
+      message: message?.trim() || '',
+      log_name: 'System'
+    };
+  }
+
+  static windowsSecurity(line: string): Record<string, any> | null {
+    const match = line.match(
+      /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+Security\s+(\d+)\s+(INFO|WARNING|ERROR|CRITICAL)(?:\s+(\S[^:]*))?(?::\s*(.+))?$/
+    );
+    if (!match) return null;
+
+    const [, timestamp, eventId, level, task, message] = match;
+    return {
+      timestamp,
+      event_id: parseInt(eventId),
+      level: level.toLowerCase(),
+      task: task?.trim(),
+      message: message?.trim() || '',
+      log_name: 'Security'
+    };
+  }
+
+  static windowsSetup(line: string): Record<string, any> | null {
+    const match = line.match(
+      /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+Setup\s+(\d+)\s+(INFO|WARNING|ERROR|CRITICAL)(?:\s+(\S[^:]*))?(?::\s*(.+))?$/
+    );
+    if (!match) return null;
+
+    const [, timestamp, eventId, level, component, message] = match;
+    return {
+      timestamp,
+      event_id: parseInt(eventId),
+      level: level.toLowerCase(),
+      component: component?.trim(),
+      message: message?.trim() || '',
+      log_name: 'Setup'
+    };
+  }
+
+  static windowsForwarded(line: string): Record<string, any> | null {
+    const match = line.match(
+      /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+ForwardedEvents\s+(\d+)\s+(INFO|WARNING|ERROR|CRITICAL)(?:\s+(\S[^:]*))?(?::\s*(.+))?$/
+    );
+    if (!match) return null;
+
+    const [, timestamp, eventId, level, originator, message] = match;
+    return {
+      timestamp,
+      event_id: parseInt(eventId),
+      level: level.toLowerCase(),
+      originator: originator?.trim(),
+      message: message?.trim() || '',
+      log_name: 'ForwardedEvents'
+    };
+  }
+
   static raw(line: string): Record<string, any> {
     return { timestamp: null, host: null, service: null, pid: null, message: line };
   }

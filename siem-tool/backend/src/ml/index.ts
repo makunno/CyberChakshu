@@ -12,3 +12,20 @@ export {
   enrichEntriesWithAttacks,
   type EntryAttackDetection,
 } from './entry-classifier';
+export {
+  extractFeatures as extractMLFeatures,
+  classifyAttack as classifyMLAttack,
+  detectMLAttacks,
+  type MLPrediction,
+} from './ml-classifier';
+export {
+  detectAnomaly,
+  detectAnomaliesForAllTypes,
+  extractFeaturesByLogType,
+  getLogTypeFromEntries,
+  mapLogTypeToModel,
+  registerModels,
+  clearModelCache,
+  type TrainedModel,
+  type LogTypePrediction,
+} from './multi-log-anomaly';

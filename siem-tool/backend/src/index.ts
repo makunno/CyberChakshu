@@ -5,7 +5,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { autoParse, detectLogType, allParsers, analyzeLogStructureAndSuggestLabels } from './parsers';
 import { runDetections, generateStats } from './detectors/alerts';
-import { correlateMultipleLogs, CorrelationResult, detectAttacksInEntries, enrichEntriesWithAttacks } from './ml';
+import { correlateMultipleLogs, CorrelationResult, detectAttacksInEntries, enrichEntriesWithAttacks, detectMLAttacks, detectAnomaly, detectAnomaliesForAllTypes } from './ml';
+import { EVTXParser, EVTXDetector } from './parsers/evtx';
 import type { ParseResponse, LogType, ParsedLogEntry } from './types';
 
 // Types for Cloudflare Workers
@@ -27,7 +28,7 @@ app.use('*', cors({
     return allowedOrigins.includes(origin) ? origin : '*';
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'CF-Access-Client-Id', 'CF-Access-Signature'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'CF-Access-Client-Id', 'CF-Access-Signature', 'X-File-Name'],
   exposeHeaders: ['Content-Length', 'X-Custom-Header'],
   maxAge: 86400,
   credentials: false,
@@ -46,7 +47,7 @@ app.options('*', (c) => {
   return c.text('', 200, {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin, X-Requested-With, CF-Access-Client-Id, CF-Access-Signature',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin, X-Requested-With, CF-Access-Client-Id, CF-Access-Signature, X-File-Name',
     'Access-Control-Max-Age': '86400',
   });
 });
@@ -128,7 +129,9 @@ app.post('/parse', async (c) => {
   try {
     const contentType = c.req.header('Content-Type') || '';
     let content: string;
+    let binaryContent: ArrayBuffer | null = null;
     let forceType: LogType | undefined;
+    let filename: string | undefined;
 
     // Handle different content types
     if (contentType.includes('multipart/form-data')) {
@@ -140,7 +143,16 @@ app.post('/parse', async (c) => {
         return c.json({ error: 'No file provided' }, 400);
       }
       
-      content = await file.text();
+      filename = file.name;
+      
+      // Check if it's a binary file (EVTX) - always check by filename extension
+      if (filename?.toLowerCase().endsWith('.evtx')) {
+        binaryContent = await file.arrayBuffer();
+        console.log('EVTX file detected by extension:', filename, 'size:', binaryContent.byteLength);
+      } else {
+        content = await file.text();
+      }
+      
       if (type && type !== 'auto') {
         forceType = type as LogType;
       }
@@ -152,12 +164,136 @@ app.post('/parse', async (c) => {
         content = json.content || json.logs || '';
       }
       forceType = json.type;
+    } else if (contentType.includes('application/octet-stream') || contentType.includes('binary')) {
+      // Handle binary file upload (EVTX)
+      const arrayBuffer = await c.req.arrayBuffer();
+      filename = c.req.header('x-file-name') || c.req.header('X-File-Name');
+      
+      if (arrayBuffer.byteLength === 0) {
+        return c.json({ error: 'Empty file provided' }, 400);
+      }
+      
+      // Check if it's an EVTX file by signature or filename
+      if (arrayBuffer.byteLength >= 4) {
+        const view = new DataView(arrayBuffer);
+        const signature = view.getUint32(0, true);
+        
+        if (signature === 0x46566C45 || filename?.toLowerCase().endsWith('.evtx')) {
+          binaryContent = arrayBuffer;
+          console.log('Binary EVTX upload detected:', filename, 'size:', arrayBuffer.byteLength);
+        }
+      }
+      
+      // If not detected as binary, decode as text
+      if (!binaryContent) {
+        const decoder = new TextDecoder('utf-8', { fatal: true });
+        try {
+          content = decoder.decode(arrayBuffer);
+        } catch {
+          content = new TextDecoder('latin1').decode(arrayBuffer);
+        }
+      }
     } else {
-      content = await c.req.text();
+      // Check if content might be binary (starts with EVTX magic bytes)
+      const arrayBuffer = await c.req.arrayBuffer();
+      
+      // Check if arrayBuffer is empty or too small
+      if (arrayBuffer.byteLength === 0) {
+        return c.json({ error: 'No log content provided' }, 400);
+      }
+      
+      const view = new DataView(arrayBuffer);
+      
+      // Need at least 4 bytes for signature check
+      if (arrayBuffer.byteLength >= 4) {
+        const signature = view.getUint32(0, true);
+        
+        // EVTX signature: 0x46566C45 ('ElfF')
+        if (signature === 0x46566C45) {
+          binaryContent = arrayBuffer;
+          console.log('EVTX detected via signature, size:', arrayBuffer.byteLength);
+        }
+      }
+      
+      // If not binary, decode as text
+      if (!binaryContent) {
+        const decoder = new TextDecoder('utf-8', { fatal: true });
+        try {
+          content = decoder.decode(arrayBuffer);
+        } catch {
+          // If decoding fails, try latin1 for 8-bit encodings
+          content = new TextDecoder('latin1').decode(arrayBuffer);
+        }
+      }
+    }
+
+    // Handle EVTX binary files
+    if (binaryContent) {
+      console.log('Parsing EVTX binary, size:', binaryContent.byteLength, 'filename:', filename);
+      const evtxEntries = EVTXParser.parse(binaryContent);
+      console.log('EVTX entries parsed:', evtxEntries.length);
+      
+      if (evtxEntries.length === 0) {
+        return c.json({ 
+          error: 'No valid EVTX records found in file. The file may be empty, corrupted, or in an unsupported format.',
+          debug: {
+            fileSize: binaryContent.byteLength,
+            filename,
+            isValidEVTX: EVTXParser.canParse(binaryContent)
+          }
+        }, 400);
+      }
+
+      // Run detections
+      const alerts = runDetections(evtxEntries);
+      const enrichedEntries = enrichEntriesWithAttacks(evtxEntries);
+      const detectedAttacks = detectAttacksInEntries(enrichedEntries);
+      const mlPredictions = detectMLAttacks(evtxEntries);
+      const multiLogAnomalies = detectAnomaliesForAllTypes(evtxEntries);
+      
+      // Generate attack summary
+      const attackTypes = [...new Set(detectedAttacks.map(a => a.attack.attackType))];
+      const mlAttackTypes = [...new Set(mlPredictions.map(p => p.attackType))];
+      const multiLogAttackTypes = multiLogAnomalies.flatMap(a => a.detectedAttackTypes);
+      const allAttackTypes = [...new Set([...attackTypes, ...mlAttackTypes, ...multiLogAttackTypes])];
+      
+      const attackSummary = {
+        totalAttacks: detectedAttacks.length + mlPredictions.length + multiLogAnomalies.filter(a => a.isAnomaly).length,
+        attackTypes: allAttackTypes,
+        uniqueSources: new Set(evtxEntries.map(e => e.source.ip).filter(Boolean)).size,
+        riskScore: Math.min(Math.max(detectedAttacks.length, mlPredictions.length) * 10, 100),
+        multiLogRiskScore: Math.min(multiLogAnomalies.reduce((sum, a) => sum + a.anomalyScore, 0) * 20, 100),
+      };
+
+      const stats = generateStats(evtxEntries);
+
+      return c.json({
+        success: true,
+        detectedType: 'windows_event' as LogType,
+        totalLines: evtxEntries.length,
+        parsedLines: evtxEntries.length,
+        failedLines: 0,
+        entries: enrichedEntries,
+        alerts,
+        stats,
+        mlAttacks: detectedAttacks,
+        mlPredictions,
+        multiLogAnomalies,
+        attackSummary,
+      } as ParseResponse);
     }
 
     if (!content || content.trim().length === 0) {
-      return c.json({ error: 'No log content provided' }, 400);
+      // Check if there might be binary content that wasn't detected
+      console.log('Empty content check:', { hasContent: !!content, length: content?.length, contentType });
+      return c.json({ 
+        error: 'No log content provided',
+        debug: {
+          hasContent: !!content,
+          contentLength: content?.length || 0,
+          contentType
+        }
+      }, 400);
     }
 
     // Parse logs
@@ -169,23 +305,38 @@ app.post('/parse', async (c) => {
     // Run detections
     const alerts = runDetections(entries);
     
-    // Run ML-based per-entry attack detection
+// Run ML-based per-entry attack detection
     const enrichedEntries = enrichEntriesWithAttacks(entries);
     const detectedAttacks = detectAttacksInEntries(enrichedEntries);
     
+    // Run ML-based feature extraction and classification
+    const mlPredictions = detectMLAttacks(entries);
+    
+    // Run multi-log type anomaly detection
+    const multiLogAnomalies = detectAnomaliesForAllTypes(entries);
+    const multiLogAnomalyDetected = multiLogAnomalies.some(a => a.isAnomaly);
+    const multiLogRiskScore = Math.min(
+      multiLogAnomalies.reduce((sum, a) => sum + a.anomalyScore, 0) * 20, 
+      100
+    );
+    
     // Generate attack summary
     const attackTypes = [...new Set(detectedAttacks.map(a => a.attack.attackType))];
+    const mlAttackTypes = [...new Set(mlPredictions.map(p => p.attackType))];
+    const multiLogAttackTypes = multiLogAnomalies.flatMap(a => a.detectedAttackTypes);
+    const allAttackTypes = [...new Set([...attackTypes, ...mlAttackTypes, ...multiLogAttackTypes])];
     const attackSummary = {
-      totalAttacks: detectedAttacks.length,
-      attackTypes,
+      totalAttacks: detectedAttacks.length + mlPredictions.length + multiLogAnomalies.filter(a => a.isAnomaly).length,
+      attackTypes: allAttackTypes,
       uniqueSources: new Set(entries.map(e => e.source.ip).filter(Boolean)).size,
-      riskScore: Math.min(detectedAttacks.length * 10, 100),
+      riskScore: Math.min(Math.max(detectedAttacks.length, mlPredictions.length, multiLogRiskScore) * 10, 100),
+      multiLogRiskScore,
     };
     
     // Generate statistics
     const stats = generateStats(entries);
 
-    const response: ParseResponse = {
+const response: ParseResponse = {
       success: true,
       detectedType: finalType,
       totalLines: parseStats.totalLines,
@@ -195,6 +346,8 @@ app.post('/parse', async (c) => {
       alerts,
       stats,
       mlAttacks: detectedAttacks,
+      mlPredictions,
+      multiLogAnomalies,
       attackSummary,
     };
 

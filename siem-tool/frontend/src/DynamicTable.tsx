@@ -49,7 +49,7 @@ const formatFieldLabel = (key: string): string => {
   return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
-const getColumnsForLogType = (logType: string, sampleEntries: ParsedLogEntry[]): Column[] => {
+const getColumnsForLogType = (_logType: string, sampleEntries: ParsedLogEntry[]): Column[] => {
   const hasAttacks = sampleEntries.some(e => e.attackType);
   const hasEntries = sampleEntries.length > 0;
 

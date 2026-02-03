@@ -4,6 +4,32 @@ import type { ParseResponse, CorrelateResponse } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://siem-backend.tanubhavj.workers.dev';
 const CHUNK_SIZE = 50 * 1024; // 50KB chunks (well under 100KB limit)
+const BINARY_TYPES = ['.evtx', '.evt', '.bin'];
+
+function isBinaryFile(file: File): boolean {
+  return BINARY_TYPES.some(ext => file.name.toLowerCase().endsWith(ext)) ||
+         file.type === 'application/octet-stream';
+}
+
+async function uploadBinaryFile(file: File): Promise<ParseResponse> {
+  const arrayBuffer = await file.arrayBuffer();
+  
+  const response = await fetch(`${API_URL}/parse`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'X-File-Name': file.name,
+    },
+    body: arrayBuffer,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to parse EVTX file: ${response.statusText}`);
+  }
+
+  return response.json();
+}
 
 async function uploadInChunks(file: File): Promise<ParseResponse> {
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -34,6 +60,12 @@ async function uploadInChunks(file: File): Promise<ParseResponse> {
 }
 
 export async function parseLogsFromFile(file: File): Promise<ParseResponse> {
+  // Handle binary files (EVTX) specially - don't convert to text
+  if (isBinaryFile(file)) {
+    console.log('Detected binary file:', file.name, 'size:', file.size);
+    return uploadBinaryFile(file);
+  }
+  
   if (file.size > CHUNK_SIZE) {
     return uploadInChunks(file);
   }

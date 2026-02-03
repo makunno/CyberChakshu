@@ -66,11 +66,11 @@ export class FTPParsers {
 
   static filezilla(line: string): Record<string, any> | null {
     const match = line.match(
-      /^\((\d+)\)(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2}:\d{2})\s+-\s+(.+?)\s+\(([\d\.]+)\)(?:\s+>\s+)?(\d{3})(?:\s+(.+))?$/
+      /^\((\d+)\)(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2}:\d{2})(?:\s+(?:AM|PM))?\s*-\s+(.+?)\s+\(([\d\.]+)\)\s*(?:>\s+)?(\d{3})/
     );
     if (!match) return null;
     
-    const [, seqNum, month, day, year, time, user, ip, code, message] = match;
+    const [, seqNum, month, day, year, time, user, ip, code] = match;
     const timestamp = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${time}`;
     
     const result: Record<string, any> = {
@@ -79,7 +79,7 @@ export class FTPParsers {
       service: 'filezilla',
       user: user !== 'not logged in' ? user : null,
       client_ip: ip,
-      message: message || '',
+      message: '',
       fields: {
         seq_num: parseInt(seqNum),
         response_code: code
@@ -97,11 +97,11 @@ export class FTPParsers {
 
   static xferlog(line: string): Record<string, any> | null {
     const match = line.match(
-      /^(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+(\d+)\s+(\S+)\s+(\d+)\s+([a-z])\s+(\d+)\s+(\S+)\s+([a-z])\s+(\S+)\s+(\S+)\s+(\d+)\s+(\*?)\s+([a-z])$/
+      /^(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+(\d+)\s+(\S+)\s+(\d+)\s+([a-z])\s+(\d+)\s+([a-z])\s+([a-z_])\s+(\S+)\s+(\S+)\s+(\d+)\s+(\*?)\s+([a-z])$/
     );
     if (!match) return null;
     
-    const [, wday, month, day, time, year, transferId, user, fileSize, bytesReceived, code, filename, direction, accessMode, serviceName, restartOffset, completionFlag, completionStatus] = match;
+    const [, wday, month, day, time, year, transferId, user, fileSize, bytesReceived, code, completionFlag, filename, direction, serviceName, restartOffset, completionStatus] = match;
     const timestamp = `${year}-${FTPParsers.monthToNum(month)}-${day.padStart(2, '0')} ${time}`;
     
     return {
@@ -112,7 +112,7 @@ export class FTPParsers {
       filename,
       bytes: parseInt(fileSize),
       direction: direction === 'o' ? 'upload' : direction === 'i' ? 'download' : null,
-      access_mode: accessMode,
+      access_mode: code,
       completion_status: completionStatus === 'c' ? 'complete' : 'incomplete',
       fields: {
         transfer_id: parseInt(transferId),

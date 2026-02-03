@@ -23,9 +23,10 @@ export type LogType =
   // Network logs
   | 'dns' | 'dhcp' | 'proxy'
   // FTP logs
-  | 'vsftpd' | 'proftpd'
+  | 'vsftpd' | 'proftpd' | 'iis_ftp'
   // Windows logs
-  | 'windows_security' | 'windows_system' | 'windows_application'
+  | 'windows_security' | 'windows_system' | 'windows_application' | 'windows_setup' | 'windows_forwarded'
+  | 'windows_event'
   // Daemon logs
   | 'cron' | 'daemon'
   // Unknown
@@ -114,10 +115,28 @@ export interface ParseResponse {
       mitreTechniques: string[];
     };
   }>;
+  mlPredictions?: Array<{
+    attackType: string;
+    confidence: number;
+    probability: number;
+    explanation: string[];
+    isFalsePositive: boolean;
+    falsePositiveReason?: string;
+  }>;
+  multiLogAnomalies?: Array<{
+    logType: string;
+    anomalyScore: number;
+    isAnomaly: boolean;
+    confidence: number;
+    detectedAttackTypes: string[];
+    featureScores: Record<string, number>;
+    explanation: string[];
+  }>;
   attackSummary?: {
     totalAttacks: number;
     attackTypes: string[];
     uniqueSources: number;
     riskScore: number;
+    multiLogRiskScore?: number;
   };
 }

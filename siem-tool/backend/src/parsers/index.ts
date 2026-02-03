@@ -18,6 +18,7 @@ import { authParsers } from './auth';
 import { firewallParsers } from './firewall';
 import { mailParsers } from './mail';
 import { dynamicParser } from './dynamic';
+import { JsonFTPHandler } from './windows';
 
 // Combine all parsers into a single registry
 // NOTE: Order matters! More specific parsers should come BEFORE generic ones.
@@ -197,6 +198,19 @@ export function parseWithISEA(content: string): {
         totalLines: entries.length,
         parsedLines: parsedCount,
         failedLines: failedCount,
+      },
+    };
+  }
+
+  if (detectedType === 'iis_ftp') {
+    const parsedEntries = JsonFTPHandler.parseJsonFTPLogs(content);
+    return {
+      detectedType,
+      entries: parsedEntries,
+      stats: {
+        totalLines: parsedEntries.length,
+        parsedLines: parsedEntries.length,
+        failedLines: 0,
       },
     };
   }

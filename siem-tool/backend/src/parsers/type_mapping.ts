@@ -78,8 +78,14 @@ export const TYPE_MAPPING: Record<string, LogType> = {
   'Linux Audit': 'audit',
   'Linux Package': 'package',
   'Windows Text': 'windows_system',
+  'Windows Application': 'windows_application',
+  'Windows System': 'windows_system',
+  'Windows Security': 'windows_security',
+  'Windows Setup': 'windows_setup',
+  'Windows Forwarded Events': 'windows_forwarded',
 
   // FTP
+  'JSON FTP Logs': 'iis_ftp',
   'FileZilla FTP': 'vsftpd',
   'IIS FTP': 'proftpd',
   'xferlog': 'vsftpd',

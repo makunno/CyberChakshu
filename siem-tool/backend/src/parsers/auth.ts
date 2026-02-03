@@ -3,6 +3,7 @@
 
 import { Parser, ParsedLogEntry } from '../types';
 import { generateId, parseTimestamp, normalizeUser } from '../utils/helpers';
+import { FTPParsers } from './ftp';
 
 // ========== SSH Auth Parser (Failed) ==========
 
@@ -337,6 +338,102 @@ export const vsftpdParser: Parser = {
   },
 };
 
+// ========== FileZilla Server Parser ==========
+
+export const filezillaParser: Parser = {
+  name: 'FileZilla Server Log',
+  logType: 'vsftpd',
+  detect: (line: string) => /^\(\d+\).*?\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}:\d{2}/.test(line),
+  parse: (line: string): ParsedLogEntry | null => {
+    const match = line.match(
+      /^\((\d+)\)(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2}:\d{2})(?:\s+(?:AM|PM))?\s*-\s+(.+?)\s+\(([\d\.]+)\)\s*(?:>\s+)?(\d{3})/
+    );
+    if (!match) return null;
+
+    const [, seqNum, month, day, year, time, user, ip, code] = match;
+    const timestamp = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${time}`;
+    const outcome = code.startsWith('2') ? 'success' : code.startsWith('4') || code.startsWith('5') ? 'failure' : 'unknown';
+
+    return {
+      id: generateId(),
+      timestamp: parseTimestamp(timestamp),
+      logType: 'vsftpd',
+      severity: outcome === 'failure' ? 'warning' : 'info',
+      source: { service: 'filezilla', ip },
+      user: { name: user !== 'not logged in' ? user : null },
+      action: 'ftp_session',
+      outcome,
+      message: line,
+      rawLine: line,
+      fields: {
+        seq_num: parseInt(seqNum),
+        response_code: code,
+        server: 'filezilla',
+      },
+      tags: ['auth', 'ftp', 'filezilla'],
+    };
+  },
+};
+
+// ========== Xferlog Parser ==========
+
+export const xferlogParser: Parser = {
+  name: 'Xferlog (wu-ftpd)',
+  logType: 'vsftpd',
+  detect: (line: string) => /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) .* \d{4} .* ftp .* [*] c$/.test(line),
+  parse: (line: string): ParsedLogEntry | null => {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length < 14) return null;
+
+    const dayOfWeek = parts[0];
+    const month = parts[1];
+    const day = parts[2];
+    const time = parts[3];
+    const year = parts[4];
+    const transferId = parts[5];
+    const ip = parts[6];
+    const fileSize = parts[7];
+    const filename = parts[8];
+    const typeCode = parts[9];
+    const specialCode = parts[10];
+    const direction = parts[11];
+    const accessMode = parts[12];
+    const username = parts[13];
+    const serviceName = parts[14];
+    const completionStatus = parts[17];
+    const timestamp = `${year}-${FTPParsers.monthToNum(month)}-${day.padStart(2, '0')} ${time}`;
+    
+    const directionMap: Record<string, string> = { 'i': 'download', 'o': 'upload', 'a': 'append' };
+    const typeMap: Record<string, string> = { 'b': 'binary', 'a': 'ascii' };
+
+    return {
+      id: generateId(),
+      timestamp: parseTimestamp(timestamp),
+      logType: 'vsftpd',
+      severity: 'info',
+      source: { service: 'ftp', ip },
+      user: { name: username },
+      action: `ftp_${directionMap[direction] || 'transfer'}`,
+      outcome: completionStatus === 'c' ? 'success' : 'failure',
+      message: line,
+      rawLine: line,
+      fields: {
+        transfer_id: parseInt(transferId),
+        filename,
+        bytes: parseInt(fileSize),
+        transfer_type: typeMap[typeCode] || typeCode,
+        direction: directionMap[direction] || direction,
+        access_mode: accessMode,
+        username,
+        service: serviceName,
+        completion_status: completionStatus === 'c' ? 'complete' : 'incomplete',
+        protocol: 'ftp',
+      },
+      tags: ['ftp', 'xferlog', 'file_transfer'],
+    };
+  },
+};
+
 // Export all auth parsers
 export const authParsers: Parser[] = [
   sshFailedParser,
@@ -347,4 +444,6 @@ export const authParsers: Parser[] = [
   sudoParser,
   suParser,
   vsftpdParser,
+  filezillaParser,
+  xferlogParser,
 ];
