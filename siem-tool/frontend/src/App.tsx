@@ -2,10 +2,11 @@ import { useState, useCallback } from 'react';
 import { 
    Upload, Shield, AlertTriangle, Activity, FileText, 
    Download, RefreshCw, ChevronDown, X, Search, Terminal,
-   Layers, Clock, Target, Zap, TrendingUp, Scissors, File, Copy
+   Layers, Clock, Target, Zap, TrendingUp, Scissors, File, Archive
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import { parseLogsFromFile, parseLogsFromText, correlateMultipleFiles, EVTXUploadError, AutoSplitRequiredError, isAutoSplitResponse, splitFileOnFrontend, type AutoSplitResponse } from './api';
+import JSZip from 'jszip';
+import { parseLogsFromFile, parseLogsFromText, correlateMultipleFiles, EVTXUploadError, isEVTXFile, splitFileClient, type SplitFileResult } from './api';
 import type { ParseResponse, ParsedLogEntry, CorrelateResponse, AttackChain, TimelineEvent } from './types';
 import { DynamicTable } from './DynamicTable';
 import { EVTXTutorial } from './EVTXTutorial';
@@ -87,7 +88,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [evtxTutorialFile, setEvtxTutorialFile] = useState<string | null>(null);
-  const [autoSplitConfig, setAutoSplitConfig] = useState<AutoSplitResponse | null>(null);
+  const [splitFileResult, setSplitFileResult] = useState<SplitFileResult | null>(null);
   const [activeTab, setActiveTab] = useState<'logs' | 'alerts' | 'attacks' | 'timeline' | 'stats'>('logs');
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -159,61 +160,72 @@ function App() {
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+  const CLIENT_SPLIT_THRESHOLD = 1 * 1024 * 1024;
 
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleFileUpload called');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      console.log('No files selected');
+      return;
+    }
+
+    console.log('Files selected:', files.map(f => ({ name: f.name, size: f.size })));
+
+    // Single file mode
     if (mode === 'multi' || files.length > 1) {
+      // Check for large files
+      const largeFiles = files.filter(f => f.size > CLIENT_SPLIT_THRESHOLD);
+      if (largeFiles.length > 0) {
+        const fileNames = largeFiles.map(f => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ');
+        setError(`Files too large for multi-file upload: ${fileNames}. Files over 1MB will cause 413 errors. Please upload smaller files or use single file mode.`);
+        return;
+      }
       setUploadedFiles(prev => [...prev, ...files]);
       return;
     }
 
-    // Single file mode
+    const file = files[0];
+    setError(null);
+    setSplitFileResult(null);
+
+    console.log('File upload:', { name: file.name, size: file.size, mode, threshold: CLIENT_SPLIT_THRESHOLD });
+
+    if (isEVTXFile(file)) {
+      setEvtxTutorialFile(file.name);
+      return;
+    }
+
+    if (file.size > CLIENT_SPLIT_THRESHOLD) {
+      console.log('Large file detected, splitting...');
+      setLoading(true);
+      try {
+        const result = await splitFileClient(file);
+        setSplitFileResult(result);
+        setData(null);
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.error('Split error:', err);
+        setError('Failed to split file. Try a smaller file or use the CLI tool.');
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Small file - send to backend directly
+    console.log('Small file, sending to backend...');
     setLoading(true);
     setError(null);
-    setAutoSplitConfig(null);
 
     try {
-      const result = await parseLogsFromFile(files[0]);
-      
-      if (isAutoSplitResponse(result)) {
-        setAutoSplitConfig(result);
-        setData(null);
-      } else {
-        setData(result);
-        setCorrelationData(null);
-        setActiveTab('logs');
-      }
+      const result = await parseLogsFromFile(file);
+      setData(result);
+      setCorrelationData(null);
+      setActiveTab('logs');
     } catch (err) {
       if (err instanceof EVTXUploadError) {
-        setEvtxTutorialFile(files[0].name);
-      } else if (err instanceof AutoSplitRequiredError) {
-        // Frontend auto-split the file and send chunks
-        setLoading(true);
-        try {
-          const chunks = await splitFileOnFrontend(files[0]);
-          
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://siem-backend.tanubhavj.workers.dev'}/parse/chunked`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chunks, fileName: files[0].name })
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to parse: ${response.statusText}`);
-          }
-
-          const result = await response.json();
-          setData(result);
-          setCorrelationData(null);
-          setActiveTab('logs');
-        } catch (splitErr) {
-          setError(err instanceof AutoSplitRequiredError 
-            ? `File too large (${(files[0].size / 1024 / 1024).toFixed(1)} MB). ${err.splitConfig.cliCommand}`
-            : 'Failed to process file');
-        } finally {
-          setLoading(false);
-        }
+        setEvtxTutorialFile(file.name);
       } else {
         setError(err instanceof Error ? err.message : 'Failed to parse logs');
       }
@@ -224,6 +236,14 @@ function App() {
 
   const handleRunCorrelation = useCallback(async () => {
     if (uploadedFiles.length === 0) return;
+
+    // Check for large files
+    const largeFiles = uploadedFiles.filter(f => f.size > CLIENT_SPLIT_THRESHOLD);
+    if (largeFiles.length > 0) {
+      const fileNames = largeFiles.map(f => f.name).join(', ');
+      setError(`Files too large for correlation (${largeFiles.length} file(s) > 1MB): ${fileNames}. Please split large files or upload smaller files.`);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -246,54 +266,54 @@ function App() {
     if (files.length === 0) return;
 
     if (mode === 'multi' || files.length > 1) {
+      // Check for large files
+      const largeFiles = files.filter(f => f.size > CLIENT_SPLIT_THRESHOLD);
+      if (largeFiles.length > 0) {
+        const fileNames = largeFiles.map(f => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ');
+        setError(`Files too large for multi-file upload: ${fileNames}. Files over 1MB will cause 413 errors. Please upload smaller files or use single file mode.`);
+        return;
+      }
       setUploadedFiles(prev => [...prev, ...files]);
       return;
     }
 
+    const file = files[0];
+    setError(null);
+    setSplitFileResult(null);
+
+    if (isEVTXFile(file)) {
+      setEvtxTutorialFile(file.name);
+      return;
+    }
+
+    if (file.size > CLIENT_SPLIT_THRESHOLD) {
+      console.log('Large file detected in drop, splitting...');
+      setLoading(true);
+      try {
+        const result = await splitFileClient(file);
+        setSplitFileResult(result);
+        setData(null);
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.error('Split error:', err);
+        setError('Failed to split file. Try a smaller file or use the CLI tool.');
+        setLoading(false);
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
-    setAutoSplitConfig(null);
 
     try {
-      const result = await parseLogsFromFile(files[0]);
-      
-      if (isAutoSplitResponse(result)) {
-        setAutoSplitConfig(result);
-        setData(null);
-      } else {
-        setData(result);
-        setCorrelationData(null);
-        setActiveTab('logs');
-      }
+      const result = await parseLogsFromFile(file);
+      setData(result);
+      setCorrelationData(null);
+      setActiveTab('logs');
     } catch (err) {
       if (err instanceof EVTXUploadError) {
-        setEvtxTutorialFile(files[0].name);
-      } else if (err instanceof AutoSplitRequiredError) {
-        setLoading(true);
-        try {
-          const chunks = await splitFileOnFrontend(files[0]);
-          
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://siem-backend.tanubhavj.workers.dev'}/parse/chunked`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chunks, fileName: files[0].name })
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to parse: ${response.statusText}`);
-          }
-
-          const result = await response.json();
-          setData(result);
-          setCorrelationData(null);
-          setActiveTab('logs');
-        } catch (splitErr) {
-          setError(err instanceof AutoSplitRequiredError 
-            ? `File too large (${(files[0].size / 1024 / 1024).toFixed(1)} MB). ${err.splitConfig.cliCommand}`
-            : 'Failed to process file');
-        } finally {
-          setLoading(false);
-        }
+        setEvtxTutorialFile(file.name);
       } else {
         setError(err instanceof Error ? err.message : 'Failed to parse logs');
       }
@@ -1492,6 +1512,7 @@ function App() {
         </div>
       )}
       {/* EVTX Tutorial Modal */}
+      {/* EVTX Tutorial Modal */}
       {evtxTutorialFile && (
         <EVTXTutorial
           fileName={evtxTutorialFile}
@@ -1502,14 +1523,14 @@ function App() {
           }}
         />
       )}
-      {/* Auto-Split Modal */}
-      {autoSplitConfig && (
-        <div className="modal-overlay" onClick={() => setAutoSplitConfig(null)}>
+      {/* Split File Modal */}
+      {splitFileResult && (
+        <div className="modal-overlay" onClick={() => setSplitFileResult(null)}>
           <div className="modal-content large-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <Scissors size={24} />
-              <h2>Large File Auto-Split</h2>
-              <button className="close-btn" onClick={() => setAutoSplitConfig(null)}>
+              <h2>File Split Complete</h2>
+              <button className="close-btn" onClick={() => setSplitFileResult(null)}>
                 <X size={20} />
               </button>
             </div>
@@ -1518,21 +1539,21 @@ function App() {
                 <div className="info-card">
                   <File size={20} />
                   <div>
-                    <strong>Original File:</strong> {autoSplitConfig.originalFile.name}
+                    <strong>Original:</strong> {splitFileResult.originalFile.name}
                     <br />
-                    <span className="file-size">{(autoSplitConfig.originalFile.sizeMB).toFixed(2)} MB</span>
-                    <span className="line-count">{autoSplitConfig.originalFile.lineCount.toLocaleString()} lines</span>
+                    <span className="file-size">{(splitFileResult.originalFile.sizeMB).toFixed(2)} MB</span>
+                    <span className="line-count">{splitFileResult.originalFile.lineCount.toLocaleString()} lines</span>
                   </div>
                 </div>
                 
                 <div className="split-summary">
                   <div className="split-stat">
-                    <span className="stat-value">{autoSplitConfig.splitConfig.totalChunks}</span>
+                    <span className="stat-value">{splitFileResult.totalChunks}</span>
                     <span className="stat-label">Total Chunks</span>
                   </div>
                   <div className="split-stat">
-                    <span className="stat-value">{autoSplitConfig.splitConfig.chunkSizeMB} MB</span>
-                    <span className="stat-label">Chunk Size</span>
+                    <span className="stat-value">{splitFileResult.chunkSizeMB} MB</span>
+                    <span className="stat-label">Per Chunk</span>
                   </div>
                 </div>
               </div>
@@ -1540,80 +1561,74 @@ function App() {
               <div className="chunk-list">
                 <h4>Split Chunks:</h4>
                 <div className="chunk-items">
-                  {autoSplitConfig.chunks.map((chunk) => (
+                  {splitFileResult.chunks.map((chunk) => (
                     <div key={chunk.index} className="chunk-item">
                       <span className="chunk-name">{chunk.name}</span>
                       <span className="chunk-lines">{chunk.lineCount.toLocaleString()} lines</span>
-                      <span className="chunk-size">{(chunk.byteSize / 1024 / 1024).toFixed(2)} MB</span>
+                      <span className="chunk-size">{(chunk.size / 1024 / 1024).toFixed(2)} MB</span>
+                      <button 
+                        className="btn btn-small"
+                        onClick={() => {
+                          const blob = new Blob([chunk.content], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = chunk.name;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>
-                {autoSplitConfig.chunks.length < autoSplitConfig.splitConfig.totalChunks && (
-                  <p className="more-chunks">
-                    ... and {autoSplitConfig.splitConfig.totalChunks - autoSplitConfig.chunks.length} more chunks
-                  </p>
-                )}
               </div>
 
               <div className="split-actions">
                 <button 
                   className="btn btn-primary"
                   onClick={async () => {
-                    setLoading(true);
-                    try {
-                      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://siem-backend.tanubhavj.workers.dev'}/parse/chunked`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            chunks: autoSplitConfig.chunks.map(() => ''),
-                            fileName: autoSplitConfig.originalFile.name
-                          })
-                      });
-                      
-                      if (!response.ok) {
-                        throw new Error('Failed to parse chunks');
-                      }
-                      
-                      const result = await response.json();
-                      setAutoSplitConfig(null);
-                      setData(result);
-                      setCorrelationData(null);
-                      setActiveTab('logs');
-                    } catch (err) {
-                      setError('Failed to process chunks');
-                    } finally {
-                      setLoading(false);
-                    }
+                    console.log('Download ZIP clicked');
+                    const zip = new JSZip();
+                    splitFileResult.chunks.forEach(chunk => {
+                      zip.file(chunk.name, chunk.content);
+                    });
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    const url = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${splitFileResult.originalFile.name.replace(/\.[^/.]+$/, '')}_chunks.zip`;
+                    a.click();
+                    URL.revokeObjectURL(url);
                   }}
                 >
-                  <Zap size={16} />
-                  Process All Chunks
+                  <Archive size={16} />
+                  Download All (ZIP)
                 </button>
                 
                 <button 
                   className="btn btn-secondary"
                   onClick={() => {
-                    const script = `node split-log-file.js ${autoSplitConfig.originalFile.name} 2048 ./chunks`;
-                    navigator.clipboard.writeText(script);
-                    alert('CLI command copied to clipboard!');
+                    setSplitFileResult(null);
+                    setError(null);
                   }}
                 >
-                  <Copy size={16} />
-                  Copy CLI Command
+                  <Upload size={16} />
+                  Upload One by One
                 </button>
                 
                 <button 
                   className="btn btn-outline"
-                  onClick={() => setAutoSplitConfig(null)}
+                  onClick={() => setSplitFileResult(null)}
                 >
-                  Cancel
+                  Close
                 </button>
               </div>
 
-              <div className="cli-help">
-                <h4>Alternative: Use CLI Tool</h4>
-                <code>{autoSplitConfig.cliCommand}</code>
-                <p>Run this command in your terminal to split the file locally, then upload chunks.</p>
+              <div className="upload-hint">
+                <p>💡 Download the ZIP or individual chunks, then upload each chunk one by one (max 1MB each).</p>
+                <p>Each chunk is ~1MB and safe for the backend to process.</p>
               </div>
             </div>
           </div>

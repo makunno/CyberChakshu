@@ -99,8 +99,18 @@ class LogDetector:
 
     WINDOWS_EVENT_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s*,?\s*(INFO|WARNING|ERROR|DEBUG)\s*,?\s*(\S+)\s*,?\s*(\d+)\s*,?\s*(.*)')
     WINDOWS_SECURITY_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(INFO|WARNING|ERROR)\s+Security\s+(\d+)\s+(?:User:\s*(\S+))?\s*(.*)?')
-    WINDOWS_APPLICATION_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(INFO|WARNING|ERROR)\s+Application\s+(\d+)\s+(?:Product:\s*(\S+))?\s*(?:EventCode:\s*(\d+))?\s*(.*)?')
+    WINDOWS_APPLICATION_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(INFO|WARNING|ERROR)\s+Application\s+(\d+)\s+(?:Product:\s*(\S+))?\s+(?:EventCode:\s*(\d+))?\s*(.*)?')
     WINDOWS_SYSTEM_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(INFO|WARNING|ERROR)\s+System\s+(\d+)\s+(?:Source:\s*(\S+))?\s*(.*)?')
+
+    WINDOWS_EVENTVIEWER_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning) \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2} ')
+    WINDOWS_EVENTVIEWER_TAB_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning)\t\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\t')
+    WINDOWS_APPLICATION_TXT_RE = re.compile(r'^(Information|Warning|Error|Critical)\t\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\t')
+    WINDOWS_APPLICATION_CSV_RE = re.compile(r'^(Information|Warning|Error|Critical),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},[^,]+,\d+,[^,]+,')
+    WINDOWS_EVENTVIEWER_CSV_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},[^,]+,\d+,[^,]+,')
+    WINDOWS_SETUP_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Setup\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)')
+    WINDOWS_FORWARDED_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+ForwardedEvents\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)')
+    WINDOWS_EVENTVIEWER_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning) \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2} ')
+    WINDOWS_EVENTVIEWER_TAB_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning)\t\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\t')
 
     VSFTPD_RE = re.compile(r'^(\w{3}\s+\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+\[pid\s+(\d+)\](?:\s+\[\s*\])?\s*(.*)')
     PROFTPD_RE = re.compile(r'^(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+(?:proftpd|pure-ftpd)\[\d+\]:\s+(.*)')
@@ -594,6 +604,38 @@ class LogDetector:
         return bool(LogDetector.WINDOWS_SYSTEM_RE.match(line))
 
     @staticmethod
+    def is_windows_event_viewer(line: str) -> bool:
+        if LogDetector.WINDOWS_EVENTVIEWER_TAB_RE.match(line):
+            return True
+        if LogDetector.WINDOWS_EVENTVIEWER_RE.match(line):
+            return True
+        if 'Microsoft-Windows-' in line or 'Security-Auditing' in line:
+            return bool(re.match(r'^(Audit|Success|Failure|Error|Warning)\s+\d{2}-\d{2}-\d{4}', line))
+        return False
+
+    @staticmethod
+    def is_windows_application_txt(line: str) -> bool:
+        return bool(LogDetector.WINDOWS_APPLICATION_TXT_RE.match(line))
+
+    @staticmethod
+    def is_windows_application_csv(line: str) -> bool:
+        if LogDetector.WINDOWS_APPLICATION_CSV_RE.match(line):
+            return True
+        if LogDetector.WINDOWS_EVENTVIEWER_CSV_RE.match(line):
+            return True
+        if line.startswith('Level,') or line.startswith('Keywords,'):
+            return True
+        return False
+
+    @staticmethod
+    def is_windows_setup(line: str) -> bool:
+        return bool(LogDetector.WINDOWS_SETUP_RE.match(line))
+
+    @staticmethod
+    def is_windows_forwarded(line: str) -> bool:
+        return bool(LogDetector.WINDOWS_FORWARDED_RE.match(line))
+
+    @staticmethod
     def is_vsftpd(line: str) -> bool:
         return bool(LogDetector.VSFTPD_RE.match(line))
 
@@ -639,10 +681,16 @@ class LogDetector:
             ("SpamAssassin", LogDetector.is_spamassassin),
             ("MailScanner", LogDetector.is_mailscanner),
             ("Windows Firewall", LogDetector.is_windows_fw),
+            ("Windows Event Viewer", LogDetector.is_windows_event_viewer),
+            ("Windows Application TXT", LogDetector.is_windows_application_txt),
+            ("Windows Application CSV", LogDetector.is_windows_application_csv),
             ("Windows Event", LogDetector.is_windows_event),
             ("Windows Security", LogDetector.is_windows_security),
             ("Windows Application", LogDetector.is_windows_application),
             ("Windows System", LogDetector.is_windows_system),
+            ("Windows Setup", LogDetector.is_windows_setup),
+            ("Windows Forwarded Events", LogDetector.is_windows_forwarded),
+            ("Windows Text", LogDetector.is_windows_text),
             ("iptables", LogDetector.is_iptables),
             ("UFW", LogDetector.is_ufw),
             ("nftables", LogDetector.is_nftables),
@@ -745,10 +793,16 @@ class LogDetector:
             "SpamAssassin": LogDetector.is_spamassassin,
             "MailScanner": LogDetector.is_mailscanner,
             "Windows Firewall": LogDetector.is_windows_fw,
+            "Windows Event Viewer": LogDetector.is_windows_event_viewer,
+            "Windows Application TXT": LogDetector.is_windows_application_txt,
+            "Windows Application CSV": LogDetector.is_windows_application_csv,
             "Windows Event": LogDetector.is_windows_event,
             "Windows Security": LogDetector.is_windows_security,
             "Windows Application": LogDetector.is_windows_application,
             "Windows System": LogDetector.is_windows_system,
+            "Windows Setup": LogDetector.is_windows_setup,
+            "Windows Forwarded Events": LogDetector.is_windows_forwarded,
+            "Windows Text": LogDetector.is_windows_text,
             "iptables": LogDetector.is_iptables,
             "UFW": LogDetector.is_ufw,
             "nftables": LogDetector.is_nftables,

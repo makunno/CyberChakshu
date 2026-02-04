@@ -9,6 +9,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from parsers import auto_parse, detect_log_type
 from ml.correlation import correlate_multiple_logs
+from ml.enhanced_correlation import correlate_multiple_logs_enhanced
 from detectors.alerts import run_detections, generate_stats
 
 # Determine static folder path
@@ -315,8 +316,8 @@ def correlate():
         if len(log_sources) == 0 or all(len(s['entries']) == 0 for s in log_sources):
             return jsonify({'error': 'No valid log entries found in provided sources'}), 400
 
-        # Run ML-based correlation
-        correlation_result = correlate_multiple_logs(log_sources)
+        # Run enhanced ML-based correlation
+        correlation_result = correlate_multiple_logs_enhanced(log_sources)
 
         # Also run traditional detections for comparison
         all_entries = []

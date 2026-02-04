@@ -5,14 +5,15 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { autoParse, detectLogType, allParsers, analyzeLogStructureAndSuggestLabels } from './parsers';
 import { runDetections, generateStats } from './detectors/alerts';
-import { correlateMultipleLogs, CorrelationResult, detectAttacksInEntries, enrichEntriesWithAttacks, detectMLAttacks, detectAnomaly, detectAnomaliesForAllTypes } from './ml';
+import { correlateMultipleLogs as correlateMultipleLogsEnhanced, CorrelationResult, detectAttacksInEntries, enrichEntriesWithAttacks, detectMLAttacks, detectAnomaly, detectAnomaliesForAllTypes } from './ml';
+import { correlateMultipleLogs as correlateMultipleLogsLegacy } from './ml/correlator';
 import { EVTXParser, EVTXDetector } from './parsers/evtx';
 import type { ParseResponse, LogType, ParsedLogEntry } from './types';
 
-// Cloudflare Workers limits - hard limit at 2MB to prevent CPU crashes
-const MAX_TEXT_SIZE = 2 * 1024 * 1024; // 2MB hard limit
-const MAX_BINARY_SIZE = 2 * 1024 * 1024; // 2MB for EVTX
-const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunk size for splitting
+// Cloudflare Workers limits - hard limit at 1MB to prevent CPU crashes
+const MAX_TEXT_SIZE = 1 * 1024 * 1024; // 1MB hard limit
+const MAX_BINARY_SIZE = 1 * 1024 * 1024; // 1MB for EVTX
+const CHUNK_SIZE = 1 * 1024 * 1024; // 1MB chunk size for splitting
 
 // Types for Cloudflare Workers
 type Bindings = {
@@ -288,7 +289,7 @@ app.post('/parse', async (c) => {
         
         return c.json({
           status: 'auto_split',
-          message: 'Binary EVTX file converted to text and split (2MB limit)',
+          message: 'Binary EVTX file converted to text and split (1MB limit)',
           originalFile: {
             sizeMB: parseFloat(sizeMB),
             format: 'EVTX binary',
@@ -311,7 +312,7 @@ app.post('/parse', async (c) => {
             option2: 'Export EVTX to text using Windows Event Viewer, then upload',
             apiCall: `POST /parse/chunked\nBody: { "chunks": [chunk1_content, ...], "fileName": "${filename || 'logs.evtx'}" }`
           },
-          cliCommand: `node split-log-file.js ${filename || 'logs.evtx'} 2048 ./chunks`
+          cliCommand: `node split-log-file.js ${filename || 'logs.evtx'} 1024 ./chunks`
         }, 200);
       }
     } else if (content) {
@@ -363,7 +364,7 @@ app.post('/parse', async (c) => {
         
         return c.json({
           status: 'auto_split',
-          message: 'File was automatically split into chunks (2MB limit)',
+          message: 'File was automatically split into chunks (1MB limit)',
           originalFile: {
             sizeMB: parseFloat(sizeMB),
             lineCount,
@@ -386,7 +387,7 @@ app.post('/parse', async (c) => {
             option3: 'Process chunks locally and upload individually',
             apiCall: `POST /parse/chunked\nBody: { "chunks": [chunk1_content, ...], "fileName": "${filename || 'logs.log'}" }`
           },
-          cliCommand: `node split-log-file.js ${filename || 'logs.log'} 2048 ./chunks`
+          cliCommand: `node split-log-file.js ${filename || 'logs.log'} 1024 ./chunks`
         }, 200);
       }
     }
@@ -656,7 +657,7 @@ app.post('/correlate', async (c) => {
     }
 
     // Run ML-based correlation
-    const correlationResult: CorrelationResult = correlateMultipleLogs(logSources);
+    const correlationResult: CorrelationResult = correlateMultipleLogsEnhanced(logSources);
 
     // Also run traditional detections for comparison
     const allEntries = logSources.flatMap(s => s.entries);
@@ -1146,12 +1147,12 @@ app.get('/limits', (c) => {
       maxTextSizeMB: MAX_TEXT_SIZE / 1024 / 1024,
       maxBinarySizeBytes: MAX_BINARY_SIZE,
       maxBinarySizeMB: MAX_BINARY_SIZE / 1024 / 1024,
-      autoSplitThreshold: 'Files > 2MB are automatically split',
+      autoSplitThreshold: 'Files > 1MB are automatically split',
       autoSplitChunkSizeMB: CHUNK_SIZE / 1024 / 1024
     },
     autoSplit: {
       enabled: true,
-      description: 'Files exceeding 2MB are automatically split into 2MB chunks',
+      description: 'Files exceeding 1MB are automatically split into 1MB chunks',
       format: 'Line-based splitting preserves log entries',
       response: {
         status: 'auto_split',
@@ -1166,7 +1167,7 @@ app.get('/limits', (c) => {
       note: 'Worker terminates immediately when CPU limit reached'
     },
     endpoints: {
-      parse: 'POST /parse - Auto-splits files > 2MB, processes smaller files directly',
+      parse: 'POST /parse - Auto-splits files > 1MB, processes smaller files directly',
       chunked: 'POST /parse/chunked - Process pre-split chunks',
       stream: 'POST /parse/stream - Line-by-line processing for very large files',
       limits: 'GET /limits - This endpoint'

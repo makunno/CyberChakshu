@@ -2145,3 +2145,132 @@
     width: 100%;
   }
 }
+
+/* Split File Modal */
+.split-info {
+  margin-bottom: 24px;
+}
+
+.split-info .info-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.split-info .info-card svg {
+  color: var(--accent-blue);
+}
+
+.split-info .info-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.split-info .info-card .file-size,
+.split-info .info-card .line-count {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-right: 12px;
+}
+
+.split-summary {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.split-stat {
+  text-align: center;
+  padding: 16px 24px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  flex: 1;
+}
+
+.split-stat .stat-value {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  margin-bottom: 4px;
+}
+
+.split-stat .stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.chunk-list {
+  margin-bottom: 24px;
+}
+
+.chunk-list h4 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+}
+
+.chunk-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.chunk-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.chunk-name {
+  flex: 1;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.chunk-lines {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 80px;
+}
+
+.chunk-size {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 60px;
+}
+
+.chunk-item .btn-small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.split-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.upload-hint {
+  text-align: center;
+  padding: 16px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+}
+
+.upload-hint p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}

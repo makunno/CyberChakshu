@@ -117,6 +117,11 @@ export class LogDetector {
   private static readonly FAIL2BAN_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+\s+fail2ban\.(?:filter|actions)\[\d+\]:\s+WARNING\s+\[.*\]\s+Ban\s+\d{1,3}(?:\.\d{1,3}){3}$/;
   private static readonly AUTH0_RE = /^\{.*"date".*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z".*"type".*".*".*"client_id".*".*"\}.*$/;
   private static readonly APACHE_COMBINED_RE = /\S+ - - \[.*?\] ".*?" \d+ \d+ "(?:.*?)" "(?:.*?)"/;
+  private static readonly DHCP_RE = /^(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+(.*)/;
+  private static readonly DNS_RE = /^(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+(.*)/;
+  private static readonly PROXY_RE = /^(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+(.*)/;
+  private static readonly AIOHTTP_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(?:INFO|WARNING|ERROR|DEBUG).*"(?:GET|POST|PUT|DELETE)\s+\S+\s+\d{3}"/;
+  private static readonly STARLETTE_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(?:INFO|WARNING|ERROR|DEBUG).*"(?:GET|POST|PUT|DELETE|PATCH)\s+\S+\s+\d{3}"/;
 
   // ===========================
   // is_*() Methods for Detection
@@ -265,6 +270,26 @@ export class LogDetector {
   static isFail2ban(line: string): boolean { return !!LogDetector.FAIL2BAN_RE.test(line); }
   static isAuth0(line: string): boolean { return !!LogDetector.AUTH0_RE.test(line); }
   static isApacheCombined(line: string): boolean { return !!LogDetector.APACHE_COMBINED_RE.test(line); }
+  static isDhcp(line: string): boolean {
+    const match = line.match(LogDetector.DHCP_RE);
+    if (!match) return false;
+    const serviceLine = match[4];
+    return /dhcpd?|dhclient/i.test(serviceLine);
+  }
+  static isDns(line: string): boolean {
+    const match = line.match(LogDetector.DNS_RE);
+    if (!match) return false;
+    const serviceLine = match[4];
+    return /named|bind|dnsmasq|unbound/i.test(serviceLine);
+  }
+  static isProxy(line: string): boolean {
+    const match = line.match(LogDetector.PROXY_RE);
+    if (!match) return false;
+    const serviceLine = match[4];
+    return /squid|haproxy|nginx|microsocks/i.test(serviceLine);
+  }
+  static isAiohttp(line: string): boolean { return !!LogDetector.AIOHTTP_RE.test(line); }
+  static isStarlette(line: string): boolean { return !!LogDetector.STARLETTE_RE.test(line); }
 
   // ===========================
   // Priority-based Check Functions
@@ -372,6 +397,11 @@ export class LogDetector {
       ["Fail2ban", LogDetector.isFail2ban],
       ["Auth0", LogDetector.isAuth0],
       ["Apache Combined", LogDetector.isApacheCombined],
+      ["DHCP", LogDetector.isDhcp],
+      ["DNS", LogDetector.isDns],
+      ["Proxy", LogDetector.isProxy],
+      ["aiohttp", LogDetector.isAiohttp],
+      ["Starlette", LogDetector.isStarlette],
     ];
   }
 
@@ -476,6 +506,11 @@ export class LogDetector {
       "Fail2ban": LogDetector.isFail2ban,
       "Auth0": LogDetector.isAuth0,
       "Apache Combined": LogDetector.isApacheCombined,
+      "DHCP": LogDetector.isDhcp,
+      "DNS": LogDetector.isDns,
+      "Proxy": LogDetector.isProxy,
+      "aiohttp": LogDetector.isAiohttp,
+      "Starlette": LogDetector.isStarlette,
     };
     
     return checkFunctions[logType]?.(line) ?? false;
