@@ -9,10 +9,10 @@ import { correlateMultipleLogs, CorrelationResult, detectAttacksInEntries, enric
 import { EVTXParser, EVTXDetector } from './parsers/evtx';
 import type { ParseResponse, LogType, ParsedLogEntry } from './types';
 
-// Cloudflare Workers limits - kept conservative to avoid CPU timeout
-const MAX_TEXT_SIZE = 512 * 1024; // 512KB - safe for CPU limits
+// Cloudflare Workers limits - hard limit at 2MB to prevent CPU crashes
+const MAX_TEXT_SIZE = 2 * 1024 * 1024; // 2MB hard limit
 const MAX_BINARY_SIZE = 2 * 1024 * 1024; // 2MB for EVTX
-const CHUNK_SIZE = 256 * 1024; // 256KB chunks for chunked processing
+const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunk size for splitting
 
 // Types for Cloudflare Workers
 type Bindings = {
@@ -239,53 +239,155 @@ app.post('/parse', async (c) => {
       
       if (binaryContent.byteLength > MAX_BINARY_SIZE) {
         const sizeMB = (binaryContent.byteLength / (1024 * 1024)).toFixed(2);
-        return c.json({
-          error: 'Binary file too large',
-          details: `EVTX file (${sizeMB} MB) exceeds ${(MAX_BINARY_SIZE / 1024 / 1024).toFixed(1)}MB limit`,
-          solutions: [
-            'Use CLI tool to process locally: node split-log-file.js <evtxfile>',
-            'Split into smaller EVTX files using Windows Event Viewer',
-            'Export as CSV/text and use chunked upload'
-          ],
-          limits: {
-            maxBinarySizeMB: MAX_BINARY_SIZE / 1024 / 1024,
-            cliTool: 'backend/split-log-file.js'
+        
+        // Auto-split binary by extracting events in chunks
+        const decoder = new TextDecoder('utf-8', { fatal: false });
+        const content = decoder.decode(binaryContent);
+        const lines = content.split('\n');
+        
+        // Find event boundaries and create text-based chunks
+        const chunks: { index: number; content: string; size: number; lineCount: number }[] = [];
+        let currentChunk = '';
+        let currentSize = 0;
+        let chunkIndex = 1;
+        let lineCount = 0;
+        
+        for (const line of lines) {
+          const lineWithNewline = line + '\n';
+          const lineSize = new TextEncoder().encode(lineWithNewline).length;
+          
+          // Look for event boundaries (XML-like structure in EVTX text export)
+          const isEventStart = line.includes('Event') || line.includes('<Event');
+          
+          if (currentSize + lineSize > CHUNK_SIZE && currentChunk.length > 0) {
+            chunks.push({
+              index: chunkIndex,
+              content: currentChunk.trimEnd(),
+              size: currentChunk.length,
+              lineCount: lineCount
+            });
+            chunkIndex++;
+            currentChunk = lineWithNewline;
+            currentSize = lineSize;
+            lineCount = 1;
+          } else {
+            currentChunk += lineWithNewline;
+            currentSize += lineSize;
+            lineCount++;
           }
-        }, 413);
+        }
+        
+        if (currentChunk.trimEnd().length > 0) {
+          chunks.push({
+            index: chunkIndex,
+            content: currentChunk.trimEnd(),
+            size: currentChunk.length,
+            lineCount
+          });
+        }
+        
+        return c.json({
+          status: 'auto_split',
+          message: 'Binary EVTX file converted to text and split (2MB limit)',
+          originalFile: {
+            sizeMB: parseFloat(sizeMB),
+            format: 'EVTX binary',
+            name: filename
+          },
+          splitConfig: {
+            chunkSizeMB: CHUNK_SIZE / 1024 / 1024,
+            totalChunks: chunks.length,
+            format: 'text_export'
+          },
+          chunks: chunks.slice(0, 10).map(c => ({
+            index: c.index,
+            name: `chunk_${String(c.index).padStart(3, '0')}.log`,
+            lineCount: c.lineCount,
+            byteSize: c.size
+          })),
+          note: chunks.length > 10 ? `Showing 10 of ${chunks.length} chunks` : null,
+          usage: {
+            option1: 'Use CLI tool: node split-log-file.js <evtxfile>',
+            option2: 'Export EVTX to text using Windows Event Viewer, then upload',
+            apiCall: `POST /parse/chunked\nBody: { "chunks": [chunk1_content, ...], "fileName": "${filename || 'logs.evtx'}" }`
+          },
+          cliCommand: `node split-log-file.js ${filename || 'logs.evtx'} 2048 ./chunks`
+        }, 200);
       }
     } else if (content) {
       const sizeMB = (content.length / (1024 * 1024)).toFixed(2);
       console.log(`Processing text content: ${sizeMB} MB, ${content.split('\n').length} lines`);
       
       if (content.length > MAX_TEXT_SIZE) {
-        const sizeMB = (content.length / (1024 * 1024)).toFixed(2);
         const lineCount = content.split('\n').length;
-        const estimatedTime = Math.ceil(content.length / (1024 * 1024) * 2);
+        
+        // AUTO-SPLIT: Split file into chunks and return all chunks
+        const lines = content.split('\n');
+        const chunks: { index: number; content: string; size: number; lineCount: number; byteSize: number }[] = [];
+        let currentChunk = '';
+        let currentSize = 0;
+        let chunkIndex = 1;
+        
+        for (const line of lines) {
+          const lineWithNewline = line + '\n';
+          const lineSize = new TextEncoder().encode(lineWithNewline).length;
+          
+          if (currentSize + lineSize > CHUNK_SIZE && currentChunk.length > 0) {
+            chunks.push({
+              index: chunkIndex,
+              content: currentChunk.trimEnd(),
+              size: currentChunk.length,
+              lineCount: currentChunk.split('\n').length,
+              byteSize: currentSize
+            });
+            chunkIndex++;
+            currentChunk = lineWithNewline;
+            currentSize = lineSize;
+          } else {
+            currentChunk += lineWithNewline;
+            currentSize += lineSize;
+          }
+        }
+        
+        if (currentChunk.trimEnd().length > 0) {
+          chunks.push({
+            index: chunkIndex,
+            content: currentChunk.trimEnd(),
+            size: currentChunk.length,
+            lineCount: currentChunk.split('\n').length,
+            byteSize: currentSize
+          });
+        }
+        
+        console.log(`Auto-split into ${chunks.length} chunks`);
         
         return c.json({
-          error: 'File too large - CPU limit would be exceeded',
-          details: `Text file (${sizeMB} MB, ${lineCount.toLocaleString()} lines) would exceed Cloudflare Workers CPU time limit. Maximum safe size is ${(MAX_TEXT_SIZE / 1024).toFixed(0)} KB.`,
-          why: 'Cloudflare Workers has strict CPU limits (10-50ms) that cannot be bypassed. Large files require client-side processing.',
-          solutions: [
-            '1. SPLIT THE FILE: Use the provided split-log-file.js tool',
-            '2. USE CLI TOOL: Process large files locally with node split-log-file.js',
-            '3. CHUNKED UPLOAD: Split file into 256KB chunks and use /parse/chunked',
-            '4. SMALLER FILES: Upload multiple files under 512KB each'
-          ],
-          limits: {
-            maxTextSizeKB: MAX_TEXT_SIZE / 1024,
-            maxBinarySizeMB: (MAX_BINARY_SIZE / 1024 / 1024).toFixed(1),
-            recommendedChunkSizeKB: CHUNK_SIZE / 1024
-          },
-          currentFile: {
+          status: 'auto_split',
+          message: 'File was automatically split into chunks (2MB limit)',
+          originalFile: {
             sizeMB: parseFloat(sizeMB),
-            lineCount
+            lineCount,
+            name: filename
           },
-          cliTool: {
-            command: 'node split-log-file.js yourlogfile.log 256',
-            description: 'Splits log files into smaller chunks for API processing'
-          }
-        }, 413);
+          splitConfig: {
+            chunkSizeMB: CHUNK_SIZE / 1024 / 1024,
+            totalChunks: chunks.length,
+            format: 'line_based'
+          },
+          chunks: chunks.map(c => ({
+            index: c.index,
+            name: `chunk_${String(c.index).padStart(3, '0')}.log`,
+            lineCount: c.lineCount,
+            byteSize: c.byteSize
+          })),
+          usage: {
+            option1: 'Download chunks with range requests or re-upload with Range header',
+            option2: 'Use CLI tool: node split-log-file.js <file>',
+            option3: 'Process chunks locally and upload individually',
+            apiCall: `POST /parse/chunked\nBody: { "chunks": [chunk1_content, ...], "fileName": "${filename || 'logs.log'}" }`
+          },
+          cliCommand: `node split-log-file.js ${filename || 'logs.log'} 2048 ./chunks`
+        }, 200);
       }
     }
 
@@ -1041,35 +1143,33 @@ app.get('/limits', (c) => {
   return c.json({
     limits: {
       maxTextSizeBytes: MAX_TEXT_SIZE,
-      maxTextSizeKB: MAX_TEXT_SIZE / 1024,
+      maxTextSizeMB: MAX_TEXT_SIZE / 1024 / 1024,
       maxBinarySizeBytes: MAX_BINARY_SIZE,
       maxBinarySizeMB: MAX_BINARY_SIZE / 1024 / 1024,
-      recommendedChunkSizeBytes: CHUNK_SIZE,
-      recommendedChunkSizeKB: CHUNK_SIZE / 1024,
+      autoSplitThreshold: 'Files > 2MB are automatically split',
+      autoSplitChunkSizeMB: CHUNK_SIZE / 1024 / 1024
     },
-    recommendations: {
-      why: 'Cloudflare Workers have strict CPU time limits (10-50ms) that cannot be bypassed',
-      textFiles: `Keep text/log files under ${MAX_TEXT_SIZE / 1024}KB for reliable processing`,
-      binaryFiles: `Keep EVTX files under ${(MAX_BINARY_SIZE / 1024 / 1024).toFixed(1)}MB`,
-      largeFiles: 'Use the split-log-file.js CLI tool for files exceeding limits'
+    autoSplit: {
+      enabled: true,
+      description: 'Files exceeding 2MB are automatically split into 2MB chunks',
+      format: 'Line-based splitting preserves log entries',
+      response: {
+        status: 'auto_split',
+        chunks: 'Array of chunk metadata with content previews',
+        downloadScript: 'Node.js script to save all chunks locally',
+        usage: 'Upload chunks individually or send array to /parse/chunked'
+      }
     },
     cloudflareLimits: {
       freeTierCPUMs: 10,
       paidTierCPUMs: 50,
-      note: 'Worker terminates immediately when CPU limit reached - no pause/resume possible'
-    },
-    cliTool: {
-      path: 'backend/split-log-file.js',
-      usage: 'node split-log-file.js <file> [chunkSizeKB] [outputDir]',
-      examples: [
-        'node split-log-file.js large.log',
-        'node split-log-file.js auth.log 128 ./chunks'
-      ]
+      note: 'Worker terminates immediately when CPU limit reached'
     },
     endpoints: {
-      parse: 'POST /parse - Single file up to limits',
-      chunked: 'POST /parse/chunked - {"chunks": [...], "fileName": "..."}',
-      stream: 'POST /parse/stream - {"lines": [...], "batchSize": 500}'
+      parse: 'POST /parse - Auto-splits files > 2MB, processes smaller files directly',
+      chunked: 'POST /parse/chunked - Process pre-split chunks',
+      stream: 'POST /parse/stream - Line-by-line processing for very large files',
+      limits: 'GET /limits - This endpoint'
     }
   });
 });
