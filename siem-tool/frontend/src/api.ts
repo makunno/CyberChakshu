@@ -3,32 +3,18 @@
 import type { ParseResponse, CorrelateResponse } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://siem-backend.tanubhavj.workers.dev';
-const CHUNK_SIZE = 50 * 1024; // 50KB chunks (well under 100KB limit)
-const BINARY_TYPES = ['.evtx', '.evt', '.bin'];
+const CHUNK_SIZE = 50 * 1024; // 50KB chunks
 
-function isBinaryFile(file: File): boolean {
-  return BINARY_TYPES.some(ext => file.name.toLowerCase().endsWith(ext)) ||
-         file.type === 'application/octet-stream';
+export function isEVTXFile(file: File): boolean {
+  const ext = file.name.toLowerCase().split('.').pop();
+  return ext === 'evtx' || ext === 'evt';
 }
 
-async function uploadBinaryFile(file: File): Promise<ParseResponse> {
-  const arrayBuffer = await file.arrayBuffer();
-  
-  const response = await fetch(`${API_URL}/parse`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/octet-stream',
-      'X-File-Name': file.name,
-    },
-    body: arrayBuffer,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Failed to parse EVTX file: ${response.statusText}`);
+export class EVTXUploadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EVTXUploadError';
   }
-
-  return response.json();
 }
 
 async function uploadInChunks(file: File): Promise<ParseResponse> {
@@ -60,10 +46,11 @@ async function uploadInChunks(file: File): Promise<ParseResponse> {
 }
 
 export async function parseLogsFromFile(file: File): Promise<ParseResponse> {
-  // Handle binary files (EVTX) specially - don't convert to text
-  if (isBinaryFile(file)) {
-    console.log('Detected binary file:', file.name, 'size:', file.size);
-    return uploadBinaryFile(file);
+  // Check if file is EVTX format
+  if (isEVTXFile(file)) {
+    throw new EVTXUploadError(
+      'EVTX files are not directly supported. Please export your Windows Event Log as TXT format using Event Viewer, then upload the TXT file.'
+    );
   }
   
   if (file.size > CHUNK_SIZE) {

@@ -9,6 +9,7 @@ import { LogParsers } from './log_parsers';
 import { parseWithLegacyParser } from './legacy_parser';
 import { TYPE_MAPPING } from './type_mapping';
 import { isMultiLineLog, parseMultiLineBlock } from './multiline_parser';
+import { WindowsParsers, JsonFTPHandler } from './windows';
 
 // Import all parser groups (keep for backward compatibility)
 import { databaseParsers } from './database';
@@ -140,6 +141,85 @@ export function parseWithISEA(content: string): {
 } {
   const detectedType = detectLogType(content);
   
+  function buildWindowsEventEntry(parsed: Record<string, any>, rawEvent: string): ParsedLogEntry | null {
+    const timestamp = parsed.timestamp || new Date().toISOString();
+    const keywords = parsed.keywords || '';
+    const isSuccess = keywords.toLowerCase().includes('success');
+    const severity = keywords.toLowerCase().includes('failure') || keywords.toLowerCase().includes('error') ? 'error' 
+                   : keywords.toLowerCase().includes('warning') ? 'warning' : 'info';
+    
+    // Extract fields from multi-line content
+    let username = parsed.user?.name || '';
+    let securityId = '';
+    let processId = '';
+    let processName = '';
+    
+    // Extract Security ID
+    const securityIdMatch = rawEvent.match(/Security ID:\s+(\S+)/);
+    if (securityIdMatch) securityId = securityIdMatch[1];
+    
+    // Extract Account Name (username)
+    const accountNameMatch = rawEvent.match(/Account Name:\s+(\S+)/);
+    if (accountNameMatch && !username) username = accountNameMatch[1];
+    
+    // Extract Process ID
+    const processIdMatch = rawEvent.match(/Process ID:\s+(0x[\da-fA-F]+|\d+)/);
+    if (processIdMatch) processId = processIdMatch[1];
+    
+    // Extract Process Name (capture full path including spaces)
+    const processNameMatch = rawEvent.match(/Process Name:\s+(.+)/);
+    if (processNameMatch) {
+      // Get everything after "Process Name:" and clean up
+      processName = processNameMatch[1].trim();
+      // Remove any trailing tabs, quotes, or whitespace
+      processName = processName.replace(/["\t\r\n]+$/, '').replace(/\t+$/, '').trim();
+    }
+    
+    // Extract IP address from description
+    let ipAddress = '';
+    const ipMatch = rawEvent.match(/Source:\s+(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+    if (ipMatch) ipAddress = ipMatch[1];
+    
+    // Extract Logon ID
+    let logonId = '';
+    const logonIdMatch = rawEvent.match(/Logon ID:\s+(0x[\da-fA-F]+)/);
+    if (logonIdMatch) logonId = logonIdMatch[1];
+    
+    const message = parsed.message || rawEvent;
+    
+    const entry: ParsedLogEntry = {
+      id: generateId(),
+      timestamp,
+      logType: 'windows_event_viewer' as LogType,
+      severity,
+      source: {
+        hostname: parsed.host,
+        service: parsed.service || parsed.source || 'event'
+      },
+      user: username ? { name: username } : undefined,
+      action: parsed.taskCategory || 'event',
+      outcome: isSuccess ? 'success' : 'failure',
+      message: message,
+      rawLine: rawEvent,
+      fields: {
+        event_id: parsed.event_id || 0,
+        channel: parsed.source || '',
+        level: parsed.level || 'info',
+        task_category: parsed.taskCategory || '',
+        keywords: keywords,
+        username,
+        security_id: securityId,
+        ip_address: ipAddress,
+        process_id: processId,
+        process_name: processName,
+        logon_id: logonId
+      },
+      tags: ['windows', 'eventviewer', severity, (parsed.source || 'event').toLowerCase()]
+    };
+    
+    return entry;
+  }
+  
   let entries: ParsedLogEntry[] = [];
   let parsedCount = 0;
   let failedCount = 0;
@@ -211,6 +291,146 @@ export function parseWithISEA(content: string): {
         totalLines: parsedEntries.length,
         parsedLines: parsedEntries.length,
         failedLines: 0,
+      },
+    };
+  }
+
+  // Handle Windows Event Viewer TXT format
+  if (detectedType === 'windows_event_viewer') {
+    // Remove BOM character if present
+    let cleanContent = content;
+    if (cleanContent.startsWith('\uFEFF') || cleanContent.startsWith('﻿')) {
+      cleanContent = cleanContent.slice(1);
+    }
+
+    const lines = cleanContent.split('\n');
+    const parsedEntries: ParsedLogEntry[] = [];
+    let currentEvent: string[] = [];
+    let headerSkipped = false;
+    let totalEventsDetected = 0;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      // Skip header line
+      if (!headerSkipped && (trimmed.startsWith('Keywords\t') || trimmed.startsWith('Keywords,'))) {
+        headerSkipped = true;
+        continue;
+      }
+
+      // Check if this is a new event line (starts with keywords pattern)
+      const isNewEvent = /^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning)[\t,]?\d{2}-\d{2}-\d{4}/.test(trimmed);
+
+      if (isNewEvent) {
+        // Count this as a detected event
+        totalEventsDetected++;
+
+        // Parse previous event if exists
+        if (currentEvent.length > 0) {
+          const fullEvent = currentEvent.join('\n');
+          const parsed = WindowsParsers.windowsEventViewerTXT(fullEvent);
+          if (parsed) {
+            const entry = buildWindowsEventEntry(parsed, fullEvent);
+            if (entry) parsedEntries.push(entry);
+          }
+        }
+        // Start new event
+        currentEvent = [line];
+      } else if (trimmed) {
+        // Continue current event (multi-line details)
+        currentEvent.push(line);
+      }
+    }
+
+    // Don't forget the last event
+    if (currentEvent.length > 0) {
+      totalEventsDetected++;
+      const fullEvent = currentEvent.join('\n');
+      const parsed = WindowsParsers.windowsEventViewerTXT(fullEvent);
+      if (parsed) {
+        const entry = buildWindowsEventEntry(parsed, fullEvent);
+        if (entry) parsedEntries.push(entry);
+      }
+    }
+
+    const successfulParses = parsedEntries.length;
+    const failedParses = totalEventsDetected - successfulParses;
+    const successRate = totalEventsDetected > 0 ? Math.round((successfulParses / totalEventsDetected) * 100) : 0;
+
+    return {
+      detectedType,
+      entries: parsedEntries,
+      stats: {
+        totalLines: lines.length,
+        totalEvents: totalEventsDetected,
+        parsedEvents: successfulParses,
+        failedEvents: failedParses,
+        successRate: successRate,
+      },
+    };
+  }
+
+  // Handle Windows Application TXT format (Level\tDate\tSource\tEvent ID\tTask\tMessage)
+  if (detectedType === 'windows_application' || detectedType === 'Windows Application TXT') {
+    // Remove BOM character if present
+    let cleanContent = content;
+    if (cleanContent.startsWith('\uFEFF') || cleanContent.startsWith('﻿')) {
+      cleanContent = content.slice(1);
+    }
+    
+    const lines = cleanContent.split('\n').filter(l => l.trim() && !l.startsWith('Level\t') && !l.startsWith('Level,'));
+    const parsedEntries: ParsedLogEntry[] = [];
+    let parsedCount = 0;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const parsed = WindowsParsers.windowsApplicationTXT(trimmed);
+      if (parsed) {
+        const timestamp = parsed.timestamp || new Date().toISOString();
+        const severity = parsed.level === 'error' || parsed.level === 'critical' ? 'error'
+                       : parsed.level === 'warning' ? 'warning' : 'info';
+
+        const entry: ParsedLogEntry = {
+          id: generateId(),
+          timestamp,
+          logType: 'windows_application' as LogType,
+          severity,
+          source: {
+            hostname: parsed.host,
+            service: parsed.service || parsed.source || 'application'
+          },
+          action: parsed.taskCategory || 'event',
+          outcome: severity === 'error' ? 'failure' : 'success',
+          message: parsed.message || trimmed,
+          rawLine: trimmed,
+          fields: {
+            event_id: parsed.event_id || 0,
+            channel: parsed.source || '',
+            level: parsed.level || 'info',
+            task_category: parsed.taskCategory || '',
+            keywords: parsed.keywords || '',
+          },
+          tags: ['windows', 'application', severity, (parsed.source || 'application').toLowerCase()]
+        };
+
+        parsedEntries.push(entry);
+        parsedCount++;
+      }
+    }
+
+    const successRate = lines.length > 0 ? Math.round((parsedCount / lines.length) * 100) : 0;
+
+    return {
+      detectedType,
+      entries: parsedEntries,
+      stats: {
+        totalLines: lines.length,
+        totalEvents: parsedEntries.length,
+        parsedEvents: parsedCount,
+        failedEvents: lines.length - parsedCount,
+        successRate: successRate,
       },
     };
   }

@@ -78,6 +78,16 @@ export class LogDetector {
   private static readonly WINDOWS_SECURITY_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Security\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)/;
   private static readonly WINDOWS_SETUP_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Setup\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)/;
   private static readonly WINDOWS_FORWARDED_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+ForwardedEvents\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)/;
+  // Windows Event Viewer TXT export format: Keywords\tDate Time\tSource\tEvent ID\tTask\t"Description"
+  // Simplified patterns for reliable detection
+  private static readonly WINDOWS_EVENTVIEWER_RE = /^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning) \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2} /;
+  private static readonly WINDOWS_EVENTVIEWER_TAB_RE = /^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning)\t\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\t/;
+  // Windows Application TXT format: Level\tDate Time\tSource\tEvent ID\tTask\tMessage
+  private static readonly WINDOWS_APPLICATION_TXT_RE = /^(Information|Warning|Error|Critical)\t\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\t/;
+  // Windows Application CSV format: Level,Date Time,Source,Event ID,Task,Message
+  private static readonly WINDOWS_APPLICATION_CSV_RE = /^(Information|Warning|Error|Critical),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},[^,]+,\d+,[^,]+,/;
+  // Windows Event Viewer CSV format: Keywords,Date Time,Source,Event ID,Task,Message
+  private static readonly WINDOWS_EVENTVIEWER_CSV_RE = /^(Audit (?:Success|Failure|Error|Warning)),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},[^,]+,\d+,[^,]+,/;
   private static readonly JSON_FTP_RE = /^\[\s*\{\s*"timestamp":/;
   private static readonly FILEZILLA_RE = /^\(\d+\).*?(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}:\d{2}:\d{2})\s*(?:AM|PM)?\s*-\s+.*?\s+\(([\d\.]+)\)\s*(?:>\s*)?(\d{3})/;
   private static readonly IIS_FTP_RE = /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([\d\.]+)\s+([\w\-]+)\s+[\d\.]+\s+\d+\s+(\w+)\s+([\S]*)\s+(\d+)/;
@@ -201,6 +211,32 @@ export class LogDetector {
   static isWindowsSecurity(line: string): boolean { return !!LogDetector.WINDOWS_SECURITY_RE.test(line); }
   static isWindowsSetup(line: string): boolean { return !!LogDetector.WINDOWS_SETUP_RE.test(line); }
   static isWindowsForwarded(line: string): boolean { return !!LogDetector.WINDOWS_FORWARDED_RE.test(line); }
+  static isWindowsEventViewer(line: string): boolean {
+    // Check for tab-separated format first (most reliable)
+    if (LogDetector.WINDOWS_EVENTVIEWER_TAB_RE.test(line)) {
+      return true;
+    }
+    // Also check for space-separated format (some exports use spaces instead of tabs)
+    if (LogDetector.WINDOWS_EVENTVIEWER_RE.test(line)) {
+      return true;
+    }
+    // Fallback: check for characteristic patterns
+    if (line.includes('Microsoft-Windows-') || line.includes('Security-Auditing')) {
+      return /^(Audit|Success|Failure|Error|Warning)\s+\d{2}-\d{2}-\d{4}/.test(line);
+    }
+    return false;
+  }
+  static isWindowsApplicationTXT(line: string): boolean {
+    return !!LogDetector.WINDOWS_APPLICATION_TXT_RE.test(line);
+  }
+  static isWindowsApplicationCSV(line: string): boolean {
+    // Check for CSV format with Level or Keywords at start
+    if (LogDetector.WINDOWS_APPLICATION_CSV_RE.test(line)) return true;
+    if (LogDetector.WINDOWS_EVENTVIEWER_CSV_RE.test(line)) return true;
+    // Also check for header patterns
+    if (line.startsWith('Level,') || line.startsWith('Keywords,')) return true;
+    return false;
+  }
   static isJsonFTPLogs(line: string): boolean { return !!LogDetector.JSON_FTP_RE.test(line); }
   static isFilezilla(line: string): boolean { return !!LogDetector.FILEZILLA_RE.test(line); }
   static isIisFtp(line: string): boolean { return !!LogDetector.IIS_FTP_RE.test(line); }
@@ -298,17 +334,21 @@ export class LogDetector {
       ["Linux SSHD Failed", LogDetector.isLinuxSshdFailed],
       ["Linux SSHD Accepted", LogDetector.isLinuxSshdAccepted],
       ["Linux Syslog", LogDetector.isLinuxSyslog],
-      ["Linux Systemd", LogDetector.isLinuxSystemd],
-      ["Linux Kernel", LogDetector.isLinuxKernel],
-      ["Linux Audit", LogDetector.isLinuxAudit],
-      ["Linux Package", LogDetector.isLinuxPackage],
-      ["Windows Text", LogDetector.isWindowsText],
-      ["Windows Application", LogDetector.isWindowsApplication],
-      ["Windows System", LogDetector.isWindowsSystem],
-      ["Windows Security", LogDetector.isWindowsSecurity],
-      ["Windows Setup", LogDetector.isWindowsSetup],
-      ["Windows Forwarded Events", LogDetector.isWindowsForwarded],
-      ["JSON FTP Logs", LogDetector.isJsonFTPLogs],
+       ["Linux Systemd", LogDetector.isLinuxSystemd],
+       ["Linux Kernel", LogDetector.isLinuxKernel],
+       ["Linux Audit", LogDetector.isLinuxAudit],
+       ["Linux Package", LogDetector.isLinuxPackage],
+        ["Windows Text", LogDetector.isWindowsText],
+        ["Windows Application", LogDetector.isWindowsApplication],
+        ["Windows Application TXT", LogDetector.isWindowsApplicationTXT],
+        ["Windows Application CSV", LogDetector.isWindowsApplicationCSV],
+        ["Windows System", LogDetector.isWindowsSystem],
+        ["Windows Security", LogDetector.isWindowsSecurity],
+        ["Windows Setup", LogDetector.isWindowsSetup],
+        ["Windows Forwarded Events", LogDetector.isWindowsForwarded],
+        ["Windows Event Viewer", LogDetector.isWindowsEventViewer],
+        ["Windows Application", LogDetector.isWindowsApplicationTXT],
+        ["JSON FTP Logs", LogDetector.isJsonFTPLogs],
       ["FileZilla FTP", LogDetector.isFilezilla],
       ["IIS FTP", LogDetector.isIisFtp],
       ["xferlog", LogDetector.isXferlog],
@@ -402,14 +442,17 @@ export class LogDetector {
       "Linux Systemd": LogDetector.isLinuxSystemd,
       "Linux Kernel": LogDetector.isLinuxKernel,
       "Linux Audit": LogDetector.isLinuxAudit,
-      "Linux Package": LogDetector.isLinuxPackage,
-      "Windows Text": LogDetector.isWindowsText,
-      "Windows Application": LogDetector.isWindowsApplication,
-      "Windows System": LogDetector.isWindowsSystem,
-      "Windows Security": LogDetector.isWindowsSecurity,
-      "Windows Setup": LogDetector.isWindowsSetup,
-      "Windows Forwarded Events": LogDetector.isWindowsForwarded,
-      "JSON FTP Logs": LogDetector.isJsonFTPLogs,
+       "Linux Package": LogDetector.isLinuxPackage,
+       "Windows Text": LogDetector.isWindowsText,
+       "Windows Application": LogDetector.isWindowsApplication,
+        "Windows Application TXT": LogDetector.isWindowsApplicationTXT,
+        "Windows Application CSV": LogDetector.isWindowsApplicationCSV,
+        "Windows System": LogDetector.isWindowsSystem,
+       "Windows Security": LogDetector.isWindowsSecurity,
+       "Windows Setup": LogDetector.isWindowsSetup,
+       "Windows Forwarded Events": LogDetector.isWindowsForwarded,
+       "Windows Event Viewer": LogDetector.isWindowsEventViewer,
+       "JSON FTP Logs": LogDetector.isJsonFTPLogs,
       "FileZilla FTP": LogDetector.isFilezilla,
       "IIS FTP": LogDetector.isIisFtp,
       "xferlog": LogDetector.isXferlog,
@@ -467,7 +510,49 @@ export class LogDetector {
       return 'JSON FTP Logs';
     }
     
-    const lines = this.readSampleLines(content);
+    // Remove BOM character if present for proper detection
+    let cleanContent = content;
+    if (cleanContent.startsWith('\uFEFF') || cleanContent.startsWith('﻿')) {
+      cleanContent = content.slice(1);
+    }
+    
+    // Check for Windows Application/Event Viewer TXT formats (Level\t or Keywords\t)
+    const trimmed = cleanContent.trim();
+    
+    // Check for Windows Application TXT header (Level\t) or CSV header (Level,)
+    if (trimmed.startsWith('Level\t') || trimmed.startsWith('Level,')) {
+      return 'Windows Application TXT';
+    }
+    
+    // Check for Windows Event Viewer format (tab-separated or CSV)
+    // Check for Windows Event Viewer header pattern
+    if (trimmed.startsWith('Keywords\t') || trimmed.startsWith('Keywords,')) {
+      // Check if content contains Windows Event Viewer data lines
+      const lines = trimmed.split('\n');
+      for (const line of lines) {
+        if (line.includes('Audit ') && (line.includes('\t') || line.includes(',') || line.includes('-Windows-'))) {
+          return 'Windows Event Viewer';
+        }
+      }
+    }
+    
+    // Check for data line directly (no header) - tab format
+    if (trimmed.includes('\t') && /^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning)\t\d{2}-\d{2}-\d{4}/.test(trimmed)) {
+      return 'Windows Event Viewer';
+    }
+    
+    // Check for CSV data lines (comma-separated) using precompiled patterns
+    if (LogDetector.WINDOWS_APPLICATION_CSV_RE.test(trimmed) ||
+        LogDetector.WINDOWS_EVENTVIEWER_CSV_RE.test(trimmed)) {
+      return 'Windows Application TXT';
+    }
+    
+    // Also check for Level-based format (Information\t, Warning\t, Error\t)
+    if (/^(Information|Warning|Error|Critical)\t\d{2}-\d{2}-\d{4}/.test(trimmed)) {
+      return 'Windows Application TXT';
+    }
+    
+    const lines = this.readSampleLines(cleanContent);
 
     if (lines.length === 0 || !lines[0]) {
       return 'Custom / Raw';

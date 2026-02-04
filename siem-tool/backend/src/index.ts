@@ -9,6 +9,11 @@ import { correlateMultipleLogs, CorrelationResult, detectAttacksInEntries, enric
 import { EVTXParser, EVTXDetector } from './parsers/evtx';
 import type { ParseResponse, LogType, ParsedLogEntry } from './types';
 
+// Cloudflare Workers limits - kept conservative to avoid CPU timeout
+const MAX_TEXT_SIZE = 512 * 1024; // 512KB - safe for CPU limits
+const MAX_BINARY_SIZE = 2 * 1024 * 1024; // 2MB for EVTX
+const CHUNK_SIZE = 256 * 1024; // 256KB chunks for chunked processing
+
 // Types for Cloudflare Workers
 type Bindings = {
   // Add any bindings here (KV, D1, etc.)
@@ -227,6 +232,63 @@ app.post('/parse', async (c) => {
       }
     }
 
+    // Check content size before processing
+    if (binaryContent) {
+      const sizeMB = (binaryContent.byteLength / (1024 * 1024)).toFixed(2);
+      console.log(`Processing binary content: ${sizeMB} MB`);
+      
+      if (binaryContent.byteLength > MAX_BINARY_SIZE) {
+        const sizeMB = (binaryContent.byteLength / (1024 * 1024)).toFixed(2);
+        return c.json({
+          error: 'Binary file too large',
+          details: `EVTX file (${sizeMB} MB) exceeds ${(MAX_BINARY_SIZE / 1024 / 1024).toFixed(1)}MB limit`,
+          solutions: [
+            'Use CLI tool to process locally: node split-log-file.js <evtxfile>',
+            'Split into smaller EVTX files using Windows Event Viewer',
+            'Export as CSV/text and use chunked upload'
+          ],
+          limits: {
+            maxBinarySizeMB: MAX_BINARY_SIZE / 1024 / 1024,
+            cliTool: 'backend/split-log-file.js'
+          }
+        }, 413);
+      }
+    } else if (content) {
+      const sizeMB = (content.length / (1024 * 1024)).toFixed(2);
+      console.log(`Processing text content: ${sizeMB} MB, ${content.split('\n').length} lines`);
+      
+      if (content.length > MAX_TEXT_SIZE) {
+        const sizeMB = (content.length / (1024 * 1024)).toFixed(2);
+        const lineCount = content.split('\n').length;
+        const estimatedTime = Math.ceil(content.length / (1024 * 1024) * 2);
+        
+        return c.json({
+          error: 'File too large - CPU limit would be exceeded',
+          details: `Text file (${sizeMB} MB, ${lineCount.toLocaleString()} lines) would exceed Cloudflare Workers CPU time limit. Maximum safe size is ${(MAX_TEXT_SIZE / 1024).toFixed(0)} KB.`,
+          why: 'Cloudflare Workers has strict CPU limits (10-50ms) that cannot be bypassed. Large files require client-side processing.',
+          solutions: [
+            '1. SPLIT THE FILE: Use the provided split-log-file.js tool',
+            '2. USE CLI TOOL: Process large files locally with node split-log-file.js',
+            '3. CHUNKED UPLOAD: Split file into 256KB chunks and use /parse/chunked',
+            '4. SMALLER FILES: Upload multiple files under 512KB each'
+          ],
+          limits: {
+            maxTextSizeKB: MAX_TEXT_SIZE / 1024,
+            maxBinarySizeMB: (MAX_BINARY_SIZE / 1024 / 1024).toFixed(1),
+            recommendedChunkSizeKB: CHUNK_SIZE / 1024
+          },
+          currentFile: {
+            sizeMB: parseFloat(sizeMB),
+            lineCount
+          },
+          cliTool: {
+            command: 'node split-log-file.js yourlogfile.log 256',
+            description: 'Splits log files into smaller chunks for API processing'
+          }
+        }, 413);
+      }
+    }
+
     // Handle EVTX binary files
     if (binaryContent) {
       console.log('Parsing EVTX binary, size:', binaryContent.byteLength, 'filename:', filename);
@@ -342,6 +404,12 @@ const response: ParseResponse = {
       totalLines: parseStats.totalLines,
       parsedLines: parseStats.parsedLines,
       failedLines: parseStats.failedLines,
+      successRate: parseStats.successRate !== undefined 
+        ? parseStats.successRate 
+        : (parseStats.totalLines > 0 ? Math.round(((parseStats.totalLines - (parseStats.failedLines || 0)) / parseStats.totalLines) * 100) : 0),
+      totalEvents: parseStats.totalEvents,
+      parsedEvents: parseStats.parsedEvents,
+      failedEvents: parseStats.failedEvents,
       entries: enrichedEntries,
       alerts,
       stats,
@@ -354,10 +422,44 @@ const response: ParseResponse = {
     return c.json(response);
   } catch (error) {
     console.error('Parse error:', error);
+    const errorMsg = String(error);
+    const isTimeout = errorMsg.includes('timeout') || errorMsg.includes('CPU') || errorMsg.includes('execution') || errorMsg.includes('exceeded');
+    const isMemory = errorMsg.includes('memory') || errorMsg.includes('heap');
+    
+    if (isTimeout) {
+      return c.json({
+        success: false,
+        error: 'Processing timeout - file too large',
+        details: 'The file exceeded the maximum CPU time limit for processing',
+        suggestion: 'Try one of these solutions:',
+        solutions: [
+          'Split the file into smaller chunks (1-5 MB each)',
+          'Use /parse/chunked endpoint with multiple smaller uploads',
+          'Use /parse/stream for very large files with line-by-line processing',
+          'Process the file locally using a CLI tool'
+        ],
+        seeAlso: 'GET /limits for current limits and recommendations'
+      }, 413);
+    }
+    
+    if (isMemory) {
+      return c.json({
+        success: false,
+        error: 'Out of memory - file too large',
+        details: 'The file exceeded available memory for processing',
+        suggestion: 'Split the file into smaller parts and process separately',
+        solutions: [
+          'Split the file into smaller files (1-2 MB each)',
+          'Use /parse/chunked for combined processing',
+          'Process in smaller batches with /parse/stream'
+        ]
+      }, 507);
+    }
+    
     return c.json({ 
       success: false,
       error: 'Failed to parse logs', 
-      details: String(error) 
+      details: errorMsg 
     }, 500);
   }
 });
@@ -492,16 +594,23 @@ app.post('/stream', async (c) => {
     // Run detections on the batch
     const alerts = runDetections(entries);
 
+    const successRate = stats.successRate !== undefined 
+      ? stats.successRate 
+      : (stats.totalLines > 0 ? Math.round(((stats.totalLines - (stats.failedLines || 0)) / stats.totalLines) * 100) : 0);
+
     return c.json({
       success: true,
       detectedType,
+      totalLines: stats.totalLines || entries.length,
+      parsedLines: entries.length,
+      failedLines: (stats.totalLines || entries.length) - entries.length,
+      successRate,
+      totalEvents: stats.totalEvents,
+      parsedEvents: stats.parsedEvents,
+      failedEvents: stats.failedEvents,
       entries,
       alerts,
-      stats: {
-        totalLines: stats.totalLines,
-        parsedLines: stats.parsedLines,
-        failedLines: stats.failedLines,
-      },
+      stats,
     });
   } catch (error) {
     return c.json({ 
@@ -749,16 +858,39 @@ app.get('/feedback/stats', (c) => {
 app.post('/parse/chunked', async (c) => {
   try {
     const json = await c.req.json();
-    const { chunks, fileName } = json;
+    const { chunks, fileName, forceType } = json;
     
     if (!chunks || !Array.isArray(chunks) || chunks.length === 0) {
-      return c.json({ error: 'No chunks provided' }, 400);
+      return c.json({ error: 'No chunks provided', format: 'Expected: { chunks: string[], fileName?: string }' }, 400);
     }
     
     const content = chunks.join('');
     
     if (!content || content.trim().length === 0) {
-      return c.json({ error: 'No log content provided' }, 400);
+      return c.json({ error: 'No log content provided after combining chunks' }, 400);
+    }
+
+    const totalSize = content.length;
+    const totalChunks = chunks.length;
+    
+    console.log(`Processing chunked upload: ${totalChunks} chunks, ${(totalSize / (1024 * 1024)).toFixed(2)} MB`);
+
+    // Check if combined chunks exceed limits
+    if (totalSize > MAX_TEXT_SIZE * 2) {
+      return c.json({
+        error: 'Combined chunks too large',
+        details: `Total size (${(totalSize / 1024).toFixed(1)} KB) exceeds maximum allowed size (${(MAX_TEXT_SIZE * 2 / 1024).toFixed(0)} KB)`,
+        suggestion: `Reduce chunk sizes or number of chunks. Each chunk should be under ${MAX_TEXT_SIZE / 1024}KB`,
+        solutions: [
+          'Use smaller chunks (64-256KB each)',
+          'Process multiple smaller files separately',
+          'Use CLI tool: node split-log-file.js <file>'
+        ],
+        limits: {
+          maxTotalSizeKB: (MAX_TEXT_SIZE * 2) / 1024,
+          recommendedChunkSizeKB: CHUNK_SIZE / 1024
+        }
+      }, 413);
     }
     
     const { detectedType, entries, stats: parseStats } = autoParse(content);
@@ -778,25 +910,168 @@ app.post('/parse/chunked', async (c) => {
 
     return c.json({
       success: true,
-      detectedType,
+      detectedType: forceType || detectedType,
       totalLines: parseStats.totalLines,
       parsedLines: parseStats.parsedLines,
       failedLines: parseStats.failedLines,
+      successRate: parseStats.successRate,
+      totalEvents: parseStats.totalEvents,
+      parsedEvents: parseStats.parsedEvents,
+      failedEvents: parseStats.failedEvents,
       entries: enrichedEntries,
       alerts,
       stats,
       mlAttacks: detectedAttacks,
       attackSummary,
       fileName,
+      chunkInfo: {
+        totalChunks,
+        chunkSizeMB: (totalSize / chunks.length / (1024 * 1024)).toFixed(2)
+      }
     });
   } catch (error) {
     console.error('Chunked parse error:', error);
+    const errorMsg = String(error);
+    const isTimeout = errorMsg.includes('timeout') || errorMsg.includes('CPU') || errorMsg.includes('execution');
+    
     return c.json({ 
       success: false,
-      error: 'Failed to parse logs', 
-      details: String(error) 
-    }, 500);
+      error: isTimeout ? 'Processing timeout - file too large' : 'Failed to parse logs',
+      details: errorMsg,
+      suggestion: isTimeout ? 'Split the file into smaller chunks and try again' : undefined,
+      format: 'Expected: { chunks: string[], fileName?: string, forceType?: string }'
+    }, isTimeout ? 413 : 500);
   }
+});
+
+// Streaming parse for very large files - processes line by line with partial results
+app.post('/parse/stream', async (c) => {
+  try {
+    const json = await c.req.json();
+    const { lines, batchSize = 1000, fileName } = json;
+    
+    if (!lines || !Array.isArray(lines) || lines.length === 0) {
+      return c.json({ error: 'No lines provided', format: 'Expected: { lines: string[], batchSize?: number, fileName?: string }' }, 400);
+    }
+
+    const totalLines = lines.length;
+    const batches = Math.ceil(totalLines / batchSize);
+    
+    console.log(`Streaming parse: ${totalLines} lines in ${batches} batches of ${batchSize}`);
+
+    const allEntries: ParsedLogEntry[] = [];
+    const allAlerts: any[] = [];
+    let totalParsed = 0;
+    let totalFailed = 0;
+    let detectedType = 'unknown';
+
+    // Process in batches to avoid memory issues
+    for (let i = 0; i < batches; i++) {
+      const start = i * batchSize;
+      const end = Math.min(start + batchSize, totalLines);
+      const batch = lines.slice(start, end);
+      
+      const batchContent = batch.join('\n');
+      const result = autoParse(batchContent);
+      
+      if (i === 0) {
+        detectedType = result.detectedType;
+      }
+      
+      allEntries.push(...result.entries);
+      const batchAlerts = runDetections(result.entries);
+      allAlerts.push(...batchAlerts);
+      
+      totalParsed += result.stats.parsedLines || result.entries.length;
+      totalFailed += result.stats.failedLines || 0;
+    }
+
+    // Run ML detection on all entries
+    const enrichedEntries = enrichEntriesWithAttacks(allEntries);
+    const detectedAttacks = detectAttacksInEntries(enrichedEntries);
+    const mlPredictions = detectMLAttacks(allEntries);
+    
+    const attackTypes = [...new Set(detectedAttacks.map(a => a.attack.attackType))];
+    const attackSummary = {
+      totalAttacks: detectedAttacks.length + mlPredictions.length,
+      attackTypes,
+      uniqueSources: new Set(allEntries.map(e => e.source.ip).filter(Boolean)).size,
+      riskScore: Math.min(detectedAttacks.length * 10, 100),
+    };
+
+    const stats = generateStats(allEntries);
+
+    return c.json({
+      success: true,
+      detectedType,
+      totalLines,
+      parsedLines: totalParsed,
+      failedLines: totalFailed,
+      entries: enrichedEntries,
+      alerts: allAlerts,
+      stats,
+      mlAttacks: detectedAttacks,
+      mlPredictions,
+      attackSummary,
+      fileName,
+      streamInfo: {
+        totalLines,
+        batchSize,
+        totalBatches: batches,
+        processedBatches: batches
+      }
+    });
+  } catch (error) {
+    console.error('Stream parse error:', error);
+    const errorMsg = String(error);
+    const isTimeout = errorMsg.includes('timeout') || errorMsg.includes('CPU') || errorMsg.includes('execution');
+    
+    return c.json({ 
+      success: false,
+      error: isTimeout ? 'Processing timeout - reduce batch size' : 'Failed to parse stream',
+      details: errorMsg,
+      suggestion: isTimeout ? 'Reduce the batchSize parameter (try 500 instead of 1000)' : undefined,
+      format: 'Expected: { lines: string[], batchSize?: number, fileName?: string }'
+    }, isTimeout ? 413 : 500);
+  }
+});
+
+// Get processing limits and recommendations
+app.get('/limits', (c) => {
+  return c.json({
+    limits: {
+      maxTextSizeBytes: MAX_TEXT_SIZE,
+      maxTextSizeKB: MAX_TEXT_SIZE / 1024,
+      maxBinarySizeBytes: MAX_BINARY_SIZE,
+      maxBinarySizeMB: MAX_BINARY_SIZE / 1024 / 1024,
+      recommendedChunkSizeBytes: CHUNK_SIZE,
+      recommendedChunkSizeKB: CHUNK_SIZE / 1024,
+    },
+    recommendations: {
+      why: 'Cloudflare Workers have strict CPU time limits (10-50ms) that cannot be bypassed',
+      textFiles: `Keep text/log files under ${MAX_TEXT_SIZE / 1024}KB for reliable processing`,
+      binaryFiles: `Keep EVTX files under ${(MAX_BINARY_SIZE / 1024 / 1024).toFixed(1)}MB`,
+      largeFiles: 'Use the split-log-file.js CLI tool for files exceeding limits'
+    },
+    cloudflareLimits: {
+      freeTierCPUMs: 10,
+      paidTierCPUMs: 50,
+      note: 'Worker terminates immediately when CPU limit reached - no pause/resume possible'
+    },
+    cliTool: {
+      path: 'backend/split-log-file.js',
+      usage: 'node split-log-file.js <file> [chunkSizeKB] [outputDir]',
+      examples: [
+        'node split-log-file.js large.log',
+        'node split-log-file.js auth.log 128 ./chunks'
+      ]
+    },
+    endpoints: {
+      parse: 'POST /parse - Single file up to limits',
+      chunked: 'POST /parse/chunked - {"chunks": [...], "fileName": "..."}',
+      stream: 'POST /parse/stream - {"lines": [...], "batchSize": 500}'
+    }
+  });
 });
 
 // Export for Cloudflare Workers

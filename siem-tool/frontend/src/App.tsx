@@ -5,9 +5,10 @@ import {
    Layers, Clock, Target, Zap, TrendingUp
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import { parseLogsFromFile, parseLogsFromText, correlateMultipleFiles } from './api';
+import { parseLogsFromFile, parseLogsFromText, correlateMultipleFiles, EVTXUploadError } from './api';
 import type { ParseResponse, ParsedLogEntry, CorrelateResponse, AttackChain, TimelineEvent } from './types';
 import { DynamicTable } from './DynamicTable';
+import { EVTXTutorial } from './EVTXTutorial';
 import './App.css';
 
 const SEVERITY_COLORS = {
@@ -85,6 +86,7 @@ function App() {
   const [correlationData, setCorrelationData] = useState<CorrelateResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [evtxTutorialFile, setEvtxTutorialFile] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'logs' | 'alerts' | 'attacks' | 'timeline' | 'stats'>('logs');
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -175,7 +177,11 @@ function App() {
       setCorrelationData(null);
       setActiveTab('logs');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse logs');
+      if (err instanceof EVTXUploadError) {
+        setEvtxTutorialFile(files[0].name);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to parse logs');
+      }
     } finally {
       setLoading(false);
     }
@@ -218,7 +224,11 @@ function App() {
       setCorrelationData(null);
       setActiveTab('logs');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse logs');
+      if (err instanceof EVTXUploadError) {
+        setEvtxTutorialFile(files[0].name);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to parse logs');
+      }
     } finally {
       setLoading(false);
     }
@@ -351,7 +361,7 @@ function App() {
                 type="file"
                 id="file-upload"
                 onChange={handleFileUpload}
-                accept=".log,.txt,.json"
+                accept=".log,.txt,.json,.jsonl,.csv,.xml,.evtx,.evt,.raw,.gz,.zip"
                 multiple={mode === 'multi'}
                 hidden
               />
@@ -1412,6 +1422,17 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+      {/* EVTX Tutorial Modal */}
+      {evtxTutorialFile && (
+        <EVTXTutorial
+          fileName={evtxTutorialFile}
+          onClose={() => setEvtxTutorialFile(null)}
+          onUploadAnother={() => {
+            setEvtxTutorialFile(null);
+            resetAll();
+          }}
+        />
       )}
     </div>
   );

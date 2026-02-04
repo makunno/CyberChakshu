@@ -26,7 +26,7 @@ export type LogType =
   | 'vsftpd' | 'proftpd' | 'iis_ftp'
   // Windows logs
   | 'windows_security' | 'windows_system' | 'windows_application' | 'windows_setup' | 'windows_forwarded'
-  | 'windows_event'
+  | 'windows_event' | 'windows_event_viewer'
   // Daemon logs
   | 'cron' | 'daemon'
   // Unknown
@@ -96,6 +96,10 @@ export interface ParseResponse {
   totalLines: number;
   parsedLines: number;
   failedLines: number;
+  successRate: number;
+  totalEvents?: number;
+  parsedEvents?: number;
+  failedEvents?: number;
   entries: ParsedLogEntry[];
   alerts: Alert[];
   stats: {

@@ -79,10 +79,12 @@ export const TYPE_MAPPING: Record<string, LogType> = {
   'Linux Package': 'package',
   'Windows Text': 'windows_system',
   'Windows Application': 'windows_application',
+  'Windows Application TXT': 'windows_application',
   'Windows System': 'windows_system',
   'Windows Security': 'windows_security',
   'Windows Setup': 'windows_setup',
   'Windows Forwarded Events': 'windows_forwarded',
+  'Windows Event Viewer': 'windows_event_viewer',
 
   // FTP
   'JSON FTP Logs': 'iis_ftp',
