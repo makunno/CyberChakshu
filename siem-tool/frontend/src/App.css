@@ -244,7 +244,6 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-  overflow: hidden;
 }
 
 .logs-section .dynamic-table-container {
@@ -2285,15 +2284,21 @@
 }
 
 .load-more-btn {
-  padding: 12px 32px;
+  padding: 10px 24px;
   font-size: 14px;
   font-weight: 500;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
   transition: all 0.2s ease;
+  color: var(--text-primary);
 }
 
 .load-more-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: white;
 }
 
 /* Loading More Animation */
