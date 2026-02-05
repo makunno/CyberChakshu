@@ -97,6 +97,8 @@ function App() {
   const [selectedEntryAttackType, setSelectedEntryAttackType] = useState<string>('');
   const [showAttackTypeDropdown, setShowAttackTypeDropdown] = useState(false);
   const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
+  const [displayedEntryCount, setDisplayedEntryCount] = useState(500);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Get unique attack types from entries for filter
   const attackTypesInData = [...new Set((data?.entries || []).filter(e => e.attackType).map(e => e.attackType))].sort();
@@ -160,7 +162,7 @@ function App() {
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  const CLIENT_SPLIT_THRESHOLD = 1 * 1024 * 1024;
+  const CLIENT_SPLIT_THRESHOLD = 200 * 1024; // 200KB
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('handleFileUpload called');
@@ -178,7 +180,7 @@ function App() {
       const largeFiles = files.filter(f => f.size > CLIENT_SPLIT_THRESHOLD);
       if (largeFiles.length > 0) {
         const fileNames = largeFiles.map(f => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ');
-        setError(`Files too large for multi-file upload: ${fileNames}. Files over 1MB will cause 413 errors. Please upload smaller files or use single file mode.`);
+        setError(`Files too large for multi-file upload: ${fileNames}. Files over 200KB will cause 413 errors. Please upload smaller files or use single file mode.`);
         return;
       }
       setUploadedFiles(prev => [...prev, ...files]);
@@ -532,14 +534,14 @@ function App() {
                       onClick={() => setActiveTab('logs')}
                     >
                       <Terminal size={16} />
-                      Logs ({data.entries.length})
+                      Logs ({data?.entries?.length || 0})
                     </button>
                     <button 
                       className={`tab ${activeTab === 'alerts' ? 'active' : ''}`}
                       onClick={() => setActiveTab('alerts')}
                     >
                       <AlertTriangle size={16} />
-                      Alerts ({data.entries.filter(e => e.attackType).length + data.alerts.length})
+                      Alerts ({(data?.entries?.filter(e => e.attackType).length || 0) + (data?.alerts?.length || 0)})
                     </button>
                   </>
                 )}
@@ -651,7 +653,7 @@ function App() {
                     <Target size={24} color="#f59e0b" />
                   </div>
                   <div className="kpi-content">
-                    <div className="kpi-value">{data.entries.filter(e => e.attackType).length}</div>
+                    <div className="kpi-value">{data?.entries?.filter(e => e.attackType).length || 0}</div>
                     <div className="kpi-label">ML Detected Attacks</div>
                   </div>
                 </div>
@@ -850,12 +852,38 @@ function App() {
 
                 {/* Dynamic Logs Table */}
                 <DynamicTable
-                  entries={filteredEntries.slice(0, 500)}
+                  entries={filteredEntries.slice(0, displayedEntryCount)}
                   detectedType={data?.detectedType || 'unknown'}
                   onEntryClick={setSelectedEntry}
                 />
-                {filteredEntries.length > 500 && (
-                  <div className="table-info">Showing 500 of {filteredEntries.length} entries</div>
+                {filteredEntries.length > displayedEntryCount && (
+                  <div className="load-more-container">
+                    {isLoadingMore ? (
+                      <div className="loading-more">
+                        <div className="buffering-dots">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </div>
+                        <span>Loading more entries...</span>
+                      </div>
+                    ) : (
+                      <button 
+                        className="btn btn-secondary load-more-btn"
+                        onClick={async () => {
+                          setIsLoadingMore(true);
+                          await new Promise(resolve => setTimeout(resolve, 500));
+                          setDisplayedEntryCount(prev => Math.min(prev + 500, filteredEntries.length));
+                          setIsLoadingMore(false);
+                        }}
+                      >
+                        Load More Entries
+                      </button>
+                    )}
+                    <div className="table-info">
+                      Showing {Math.min(displayedEntryCount, filteredEntries.length)} of {filteredEntries.length} entries
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -866,15 +894,15 @@ function App() {
                 {/* Get all suspicious entries (ML-detected attacks) */}
                 {(() => {
                   // Use mlAttacks array directly for more accurate data
-                  const mlAttacksFromApi = data.mlAttacks || [];
-                  const mlAttacks = data.entries.filter(e => e.attackType).map(entry => {
+                  const mlAttacksFromApi = data?.mlAttacks || [];
+                  const mlAttacks = (data?.entries || []).filter(e => e.attackType).map(entry => {
                     const fromApi = mlAttacksFromApi.find((a: any) => a.entry?.id === entry.id);
                     return {
                       ...entry,
                       _confidence: fromApi?.confidence || entry.attackConfidence || 0
                     };
                   });
-                  const totalAlerts = data.alerts.length + mlAttacks.length;
+                  const totalAlerts = (data?.alerts?.length || 0) + mlAttacks.length;
 
                   if (totalAlerts === 0) {
                     return (
@@ -1074,9 +1102,10 @@ function App() {
                   <div className="analytics-section">
                     <h3 className="analytics-section-title">Attack Types Overview</h3>
                     <div className="attack-types-overview">
-                      {data.attackSummary.attackTypes.map((type) => {
-                        const count = data.entries.filter(e => e.attackType === type).length;
-                        const percent = Math.round((count / data.entries.length) * 100);
+                      {(data?.attackSummary?.attackTypes || []).map((type) => {
+                        const count = (data?.entries || []).filter(e => e.attackType === type).length;
+                        const totalEntries = data?.entries?.length || 1;
+                        const percent = Math.round((count / totalEntries) * 100);
                         return (
                           <div key={type} className="attack-type-overview-item">
                             <div className="attack-type-overview-header">

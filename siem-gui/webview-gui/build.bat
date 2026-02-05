@@ -1,6 +1,5 @@
 @echo off
-REM FreeKhana Build Script
-REM Builds both EXE versions
+REM FreeKhana Build Script - Builds both EXE versions
 
 echo ============================================
 echo FreeKhana SIEM Build Script
@@ -16,8 +15,8 @@ if errorlevel 1 (
 )
 
 echo Choose build option:
-echo [1] FreeKhana-Browser.exe  - Opens online frontend only (lightweight)
-echo [2] FreeKhana-Full.exe     - Full bundle with Flask backend
+echo [1] FreeKhana-Browser.exe  - Embedded webview (~201 MB)
+echo [2] FreeKhana-Full.exe     - Webview + Flask backend (~312 MB)
 echo [3] Build Both
 echo.
 
@@ -31,7 +30,6 @@ goto end
 :browser
 echo.
 echo Building FreeKhana-Browser.exe...
-echo.
 pyinstaller --clean --noconfirm ^
     --name "FreeKhana-Browser" ^
     --windowed ^
@@ -42,26 +40,20 @@ echo.
 echo ============================================
 echo Build complete!
 echo EXE: dist\FreeKhana-Browser.exe
-echo Size: ~7 MB (opens system browser)
 echo ============================================
 goto end
 
 :full
 echo.
 echo Building FreeKhana-Full.exe...
-echo.
 pyinstaller --clean --noconfirm ^
     --name "FreeKhana-Full" ^
     --windowed ^
     --onefile ^
-    --collect-all flask ^
-    --collect-all sklearn ^
-    --collect-all numpy ^
     --hidden-import PySide6.QtWebEngineWidgets ^
     --hidden-import PySide6.QtWebEngineCore ^
     --hidden-import flask ^
     --hidden-import werkzeug ^
-    --add-data "static;static" ^
     --icon "icon.ico" ^
     main.py
 echo.
@@ -74,7 +66,6 @@ goto end
 :both
 echo.
 echo Building FreeKhana-Browser.exe...
-echo.
 pyinstaller --clean --noconfirm ^
     --name "FreeKhana-Browser" ^
     --windowed ^
@@ -84,19 +75,14 @@ pyinstaller --clean --noconfirm ^
 
 echo.
 echo Building FreeKhana-Full.exe...
-echo.
 pyinstaller --clean --noconfirm ^
     --name "FreeKhana-Full" ^
     --windowed ^
     --onefile ^
-    --collect-all flask ^
-    --collect-all sklearn ^
-    --collect-all numpy ^
     --hidden-import PySide6.QtWebEngineWidgets ^
     --hidden-import PySide6.QtWebEngineCore ^
     --hidden-import flask ^
     --hidden-import werkzeug ^
-    --add-data "static;static" ^
     --icon "icon.ico" ^
     main.py
 
@@ -104,8 +90,8 @@ echo.
 echo ============================================
 echo All builds complete!
 echo EXEs in dist\ folder:
-echo   - FreeKhana-Browser.exe
-echo   - FreeKhana-Full.exe
+echo   - FreeKhana-Browser.exe (~201 MB)
+echo   - FreeKhana-Full.exe (~312 MB)
 echo ============================================
 goto end
 

@@ -2,8 +2,22 @@
 
 import type { ParseResponse, CorrelateResponse } from './types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://siem-backend.tanubhavj.workers.dev';
-const CLIENT_SPLIT_THRESHOLD = 1 * 1024 * 1024; // 1MB - split on frontend
+// Read API URL from environment or injected window variable
+// - VITE_API_URL: set during build for Cloudflare deployment
+// - window.FREEKHANA_API_URL: injected by Flask for local development
+const ENV_API_URL = import.meta.env.VITE_API_URL || '';
+const INJECTED_API_URL = typeof window !== 'undefined' ? (window as any).FREEKHANA_API_URL : '';
+const API_URL = ENV_API_URL || INJECTED_API_URL || '';
+
+const CLIENT_SPLIT_THRESHOLD = 200 * 1024; // 200KB - split on frontend
+
+function getApiUrl(path: string): string {
+  // Use absolute URL if set, otherwise use relative URL
+  if (API_URL) {
+    return `${API_URL}${path.startsWith('/') ? path : '/' + path}`;
+  }
+  return path; // Relative URL for same-origin requests
+}
 
 export function isEVTXFile(file: File): boolean {
   const ext = file.name.toLowerCase().split('.').pop();
@@ -117,7 +131,7 @@ export async function parseLogsFromFile(file: File): Promise<ParseResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_URL}/parse`, {
+  const response = await fetch(getApiUrl('/parse'), {
     method: 'POST',
     body: formData,
   });
@@ -133,7 +147,7 @@ export async function parseLogsFromChunkedFile(
   chunks: string[], 
   fileName: string
 ): Promise<ParseResponse> {
-  const response = await fetch(`${API_URL}/parse/chunked`, {
+  const response = await fetch(getApiUrl('/parse/chunked'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chunks, fileName })
@@ -147,7 +161,7 @@ export async function parseLogsFromChunkedFile(
 }
 
 export async function parseLogsFromText(content: string): Promise<ParseResponse> {
-  const response = await fetch(`${API_URL}/parse`, {
+  const response = await fetch(getApiUrl('/parse'), {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
     body: content,
@@ -167,7 +181,7 @@ export async function correlateMultipleFiles(files: File[]): Promise<CorrelateRe
     formData.append('files', file);
   }
 
-  const response = await fetch(`${API_URL}/correlate`, {
+  const response = await fetch(getApiUrl('/correlate'), {
     method: 'POST',
     body: formData,
   });
@@ -187,7 +201,7 @@ export async function correlateFromChunkedFiles(
     content: f.chunks.join('\n')
   }));
 
-  const response = await fetch(`${API_URL}/correlate`, {
+  const response = await fetch(getApiUrl('/correlate'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ logs })
@@ -205,7 +219,7 @@ export async function detectLogType(content: string): Promise<{
   sampleSize: number;
   totalLines: number;
 }> {
-  const response = await fetch(`${API_URL}/detect`, {
+  const response = await fetch(getApiUrl('/detect'), {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
     body: content,
@@ -219,7 +233,7 @@ export async function detectLogType(content: string): Promise<{
 }
 
 export async function streamParseLogs(lines: string[]): Promise<ParseResponse> {
-  const response = await fetch(`${API_URL}/stream`, {
+  const response = await fetch(getApiUrl('/stream'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ lines })
@@ -237,7 +251,7 @@ export async function getAvailableParsers(): Promise<{
   categories: Record<string, Array<{ name: string; logType: string }>>;
   all: Array<{ name: string; logType: string }>;
 }> {
-  const response = await fetch(`${API_URL}/parsers`);
+  const response = await fetch(getApiUrl('/parsers'));
 
   if (!response.ok) {
     throw new Error(`Failed to get parsers: ${response.statusText}`);
@@ -250,7 +264,7 @@ export async function getAttackTypes(): Promise<{
   attackTypes: Array<{ type: string; description: string }>;
   mitreTactics: string[];
 }> {
-  const response = await fetch(`${API_URL}/attacks`);
+  const response = await fetch(getApiUrl('/attacks'));
 
   if (!response.ok) {
     throw new Error(`Failed to get attack types: ${response.statusText}`);

@@ -7,6 +7,7 @@ import threading
 import time
 import io
 import subprocess
+import logging
 from pathlib import Path
 from datetime import datetime
 
@@ -42,6 +43,30 @@ class FlaskOutputCapture(QObject):
         self.original_stderr = sys.stderr
         self.buffer = io.StringIO()
         self.running = False
+        self.logger_handler = None
+        self.loggers_configured = False
+
+    def configure_loggers(self):
+        """Configure Flask/Werkzeug loggers to write to our capture"""
+        if self.loggers_configured:
+            return
+
+        import logging
+
+        self.logger_handler = self.FlaskLoggerHandler(self)
+        self.logger_handler.setLevel(logging.DEBUG)
+
+        werkzeug_logger = logging.getLogger('werkzeug')
+        werkzeug_logger.addHandler(self.logger_handler)
+        werkzeug_logger.setLevel(logging.DEBUG)
+        werkzeug_logger.propagate = False
+
+        flask_logger = logging.getLogger('flask.app')
+        flask_logger.addHandler(self.logger_handler)
+        flask_logger.setLevel(logging.DEBUG)
+        flask_logger.propagate = False
+
+        self.loggers_configured = True
 
     def start_capture(self):
         """Start capturing stdout/stderr"""
@@ -49,6 +74,7 @@ class FlaskOutputCapture(QObject):
         self.buffer = io.StringIO()
         sys.stdout = self
         sys.stderr = self
+        self.configure_loggers()
 
     def stop_capture(self):
         """Stop capturing and restore original streams"""
@@ -72,6 +98,23 @@ class FlaskOutputCapture(QObject):
         """Get all captured output"""
         return self.buffer.getvalue()
 
+    class FlaskLoggerHandler(logging.Handler):
+        """Custom logging handler that emits to FlaskOutputCapture"""
+        def __init__(self, capture):
+            super().__init__()
+            self.capture = capture
+
+        def emit(self, record):
+            if self.capture.running:
+                try:
+                    msg = self.format(record)
+                    self.capture.output.emit(msg + '\n')
+                except:
+                    pass
+
+        def format(self, record):
+            return record.getMessage()
+
 
 class FlaskServer(QThread):
     """Thread to run Flask server"""
@@ -92,6 +135,9 @@ class FlaskServer(QThread):
             from api.app import app as flask_app
             self.running = True
 
+            # Emit startup message
+            self.server_output.emit("\n>>> Flask server initializing...\n")
+
             # Capture Flask output
             self.capture.start_capture()
 
@@ -99,6 +145,8 @@ class FlaskServer(QThread):
             from werkzeug.serving import make_server
             self.server = make_server('127.0.0.1', 5000, flask_app, threaded=True)
             self.server_started.emit()
+
+            self.server_output.emit(">>> Flask server ready on http://127.0.0.1:5000\n")
 
             # Serve requests until shutdown
             self.server.serve_forever()
@@ -714,10 +762,17 @@ class FreeKhanaMainWindow(QMainWindow):
 
     def on_flask_output(self, text):
         """Handle Flask server output"""
-        # Filter out Werkzeug request logging for cleaner output
-        if "127.0.0.1 - - [" in text:
+        if not text or not text.strip():
             return
-        if text.strip():
+
+        filtered = False
+        # Filter out very verbose werkzeug messages but keep important ones
+        if "127.0.0.1 - - [" in text and "GET /static/" in text:
+            filtered = True
+        elif text.strip() in [' ', '', '\n']:
+            filtered = True
+
+        if not filtered:
             self.append_terminal(text)
 
     def on_flask_finished(self):

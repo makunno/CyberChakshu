@@ -6,6 +6,12 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from parsers.log_detector import LogDetector
 from parsers.types import LogEntry
+from parsers.multiline import (
+    is_multiline_log,
+    group_multiline_entries,
+    parse_multiline_block,
+    MULTILINE_TYPES,
+)
 
 ALL_PARSERS = [
     {'name': 'Apache', 'logType': 'apache', 'category': 'webserver'},
@@ -360,6 +366,7 @@ PARSERS = {
     'pam': parse_syslog_line,
     'apache': parse_apache_line,
     'nginx': parse_apache_line,
+    'flask': parse_apache_line,
     'syslog': parse_syslog_line,
     'Linux Syslog': parse_syslog_line,
     'systemd': parse_syslog_line,
@@ -396,27 +403,54 @@ def auto_parse(content: str) -> Dict[str, Any]:
     
     detected_type = detect_log_type(content)
     
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
+    # Handle multiline logs (Oracle Alert, Oracle Audit, MySQL Slow)
+    if is_multiline_log(detected_type):
+        line_groups = group_multiline_entries(lines, detected_type)
         
-        parsed = None
+        for group in line_groups:
+            if not group or not any(l.strip() for l in group):
+                continue
+            
+            block = '\n'.join(group)
+            parsed = parse_multiline_block(block, detected_type)
+            
+            if parsed:
+                parsed['log_type'] = detected_type
+                entries.append(parsed)
+            else:
+                # Fallback: treat first line as entry
+                first_line = group[0].strip() if group else ''
+                if first_line:
+                    entries.append(create_entry(
+                        log_type=detected_type,
+                        message='\n'.join([l.strip() for l in group[:5]]),
+                    ))
+                    failed_lines += len(group)
         
-        json_entry = parse_json_line(line)
-        if json_entry:
-            parsed = json_entry
-        elif detected_type in PARSERS:
-            parsed = PARSERS[detected_type](line)
-        
-        if parsed:
-            parsed['log_type'] = detected_type
-            entries.append(parsed)
-        else:
-            entries.append(create_entry(
-                log_type=detected_type,
-                message=line,
-            ))
+    else:
+        # Handle regular single-line logs
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            parsed = None
+            
+            json_entry = parse_json_line(line)
+            if json_entry:
+                parsed = json_entry
+            elif detected_type in PARSERS:
+                parsed = PARSERS[detected_type](line)
+            
+            if parsed:
+                parsed['log_type'] = detected_type
+                entries.append(parsed)
+            else:
+                entries.append(create_entry(
+                    log_type=detected_type,
+                    message=line,
+                ))
+                failed_lines += 1
     
     success_rate = 0
     if total_lines > 0:

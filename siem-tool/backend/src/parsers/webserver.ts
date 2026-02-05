@@ -154,27 +154,96 @@ export const djangoParser: Parser = {
 export const flaskParser: Parser = {
   name: 'Flask Log',
   logType: 'flask',
-  detect: (line: string) => /^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+\/\S*\s+\d{3}/.test(line),
+  detect: (line: string) => {
+    return (
+      /^\[[\d/]+ [\d:]+\]\s+"\w+\s+\S+\s+\S+"\s+\d+/.test(line) ||  // [2024-01-15 10:30:45] "GET /path HTTP/1.1" 200
+      /^\d+\.\d+\.\d+\.\d+\s+-\s+-\s+\[.*?\]\s+"\w+\s+\S+\s+\S+"\s+\d+/.test(line) ||  // 127.0.0.1 - - [15/Jan/2024...] "GET /path HTTP/1.1" 200
+      /^\*\s+(Running on|Restarting)/.test(line) ||  // * Running on http://127.0.0.1:5000
+      /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+\/\S*\s+\d{3}$/.test(line)  // Simple: PUT /settings 200
+    );
+  },
   parse: (line: string): ParsedLogEntry | null => {
-    const match = line.match(/^(\w+)\s+(\S+)\s+(\d+)/);
-    if (!match) return null;
+    // Check for startup message
+    const startupMatch = line.match(/^\*\s+(Running on|Restarting)\s+(http\S+)/);
+    if (startupMatch) {
+      return {
+        id: generateId(),
+        timestamp: new Date().toISOString(),
+        logType: 'flask',
+        severity: 'info',
+        source: { service: 'flask', ip: '127.0.0.1' },
+        action: 'startup',
+        outcome: 'success',
+        message: line,
+        rawLine: line,
+        fields: { message: startupMatch[1], url: startupMatch[2] },
+        tags: ['webserver', 'flask', 'python', 'startup'],
+      };
+    }
 
-    const [, method, path, status] = match;
-    const statusCode = parseInt(status);
+    // Standard log format: [2024-01-15 10:30:45] "GET /path HTTP/1.1" 200
+    const match1 = line.match(/^\[([\d/]+ [\d:]+)\]\s+"(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(\S+)\s+(\S+)"\s+(\d+)/);
+    if (match1) {
+      const [, timestamp, method, path, protocol, status] = match1;
+      const statusCode = parseInt(status);
+      return {
+        id: generateId(),
+        timestamp: timestamp.replace(/(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1').replace(' ', 'T') + 'Z',
+        logType: 'flask',
+        severity: statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warning' : 'info',
+        source: { service: 'flask' },
+        action: method,
+        outcome: statusCode < 400 ? 'success' : 'failure',
+        message: `${method} ${path} - ${status}`,
+        rawLine: line,
+        fields: { method, path, protocol, status: statusCode },
+        tags: ['webserver', 'flask', 'python', 'http'],
+      };
+    }
 
-    return {
-      id: generateId(),
-      timestamp: null,
-      logType: 'flask',
-      severity: statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warning' : 'info',
-      source: { service: 'flask' },
-      action: method,
-      outcome: statusCode < 400 ? 'success' : 'failure',
-      message: `${method} ${path} - ${status}`,
-      rawLine: line,
-      fields: { method, path, status: statusCode },
-      tags: ['webserver', 'flask', 'python', 'http'],
-    };
+    // Apache combined style: 127.0.0.1 - - [15/Jan/2024:10:30:45 +0000] "GET /path HTTP/1.1" 200 1234
+    const match2 = line.match(/^\d+\.\d+\.\d+\.\d+\s+-\s+-\s+\[(\d+\/\w+\/\d+:\d+:\d+:\d+\s*[+-]?\d*)\]\s+"(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(\S+)\s+(\S+)"\s+(\d+)/);
+    if (match2) {
+      const [, timestampStr, method, path, protocol, status] = match2;
+      const statusCode = parseInt(status);
+      // Convert timestamp format
+      const ts = timestampStr.replace(/:/, ' ').replace(/(\d+)\/(\w+)\/(\d+)/, '$2 $1, $3');
+      return {
+        id: generateId(),
+        timestamp: new Date(ts).toISOString() || null,
+        logType: 'flask',
+        severity: statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warning' : 'info',
+        source: { service: 'flask' },
+        action: method,
+        outcome: statusCode < 400 ? 'success' : 'failure',
+        message: `${method} ${path} - ${status}`,
+        rawLine: line,
+        fields: { method, path, protocol, status: statusCode },
+        tags: ['webserver', 'flask', 'python', 'http'],
+      };
+    }
+
+    // Simple format: PUT /settings 200
+    const match3 = line.match(/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(\S+)\s+(\d+)/);
+    if (match3) {
+      const [, method, path, status] = match3;
+      const statusCode = parseInt(status);
+      return {
+        id: generateId(),
+        timestamp: null,
+        logType: 'flask',
+        severity: statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warning' : 'info',
+        source: { service: 'flask' },
+        action: method,
+        outcome: statusCode < 400 ? 'success' : 'failure',
+        message: `${method} ${path} - ${status}`,
+        rawLine: line,
+        fields: { method, path, status: statusCode },
+        tags: ['webserver', 'flask', 'python', 'http'],
+      };
+    }
+
+    return null;
   },
 };
 

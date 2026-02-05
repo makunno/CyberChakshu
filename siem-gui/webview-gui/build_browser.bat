@@ -6,7 +6,6 @@ pyinstaller --clean --noconfirm ^
     --name "FreeKhana-Browser" ^
     --windowed ^
     --onefile ^
-    --icon "icon.ico" ^
     main_browser.py
 
 echo.

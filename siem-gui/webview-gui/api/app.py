@@ -1,11 +1,11 @@
 """Flask API Server for SIEM Desktop App"""
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_file, send_from_directory
 import os
+import sys
 from pathlib import Path
 
 # Import parsing and detection modules
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from parsers import auto_parse, detect_log_type
 from ml.correlation import correlate_multiple_logs
@@ -13,14 +13,28 @@ from ml.enhanced_correlation import correlate_multiple_logs_enhanced
 from detectors.alerts import run_detections, generate_stats
 
 # Determine static folder path
-STATIC_FOLDER = Path(__file__).parent.parent / 'static'
-if not STATIC_FOLDER.exists():
-    STATIC_FOLDER = Path(__file__).parent.parent / 'siem-tool' / 'frontend' / 'dist'
+WEBVIEW_STATIC = Path(__file__).parent.parent / 'static'
+FRONTEND_DIST = Path(__file__).parent.parent / 'siem-tool' / 'frontend' / 'dist'
+
+if WEBVIEW_STATIC.exists():
+    STATIC_FOLDER = WEBVIEW_STATIC
+elif FRONTEND_DIST.exists():
+    STATIC_FOLDER = FRONTEND_DIST
+else:
+    STATIC_FOLDER = WEBVIEW_STATIC
 
 STATIC_FOLDER_STR = str(STATIC_FOLDER)
 
-# Configure Flask app with correct static folder
-app = Flask(__name__, static_folder=STATIC_FOLDER_STR, static_url_path='')
+print(f"Static folder: {STATIC_FOLDER_STR}")
+
+# Configure Flask app
+app = Flask(__name__, static_folder=STATIC_FOLDER_STR, static_url_path='/')
+
+# Request logging middleware
+@app.before_request
+def log_request():
+    """Log each request that comes in"""
+    print(f"[REQUEST] {request.method} {request.path} - {request.remote_addr}")
 
 # Add CORS manually
 @app.after_request
@@ -33,14 +47,44 @@ def after_request(response):
 
 @app.route('/')
 def index():
-    """Serve the React app"""
-    return send_from_directory(STATIC_FOLDER_STR, 'index.html')
+    """Serve the React app with API URL injected"""
+    try:
+        with open(os.path.join(STATIC_FOLDER_STR, 'index.html'), 'r') as f:
+            html = f.read()
+        
+        # Inject API URL - use localhost for local Flask, empty for relative URLs
+        api_url = os.environ.get('FREEKHANA_API_URL', '')
+        injected_html = html.replace(
+            '</head>',
+            f'<script>window.FREEKHANA_API_URL="{api_url}";</script></head>'
+        )
+        return injected_html
+    except Exception as e:
+        print(f"Error serving index.html: {e}")
+        return send_from_directory(STATIC_FOLDER_STR, 'index.html')
+
+
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    """Serve assets from static/assets folder"""
+    assets_folder = os.path.join(STATIC_FOLDER_STR, 'assets')
+    return send_from_directory(assets_folder, filename)
+
+
+@app.route('/vite.svg')
+def serve_vite_svg():
+    """Serve vite.svg from static folder"""
+    return send_from_directory(STATIC_FOLDER_STR, 'vite.svg')
 
 
 @app.route('/<path:path>')
 def serve_static(path):
     """Serve static files"""
-    return send_from_directory(STATIC_FOLDER_STR, path)
+    static_path = os.path.join(STATIC_FOLDER_STR, path)
+    if os.path.isfile(static_path):
+        return send_from_directory(STATIC_FOLDER_STR, path)
+    # If file doesn't exist, return index.html for SPA routing
+    return send_from_directory(STATIC_FOLDER_STR, 'index.html')
 
 
 @app.route('/health')
@@ -175,6 +219,7 @@ def detect_log():
 def parse_logs():
     """Main parse endpoint (single file)"""
     try:
+        print(f"[PARSE] Processing /parse request from {request.remote_addr}")
         content_type = request.content_type or ''
         content = None
         force_type = None
@@ -255,6 +300,7 @@ def parse_logs():
 def correlate():
     """Multi-log correlation endpoint with ML-based detection"""
     try:
+        print(f"[CORRELATE] Processing /correlate request from {request.remote_addr}")
         content_type = request.content_type or ''
         log_sources = []
 

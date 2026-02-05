@@ -4,7 +4,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
 from PySide6.QtCore import QUrl
-from PySide6.QtWebEngineWidgets import QWebEngineView, QWebEngineSettings
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 
 class FreeKhanaBrowser(QMainWindow):
@@ -21,10 +21,6 @@ class FreeKhanaBrowser(QMainWindow):
 
         self.webview = QWebEngineView()
         self.webview.setUrl(QUrl("https://freekhana-frontend.pages.dev"))
-
-        settings = self.webview.settings()
-        settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
-        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
 
         layout.addWidget(self.webview)
         self.statusBar().showMessage("Loading FreeKhana SIEM...")

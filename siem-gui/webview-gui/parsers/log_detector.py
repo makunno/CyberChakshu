@@ -15,7 +15,7 @@ class LogDetector:
     LARAVEL_RE = re.compile(r'\[\d{4}-\d{2}-\d{2} .*?\] \w+\.\w+:')
     NODE_RE = re.compile(r'\w+ /\S+ \d+ \d+ms')
     DJANGO_RE = re.compile(r'\[.*?\] "\w+ /\S+" \d+')
-    FLASK_RE = re.compile(r'(GET|POST|PUT|DELETE) /\S+ \d+')
+    FLASK_RE = re.compile(r'\[[\d/\-]+ [\d:]+\] "\w+ \S+ \S+" \d+|\* (Running on|Restarting)|http://\d+\.\d+\.\d+\.\d+|^((GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+/\S+\s+\d{3}$)')
     GUNICORN_RE = re.compile(r'\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.*\] \[\d+\] \[(INFO|ERROR|WARNING)\]')
     UVICORN_RE = re.compile(r'INFO:\s+.* - "\w+ .* HTTP/\d\.\d" \d{3}')
     PHP_FPM_RE = re.compile(r'\] (NOTICE|WARNING|ERROR):')
@@ -69,7 +69,7 @@ class LogDetector:
 
     ORACLE_ALERT_RE = re.compile(r'^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}')
     ORACLE_LISTENER_RE = re.compile(r'(.*?)\s+\*.*SERVICE_NAME=(\w+).*PROTOCOL=(\w+).*HOST=(\d+\.\d+\.\d+\.\d+).*PORT=(\d+).*\*\s+(\d+)')
-    ORACLE_AUDIT_RE = re.compile(r'^Audit record generated')
+    ORACLE_AUDIT_RE = re.compile(r'^Audit trail:')
     SQLSERVER_ERROR_RE = re.compile(r'(.*?) Server Error: (\d+), Severity: (\d+), State: (\d+)')
     SQLSERVER_AUDIT_RE = re.compile(r'action_id=(\w+).*name=(\w+).*database_name=(\w+).*statement=(.*)')
     SQLSERVER_TRANSACTION_RE = re.compile(r'\((\d+):(\d+):(\d+)\).*Operation:\s+(.*)')
@@ -893,8 +893,9 @@ class LogDetector:
 
         for i in range(phase1_lines):
             line = lines[i]
-            if not line or line.startswith('#'):
+            if not line:
                 continue
+            # Don't skip # lines - MySQL Slow Query logs use # prefix
             
             for log_type, check_func in priority_order:
                 if check_func(line):
@@ -914,7 +915,7 @@ class LogDetector:
 
         for i in range(phase2_start, len(lines)):
             line = lines[i]
-            if not line or line.startswith('#'):
+            if not line:
                 continue
 
             matched = False

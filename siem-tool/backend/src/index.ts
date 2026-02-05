@@ -10,10 +10,10 @@ import { correlateMultipleLogs as correlateMultipleLogsLegacy } from './ml/corre
 import { EVTXParser, EVTXDetector } from './parsers/evtx';
 import type { ParseResponse, LogType, ParsedLogEntry } from './types';
 
-// Cloudflare Workers limits - hard limit at 1MB to prevent CPU crashes
-const MAX_TEXT_SIZE = 1 * 1024 * 1024; // 1MB hard limit
-const MAX_BINARY_SIZE = 1 * 1024 * 1024; // 1MB for EVTX
-const CHUNK_SIZE = 1 * 1024 * 1024; // 1MB chunk size for splitting
+// Cloudflare Workers limits - reduced to 200KB to prevent CPU crashes
+const MAX_TEXT_SIZE = 200 * 1024; // 200KB hard limit per request
+const MAX_BINARY_SIZE = 200 * 1024; // 200KB for EVTX
+const CHUNK_SIZE = 200 * 1024; // 200KB chunk size for splitting
 
 // Types for Cloudflare Workers
 type Bindings = {
@@ -29,12 +29,14 @@ app.use('*', cors({
       'https://freekhana-frontend.pages.dev',
       'http://localhost:5173',
       'http://127.0.0.1:5173',
+      'http://localhost:5000',
+      'http://127.0.0.1:5000',
     ];
     if (!origin) return '*';
     return allowedOrigins.includes(origin) ? origin : '*';
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'CF-Access-Client-Id', 'CF-Access-Signature', 'X-File-Name'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'CF-Access-Client-Id', 'CF-Access-Client-Name', 'X-File-Name'],
   exposeHeaders: ['Content-Length', 'X-Custom-Header'],
   maxAge: 86400,
   credentials: false,
@@ -47,17 +49,19 @@ app.options('*', (c) => {
     'https://freekhana-frontend.pages.dev',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
   ];
   const allowOrigin = (!origin || allowedOrigins.includes(origin)) ? origin || '*' : '*';
   
   return c.text('', 200, {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin, X-Requested-With, CF-Access-Client-Id, CF-Access-Signature, X-File-Name',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin, X-Requested-With, CF-Access-Client-Id, CF-Access-Client-Name, X-File-Name',
     'Access-Control-Max-Age': '86400',
   });
 });
-
+ 
 // Health check
 app.get('/', (c) => {
   return c.json({
@@ -312,7 +316,7 @@ app.post('/parse', async (c) => {
             option2: 'Export EVTX to text using Windows Event Viewer, then upload',
             apiCall: `POST /parse/chunked\nBody: { "chunks": [chunk1_content, ...], "fileName": "${filename || 'logs.evtx'}" }`
           },
-          cliCommand: `node split-log-file.js ${filename || 'logs.evtx'} 1024 ./chunks`
+          cliCommand: `node split-log-file.js ${filename || 'logs.evtx'} 200 ./chunks`
         }, 200);
       }
     } else if (content) {
@@ -387,7 +391,7 @@ app.post('/parse', async (c) => {
             option3: 'Process chunks locally and upload individually',
             apiCall: `POST /parse/chunked\nBody: { "chunks": [chunk1_content, ...], "fileName": "${filename || 'logs.log'}" }`
           },
-          cliCommand: `node split-log-file.js ${filename || 'logs.log'} 1024 ./chunks`
+          cliCommand: `node split-log-file.js ${filename || 'logs.log'} 200 ./chunks`
         }, 200);
       }
     }

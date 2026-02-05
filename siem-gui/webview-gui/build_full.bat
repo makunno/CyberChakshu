@@ -6,11 +6,12 @@ pyinstaller --clean --noconfirm ^
     --name "FreeKhana-Full" ^
     --windowed ^
     --onefile ^
+    --collect-all flask ^
+    --collect-all werkzeug ^
+    --collect-all sklearn ^
+    --collect-all numpy ^
     --hidden-import PySide6.QtWebEngineWidgets ^
     --hidden-import PySide6.QtWebEngineCore ^
-    --hidden-import flask ^
-    --hidden-import werkzeug ^
-    --icon "icon.ico" ^
     main.py
 
 echo.

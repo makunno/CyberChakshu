@@ -11,7 +11,7 @@
 
 ## Building EXEs
 
-### Option 1: Using the build script (recommended)
+### Using the build script (recommended)
 
 ```bash
 cd siem-gui/webview-gui
@@ -19,30 +19,36 @@ build.bat
 ```
 
 Choose:
-- [1] FreeKhana-Browser.exe - Lightweight, opens online frontend
-- [2] FreeKhana-Full.exe - Full bundle with Flask backend
+- [1] **FreeKhana-Browser.exe** (~201 MB) - Embedded webview
+- [2] **FreeKhana-Full.exe** (~312 MB) - Embedded webview + Flask backend
 - [3] Build Both
 
-### Option 2: Manual build commands
+### Manual build commands
 
-**Browser EXE (Online Only):**
+**Browser EXE (Embedded WebView):**
 ```bash
-pyinstaller --clean --name "FreeKhana-Browser" --windowed --onefile main_simple.py
+pyinstaller --clean --name "FreeKhana-Browser" --windowed --onefile main_browser.py
 ```
 
-**Full EXE (Bundled Backend):**
+**Full EXE (WebView + Flask Backend):**
 ```bash
 pyinstaller --clean --name "FreeKhana-Full" --windowed --onefile ^
-    --collect-all flask ^
-    --collect-all sklearn ^
     --hidden-import PySide6.QtWebEngineWidgets ^
     --hidden-import PySide6.QtWebEngineCore ^
+    --hidden-import flask ^
+    --hidden-import werkzeug ^
     main.py
 ```
 
-## Frontend Files
+## Output
 
-For the Full EXE to serve a local frontend:
+EXEs will be in the `dist/` folder:
+- `FreeKhana-Browser.exe` - Opens https://freekhana-frontend.pages.dev in embedded webview
+- `FreeKhana-Full.exe` - Full bundled version with Flask backend
+
+## Frontend for Full EXE
+
+For the Full EXE to serve a local frontend (instead of using online):
 
 1. Build the React frontend:
    ```bash
@@ -58,14 +64,9 @@ For the Full EXE to serve a local frontend:
 
 3. Rebuild the Full EXE
 
-## Output
-
-EXEs will be in the `dist/` folder:
-- `FreeKhana-Browser.exe` - Opens https://freekhana-frontend.pages.dev
-- `FreeKhana-Full.exe` - Bundled Flask backend (serves from static folder or online)
-
 ## Notes
 
-- The Browser EXE is smaller (~50MB) and loads faster
-- The Full EXE is larger (~200MB) but works offline
-- Both EXEs require Qt WebEngine runtime (included by PyInstaller)
+- Both EXEs include Qt WebEngine (Chromium-based) for embedded browsing
+- Browser EXE is ~201 MB
+- Full EXE is ~312 MB (includes Flask, sklearn, numpy)
+- EXEs require Windows with proper runtime (included by PyInstaller)
