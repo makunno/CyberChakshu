@@ -2,11 +2,13 @@
 
 import { ParsedLogEntry } from '../types';
 import { FeatureVector, BaselineProfile } from './types';
+import { getLogTypeCategory, LogTypeCategory } from './entry-classifier';
 
 /**
  * Extract ML features from a set of log entries
+ * Now with optional log type parameter for targeted pattern detection
  */
-export function extractFeatures(entries: ParsedLogEntry[], baseline?: BaselineProfile): FeatureVector {
+export function extractFeatures(entries: ParsedLogEntry[], baseline?: BaselineProfile, logType?: string): FeatureVector {
   if (entries.length === 0) {
     return getEmptyFeatures();
   }
@@ -172,8 +174,8 @@ export function extractFeatures(entries: ParsedLogEntry[], baseline?: BaselinePr
     ? errorEvents.length / entries.length 
     : 0;
 
-  // Suspicious pattern count
-  const suspiciousPatternCount = countSuspiciousPatterns(entries);
+  // Suspicious pattern count - now log type aware
+  const suspiciousPatternCount = countSuspiciousPatterns(entries, logType);
 
   // Behavioral features
   let deviationFromBaseline = 0;
@@ -312,178 +314,282 @@ function detectSuccessAfterFailure(sortedEntries: ParsedLogEntry[]): number {
 }
 
 /**
- * Advanced attack pattern definitions based on real-world attacks
+ * Log-type-specific attack pattern definitions
+ * Patterns are organized by category to reduce false positives
  */
-const ATTACK_PATTERNS = {
-  // SQL Injection patterns
-  sql_injection: [
-    /('|"|;|--|\bOR\b|\bAND\b|\bUNION\b|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bDROP\b)/i,
-    /(\bEXEC\b|\bEXECUTE\b|\bxp_|\bsp_)/i,
-    /(\bWAITFOR\b|\bDELAY\b|\bBENCHMARK\b|\bSLEEP\b)/i,
-    /(INFORMATION_SCHEMA|sys\.(tables|columns|objects))/i,
-  ],
-  
-  // XSS patterns
-  xss: [
-    /(<script|javascript:|on\w+\s*=|<iframe|<img[^>]+onerror)/i,
-    /(<svg[^>]*onload|<body[^>]*onload|<input[^>]*onfocus)/i,
-    /(document\.cookie|document\.location|window\.location)/i,
-    /(eval\s*\(|setTimeout\s*\(|setInterval\s*\()/i,
-  ],
-  
-  // Path traversal
-  path_traversal: [
-    /(\.\.\/|\.\.\\|%2e%2e%2f|%252e%252e%252f)/i,
-    /(\.\.[\/\\]){2,}/i,
-    /(\/etc\/passwd|\/etc\/shadow|\/etc\/hosts)/i,
-    /(c:\\windows|c:\\boot\.ini|c:\\system32)/i,
-  ],
-  
-  // Command injection
-  command_injection: [
-    /(\||;|`|\$\(|&&|\|\|)/,
-    /(\bping\b|\bwget\b|\bcurl\b|\bnc\b|\bnetcat\b)/i,
-    /(\bchmod\b|\bchown\b|\brm\s+-rf|\bmkdir\b)/i,
-    /(\/bin\/sh|\/bin\/bash|cmd\.exe|powershell)/i,
-  ],
-  
-  // Log4Shell (CVE-2021-44228) patterns
-  log4shell: [
-    /\$\{jndi:(ldap|ldaps|rmi|dns|iiop|corba|nds|http):\/\//i,
-    /\$\{(\$\{)?[^}]*(lower|upper|env|sys|java|base64):/i,
-    /\$\{jndi:.*\$\{/i,  // Nested expressions
-    /\$\{\s*j\s*n\s*d\s*i\s*:/i,  // Obfuscated
-  ],
-  
-  // SSRF (Server-Side Request Forgery) patterns
-  ssrf: [
-    /(169\.254\.169\.254|metadata\.google\.internal)/i,  // Cloud metadata
-    /(127\.0\.0\.1|localhost|0\.0\.0\.0|::1)/i,  // Loopback
-    /(10\.\d{1,3}\.\d{1,3}\.\d{1,3})/,  // Internal 10.x.x.x
-    /(192\.168\.\d{1,3}\.\d{1,3})/,  // Internal 192.168.x.x
-    /(172\.(1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3})/,  // Internal 172.16-31.x.x
-    /(file:\/\/|gopher:\/\/|dict:\/\/|ftp:\/\/)/i,  // Dangerous protocols
-    /(\?url=|\?uri=|\?path=|\?dest=|\?redirect=|\?next=)/i,  // URL params
-  ],
-  
-  // XXE (XML External Entity) patterns
-  xxe: [
-    /(<!DOCTYPE[^>]*\[)/i,
-    /(<!ENTITY[^>]*SYSTEM)/i,
-    /(<!ENTITY[^>]*PUBLIC)/i,
-    /(&[a-z]+;|&#\d+;|&#x[a-f0-9]+;)/i,
-    /(file:\/\/|expect:\/\/|php:\/\/filter)/i,
-  ],
-  
-  // Deserialization attacks
-  deserialization: [
-    /(rO0|ysoserial|gadgetchain)/i,
-    /(ObjectInputStream|XMLDecoder|Yaml\.load)/i,
-    /(pickle\.loads|marshal\.loads|shelve)/i,  // Python
-    /(unserialize\s*\(|__wakeup|__destruct)/i,  // PHP
-    /(__reduce__|__reduce_ex__|__getstate__)/i,  // Python pickle
-  ],
-  
-  // LDAP injection
-  ldap_injection: [
-    /(\*|\(|\)|\||\&|\!)/,  // LDAP special chars
-    /(\(cn=\*\)|\(uid=\*\)|\(objectclass=\*\))/i,
-    /(\\00|\\28|\\29|\\2a|\\5c)/i,  // Encoded LDAP chars
-  ],
-  
-  // Prototype pollution (JavaScript)
-  prototype_pollution: [
-    /(__proto__|constructor\.prototype|Object\.assign)/i,
-    /(\["__proto__"\]|\['__proto__'\])/i,
-    /(\.constructor\s*=|\.prototype\s*=)/i,
-  ],
-  
-  // DNS tunneling indicators
-  dns_tunneling: [
-    /([a-z0-9]{30,}\.[a-z]{2,})/i,  // Long subdomain (high entropy)
-    /(TXT|NULL|CNAME)\s+record/i,  // Suspicious record types
-    /dns.*query.*[a-f0-9]{32,}/i,  // Hex-encoded data
-  ],
-  
-  // Cryptomining indicators
-  cryptomining: [
-    /(stratum\+tcp:\/\/|stratum\+ssl:\/\/)/i,
-    /(pool\.|mining\.|xmr\.|btc\.|eth\.)/i,
-    /(coinhive|cryptoloot|jsecoin|webminer)/i,
-    /(monero|bitcoin|ethereum|litecoin)/i,
-    /(minergate|nicehash|slushpool|antpool)/i,
-    /\b(xmrig|cpuminer|cgminer|bfgminer)\b/i,
-  ],
-  
-  // Ransomware indicators
-  ransomware: [
-    /\.(encrypted|locked|crypto|crypt|enc)\b/i,
-    /(ransom|decrypt|bitcoin|payment.*restore)/i,
-    /(vssadmin|wmic.*shadowcopy|bcdedit.*recoveryenabled)/i,
-    /(\.ryuk|\.wannacry|\.locky|\.cerber|\.petya|\.revil)/i,
-    /your.*files.*have.*been.*encrypted/i,
-  ],
-  
-  // Webshell indicators
-  webshell: [
-    /(c99|r57|b374k|wso|weevely|p0wny)/i,  // Known webshells
-    /(eval\s*\(\s*\$_(GET|POST|REQUEST|COOKIE))/i,  // PHP webshell
-    /(system\s*\(\s*\$|passthru\s*\(\s*\$|exec\s*\(\s*\$)/i,
-    /(\.php\?cmd=|\.asp\?cmd=|\.jsp\?cmd=)/i,
-    /(base64_decode\s*\(\s*\$_(GET|POST))/i,
-    /(\bproc_open\b|\bpopen\b|\bshell_exec\b)/i,
-  ],
-  
-  // Living off the land (LOLBins/LOLBas) patterns
-  lolbins: [
-    /(powershell.*-enc|powershell.*-e\s|powershell.*-encodedcommand)/i,
-    /(certutil.*-urlcache|certutil.*-decode|certutil.*-encode)/i,
-    /(bitsadmin.*\/transfer|bitsadmin.*\/create)/i,
-    /(mshta.*vbscript|mshta.*javascript)/i,
-    /(regsvr32.*\/s.*\/u|regsvr32.*\/i:http)/i,
-    /(rundll32.*javascript|rundll32.*shell32)/i,
-    /(cscript.*\/E:jscript|wscript.*\/E:jscript)/i,
-    /(msiexec.*\/q.*http|msiexec.*\/i.*http)/i,
-    /(InstallUtil|MSBuild.*\/p:)/i,
-    /(PsExec|wmic.*process.*call.*create)/i,
-    /(schtasks.*\/create|at\s+\\\\)/i,
-  ],
-  
-  // Kerberos attacks
-  kerberos: [
-    /(4768.*0x12|4769.*0x17)/i,  // Kerberoasting event IDs
-    /(ticket_granting|AS-REQ|TGS-REQ)/i,
-    /(krbtgt|golden.*ticket|silver.*ticket)/i,
-    /(mimikatz|rubeus|kekeo|impacket)/i,
-    /(pass.the.hash|pass.the.ticket|overpass)/i,
-  ],
-  
-  // APT indicators
-  apt: [
-    /(cobaltstrike|beacon|meterpreter|empire)/i,
-    /(bloodhound|sharphound|adexplorer)/i,
-    /(lazagne|mimikatz|procdump.*lsass)/i,
-    /(psexec|wmiexec|smbexec|atexec)/i,
-    /(dcsync|dcshawdow|ntdsutil)/i,
-  ],
-  
-  // Known malicious user agents and tools
-  malicious_tools: [
-    /(nikto|sqlmap|nmap|masscan|zgrab|nuclei|dirbuster|gobuster)/i,
-    /(hydra|medusa|john|hashcat|ophcrack)/i,
-    /(burpsuite|zaproxy|acunetix|nessus|openvas)/i,
-    /(metasploit|cobalt|empire|covenant)/i,
-    /(curl\/|wget\/|python-requests)/i,
-  ],
-  
-  // Encoded/obfuscated patterns
-  encoded: [
-    /(%00|%0d%0a|%27|%22)/i,
-    /(fromCharCode|atob|btoa)/i,
-    /(\\x[0-9a-f]{2}){4,}/i,
-    /(\\u[0-9a-f]{4}){2,}/i,
-  ],
+const ATTACK_PATTERNS_BY_CATEGORY: Record<LogTypeCategory, Record<string, RegExp[]>> = {
+  webserver: {
+    sql_injection: [
+      /('|"|;|--|\bOR\b|\bAND\b|\bUNION\b|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bDROP\b)/i,
+      /(\bEXEC\b|\bEXECUTE\b|\bxp_|\bsp_)/i,
+      /(\bWAITFOR\b|\bDELAY\b|\bBENCHMARK\b|\bSLEEP\b)/i,
+      /(INFORMATION_SCHEMA|sys\.(tables|columns|objects))/i,
+    ],
+    xss: [
+      /(<script|javascript:|on\w+\s*=|<iframe|<img[^>]+onerror)/i,
+      /(<svg[^>]*onload|<body[^>]*onload|<input[^>]*onfocus)/i,
+      /(document\.cookie|document\.location|window\.location)/i,
+      /(eval\s*\(|setTimeout\s*\(|setInterval\s*\()/i,
+    ],
+    path_traversal: [
+      /(\.\.\/|\.\.\\|%2e%2e%2f|%252e%252e%252f)/i,
+      /(\.\.[\/\\]){2,}/i,
+      /(\/etc\/passwd|\/etc\/shadow|\/etc\/hosts)/i,
+      /(c:\\windows|c:\\boot\.ini|c:\\system32)/i,
+    ],
+    command_injection: [
+      /(\||;|`|\$\(|&&|\|\|)/,
+      /(\bping\b|\bwget\b|\bcurl\b|\bnc\b|\bnetcat\b)/i,
+      /(\bchmod\b|\bchown\b|\brm\s+-rf|\bmkdir\b)/i,
+      /(\/bin\/sh|\/bin\/bash|cmd\.exe|powershell)/i,
+    ],
+    ssrf: [
+      /(169\.254\.169\.254|metadata\.google\.internal)/i,
+      /(127\.0\.0\.1|localhost|0\.0\.0\.0|::1)/i,
+      /(10\.\d{1,3}\.\d{1,3}\.\d{1,3})/,
+      /(192\.168\.\d{1,3}\.\d{1,3})/,
+      /(172\.(1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3})/,
+      /(file:\/\/|gopher:\/\/|dict:\/\/|ftp:\/\/)/i,
+      /(\?url=|\?uri=|\?path=|\?dest=|\?redirect=|\?next=)/i,
+    ],
+    xxe: [
+      /(<!DOCTYPE[^>]*\[)/i,
+      /(<!ENTITY[^>]*SYSTEM)/i,
+      /(<!ENTITY[^>]*PUBLIC)/i,
+      /(&[a-z]+;|&#\d+;|&#x[a-f0-9]+;)/i,
+      /(file:\/\/|expect:\/\/|php:\/\/filter)/i,
+    ],
+    deserialization: [
+      /(rO0|ysoserial|gadgetchain)/i,
+      /(ObjectInputStream|XMLDecoder|Yaml\.load)/i,
+      /(pickle\.loads|marshal\.loads|shelve)/i,
+      /(unserialize\s*\(|__wakeup|__destruct)/i,
+      /(__reduce__|__reduce_ex__|__getstate__)/i,
+    ],
+    log4shell: [
+      /\$\{jndi:(ldap|ldaps|rmi|dns|iiop|corba|nds|http):\/\//i,
+      /\$\{(\$\{)?[^}]*(lower|upper|env|sys|java|base64):/i,
+      /\$\{jndi:.*\$\{/i,
+      /\$\{\s*j\s*n\s*d\s*i\s*:/i,
+    ],
+    ldap_injection: [
+      /(\*|\(|\)|\||\&|\!)/,
+      /(\(cn=\*\)|\(uid=\*\)|\(objectclass=\*\))/i,
+      /(\\00|\\28|\\29|\\2a|\\5c)/i,
+    ],
+    prototype_pollution: [
+      /(__proto__|constructor\.prototype|Object\.assign)/i,
+      /(\["__proto__"\]|\['__proto__'\])/i,
+      /(\.constructor\s*=|\.prototype\s*=)/i,
+    ],
+    file_inclusion: [
+      /(\?page|\?file|\?path|\?include)\s*=\s*https?:/i,
+      /(include\s*\(|require\s*\(|require_once\s*\()/i,
+    ],
+    webshell: [
+      /(c99|r57|b374k|wso|weevely|alfa|p0wny|mini.*shell)/i,
+      /\.(php|asp|aspx|jsp)\?cmd=|\?exec=|\?shell=/i,
+      /eval\s*\(\s*\$_(GET|POST)|system\s*\(\s*\$|passthru\s*\(\s*\$/i,
+    ],
+    bruteforce: [
+      /(401|403)\s+.*\/login|Failed\s+password/i,
+    ],
+    reconnaissance: [
+      /(\/\.env|\/config\.json|\/\.git\/|\/\.htaccess|\/phpinfo)/i,
+      /(nikto|sqlmap|nmap|masscan|zgrab|nuclei|dirbuster|gobuster)/i,
+    ],
+    malicious_tools: [
+      /(nikto|sqlmap|nmap|masscan|zgrab|nuclei|dirbuster|gobuster)/i,
+      /(hydra|medusa|john|hashcat|ophcrack)/i,
+      /(burpsuite|zaproxy|acunetix|nessus|openvas)/i,
+      /(metasploit|cobalt|empire|covenant)/i,
+    ],
+  },
+
+  authentication: {
+    bruteforce: [
+      /Failed\s+password|Authentication\s+failure|Invalid\s+user/i,
+      /login.*fail|auth.*fail/i,
+    ],
+    password_spray: [
+      /(Authentication\s+failure|Invalid\s+user|Unknown\s+user)/i,
+    ],
+    credential_stuffing: [
+      /(Account\s+locked|Too\s+many\s+attempts|Rate\s+limit)/i,
+    ],
+    privilege_escalation: [
+      /(sudo|su\s+-|sudo\s+-i|sudo\s+su|sudo\s+.*ALL)/i,
+      /(SetUser|Privilege\s+escalation|Admin\s+access)/i,
+      /(useradd|usermod|passwd\s+root)/i,
+    ],
+    lateral_movement: [
+      /(psexec|wmiexec|smbexec|pass\s+the\s+hash)/i,
+      /(ssh.*from.*to|scp\s+.*\s+\S+@\S+:\s*)/i,
+    ],
+    account_takeover: [
+      /(impossible\s+travel|unusual\s+location|new\s+device)/i,
+      /(suspicious\s+login|account.*compromised)/i,
+    ],
+    kerberos: [
+      /(4768.*0x12|4769.*0x17)/i,
+      /(krbtgt|ticket_granting|AS-REQ|TGS-REQ)/i,
+    ],
+    pass_the_hash: [
+      /(NTLM.*hash|pass.the.hash|mimikatz|rubeus)/i,
+    ],
+  },
+
+  firewall: {
+    port_scan: [
+      /(Connection\s+(refused|timed\s+out)|No\s+route\s+to\s+host)/i,
+      /(SYN\s+scan|PORT\s+scan|nmap|masscan)/i,
+      /multiple\s+ports?\s+scanned/i,
+    ],
+    ddos: [
+      /(Connection\s+reset\s+by\s+peer|Too\s+many\s+connections)/i,
+      /(flood|rate\s+limit\s+exceeded|syn\s+flood)/i,
+    ],
+    reconnaissance: [
+      /(scan|probe|enumerate|discover)/i,
+    ],
+    c2_communication: [
+      /(beacon|heartbeat|check-in|command.*control)/i,
+      /dns\s+tunnel|dga|domain\s+generation/i,
+    ],
+    data_exfiltration: [
+      /(large\s+data\s+transfer|bulk\s+upload|unusual\s+outbound)/i,
+    ],
+    lateral_movement: [
+      /(internal\s+to\s+internal|east-west\s+traffic)/i,
+    ],
+  },
+
+  database: {
+    sql_injection: [
+      /(\bUNION\b.*\bSELECT\b|\bSELECT\b.*\bFROM\b)/i,
+      /;\s*(DROP|DELETE|INSERT|UPDATE|EXEC|EXECUTE)\s+/i,
+      /(INFORMATION_SCHEMA|sys\.(tables|columns|objects)|pg_catalog)/i,
+      /(\bWAITFOR\b|\bDELAY\b|\bBENCHMARK\b|\bSLEEP\b)/i,
+    ],
+    data_exfiltration: [
+      /(SELECT\s+.*\s+INTO\s+OUTFILE|COPY\s+.*\s+TO\s+)/i,
+      /(bulk\s+select|bcp\s+.*\s+out)/i,
+    ],
+    privilege_escalation: [
+      /(GRANT\s+ALL|ALTER\s+USER.*WITH\s+ADMIN)/i,
+      /(CREATE\s+USER|ADD\s+MEMBER\s+TO\s+ROLE)/i,
+    ],
+    insider_threat: [
+      /(unauthorized.*access|sensitive.*table|customer.*data)/i,
+    ],
+  },
+
+  mail: {
+    bruteforce: [
+      /(authentication\s+failed|login\s+failed|535|530)/i,
+    ],
+    data_exfiltration: [
+      /(large\s+attachment|bulk\s+email|mass\s+mailing)/i,
+    ],
+    c2_communication: [
+      /(suspicious\s+attachment|executable.*email|macro)/i,
+    ],
+    reconnaissance: [
+      /(user\s+enumeration|verify\s+email|rcpt\s+to.*multiple)/i,
+    ],
+  },
+
+  syslog: {
+    privilege_escalation: [
+      /(sudo|su\s+-|sudo\s+-i|sudo\s+su)/i,
+      /(chmod\s+.*\+s|setuid|setgid)/i,
+    ],
+    malware_activity: [
+      /(virus|trojan|malware|ransomware|backdoor)/i,
+      /(suspicious\s+process|unusual\s+execution)/i,
+    ],
+    cryptomining: [
+      /(xmrig|minerd|cryptonight|stratum\+tcp)/i,
+      /(high\s*cpu\s*usage|mining\s*pool)/i,
+    ],
+    ransomware: [
+      /(vssadmin.*delete.*shadows|wmic.*shadowcopy.*delete)/i,
+      /(bcdedit.*recoveryenabled.*no)/i,
+      /(\.(encrypted|locked|crypto|crypt|enc)\b)/i,
+    ],
+    lolbins: [
+      /(powershell.*-enc|certutil.*-urlcache|bitsadmin.*\/transfer)/i,
+      /(mshta.*vbscript|regsvr32.*\/s.*\/u|wmic.*process.*call)/i,
+    ],
+    command_injection: [
+      /[;|`]\s*(wget|curl|nc|bash|python)\s/i,
+      /\$\([^)]*\)|`[^`]*`/,
+    ],
+  },
+
+  cloud: {
+    privilege_escalation: [
+      /(AssumeRole|CreateAccessKey|AttachUserPolicy)/i,
+      /(elevate|escalate|admin.*policy)/i,
+    ],
+    data_exfiltration: [
+      /(GetObject.*large|Download\s+data|ExportSnapshot)/i,
+      /(unusual\s+data\s+access|bulk\s+download)/i,
+    ],
+    account_takeover: [
+      /(ConsoleLogin.*suspicious|unusual\s+API\s+calls)/i,
+      /(impossible\s+travel|unrecognized\s+principal)/i,
+    ],
+    lateral_movement: [
+      /(cross-account|role.*chaining|AssumeRole.*external)/i,
+    ],
+    reconnaissance: [
+      /(ListBuckets|DescribeInstances|ListUsers.*rapid)/i,
+    ],
+    supply_chain: [
+      /(PutBucketPolicy|ModifyLambda|UpdateFunctionCode)/i,
+    ],
+  },
+
+  security: {
+    malware_activity: [
+      /(malware.*detected|virus.*found|trojan)/i,
+    ],
+    c2_communication: [
+      /(c2.*detected|command.*control|beacon)/i,
+    ],
+    port_scan: [
+      /(port\s+scan.*detected|scan\s+alert|reconnaissance)/i,
+    ],
+    bruteforce: [
+      /(brute\s+force.*detected|login\s+attack)/i,
+    ],
+    sql_injection: [
+      /(sql\s+injection.*detected|sqli)/i,
+    ],
+    xss: [
+      /(xss.*detected|cross.*site.*scripting)/i,
+    ],
+  },
+
+  generic: {
+    bruteforce: [
+      /(Failed\s+password|Authentication\s+failure)/i,
+    ],
+    malware_activity: [
+      /(virus|trojan|malware)/i,
+    ],
+    error: [
+      /(error|fail|exception|fatal)/i,
+    ],
+  },
 };
+
+/**
+ * Legacy attack patterns for backward compatibility
+ * @deprecated Use getPatternsForLogType instead
+ */
+const ATTACK_PATTERNS = ATTACK_PATTERNS_BY_CATEGORY.webserver;
 
 /**
  * Known malicious IP ranges (partial list - Tor exit nodes, bulletproof hosting, etc.)
@@ -513,16 +619,27 @@ const C2_DOMAIN_PATTERNS = [
 ];
 
 /**
- * Count suspicious patterns in log entries
+ * Count suspicious patterns in log entries with log type awareness
  */
-function countSuspiciousPatterns(entries: ParsedLogEntry[]): number {
+function countSuspiciousPatterns(entries: ParsedLogEntry[], logType?: string): number {
+  if (entries.length === 0) return 0;
+  
+  // Determine log type category from first entry or provided log type
+  const category = logType 
+    ? getLogTypeCategory(logType)
+    : entries[0].logType 
+      ? getLogTypeCategory(entries[0].logType)
+      : 'generic';
+  
+  const patterns = ATTACK_PATTERNS_BY_CATEGORY[category] || ATTACK_PATTERNS_BY_CATEGORY.generic;
   let count = 0;
+  
   for (const entry of entries) {
     const textToCheck = `${entry.message} ${entry.rawLine} ${JSON.stringify(entry.fields)}`;
     
-    // Check all pattern categories
-    for (const patterns of Object.values(ATTACK_PATTERNS)) {
-      for (const pattern of patterns) {
+    // Check only pattern categories relevant to this log type
+    for (const categoryPatterns of Object.values(patterns)) {
+      for (const pattern of categoryPatterns) {
         if (pattern.test(textToCheck)) {
           count++;
           break; // Count each entry only once per category
@@ -535,17 +652,27 @@ function countSuspiciousPatterns(entries: ParsedLogEntry[]): number {
 }
 
 /**
- * Detect specific attack types in log entries
+ * Detect specific attack types in log entries with log type awareness
  * Returns detailed detection results for each attack category
  */
-export function detectAttackPatterns(entries: ParsedLogEntry[]): Record<string, number> {
+export function detectAttackPatterns(entries: ParsedLogEntry[], logType?: string): Record<string, number> {
+  if (entries.length === 0) return {};
+  
+  // Determine log type category
+  const category = logType 
+    ? getLogTypeCategory(logType)
+    : entries[0].logType 
+      ? getLogTypeCategory(entries[0].logType)
+      : 'generic';
+  
+  const patterns = ATTACK_PATTERNS_BY_CATEGORY[category] || ATTACK_PATTERNS_BY_CATEGORY.generic;
   const detections: Record<string, number> = {};
   
-  for (const [category, patterns] of Object.entries(ATTACK_PATTERNS)) {
+  for (const [attackType, attackPatterns] of Object.entries(patterns)) {
     let count = 0;
     for (const entry of entries) {
       const textToCheck = `${entry.message} ${entry.rawLine} ${JSON.stringify(entry.fields)}`;
-      for (const pattern of patterns) {
+      for (const pattern of attackPatterns) {
         if (pattern.test(textToCheck)) {
           count++;
           break;
@@ -553,7 +680,7 @@ export function detectAttackPatterns(entries: ParsedLogEntry[]): Record<string, 
       }
     }
     if (count > 0) {
-      detections[category] = count;
+      detections[attackType] = count;
     }
   }
   
@@ -826,8 +953,9 @@ export function detectLOLBins(entries: ParsedLogEntry[]): number {
 
 /**
  * Enhanced feature extraction with new attack detection
+ * Now with log type awareness to reduce false positives
  */
-export function extractAdvancedFeatures(entries: ParsedLogEntry[]): {
+export function extractAdvancedFeatures(entries: ParsedLogEntry[], logType?: string): {
   basic: ReturnType<typeof extractFeatures>;
   attackPatterns: Record<string, number>;
   dnsTunneling: number;
@@ -840,15 +968,32 @@ export function extractAdvancedFeatures(entries: ParsedLogEntry[]): {
 } {
   const basic = extractFeatures(entries);
   
-  // Detect specific attack patterns
-  const attackPatterns = detectAttackPatterns(entries);
+  // Detect specific attack patterns with log type awareness
+  const attackPatterns = detectAttackPatterns(entries, logType);
   
-  // Detect advanced threats
-  const dnsTunneling = detectDnsTunneling(entries);
-  const cryptomining = detectCryptomining(entries);
-  const ransomware = detectRansomware(entries);
-  const webshell = detectWebshell(entries);
-  const lolbins = detectLOLBins(entries);
+  // Determine log type category for targeted threat detection
+  const category = logType 
+    ? getLogTypeCategory(logType)
+    : entries[0]?.logType 
+      ? getLogTypeCategory(entries[0].logType)
+      : 'generic';
+  
+  // Detect advanced threats based on log type relevance
+  const dnsTunneling = category === 'firewall' || category === 'syslog' 
+    ? detectDnsTunneling(entries) 
+    : 0;
+  const cryptomining = category === 'syslog' || category === 'security' 
+    ? detectCryptomining(entries) 
+    : 0;
+  const ransomware = category === 'syslog' || category === 'security' 
+    ? detectRansomware(entries) 
+    : 0;
+  const webshell = category === 'webserver' || category === 'security' 
+    ? detectWebshell(entries) 
+    : 0;
+  const lolbins = category === 'syslog' || category === 'windows' 
+    ? detectLOLBins(entries) 
+    : 0;
   
   // Extract malicious IPs and C2 domains
   const maliciousIps: string[] = [];

@@ -33,13 +33,15 @@ const WORKERS: WorkerConfig[] = [
   { name: 'siem-worker-6', url: 'siem-worker-6.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
   { name: 'siem-worker-7', url: 'siem-worker-7.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
   { name: 'siem-worker-8', url: 'siem-worker-8.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
-  { name: 'siem-worker-9', url: 'siem-worker-8.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
-  { name: 'siem-worker-10', url: 'siem-worker-8.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
+  { name: 'siem-worker-9', url: 'siem-worker-9.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
+  { name: 'siem-worker-10', url: 'siem-worker-10.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
 
 ];
 
 const MAX_FAILED_ATTEMPTS = 3;
 const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+const REQUEST_TIMEOUT = 30000; // 30 seconds timeout for worker requests
+const MAX_RETRIES = 2; // Maximum retries for failed chunks
 
 function getHealthyWorkers(): WorkerConfig[] {
   return WORKERS.filter(w => w.healthy);
@@ -129,29 +131,46 @@ async function redeployWorker(workerName: string): Promise<boolean> {
   }
 }
 
-async function checkAndRecoverWorkers() {
+// Quick health check - runs on every request to ensure fresh worker status
+async function checkAndRecoverWorkers(quickCheck = true) {
   const now = Date.now();
   const unhealthyWorkers: WorkerConfig[] = [];
   
   for (const worker of WORKERS) {
-    // Skip recently checked workers
-    if (now - worker.lastHealthCheck < HEALTH_CHECK_INTERVAL) {
+    // For quick checks, only check workers that haven't been checked recently (5s)
+    // For full checks, use the longer interval (30s)
+    const minInterval = quickCheck ? 5000 : HEALTH_CHECK_INTERVAL;
+    
+    if (now - worker.lastHealthCheck < minInterval) {
       continue;
     }
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for quick health checks
+      
       const response = await fetch(`https://${worker.url}/`, {
         method: 'GET',
-        signal: AbortSignal.timeout(5000)
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
-        markWorkerHealthy(worker.name);
-        console.log(`Worker ${worker.name}: healthy`);
+        if (!worker.healthy) {
+          markWorkerHealthy(worker.name);
+          console.log(`Worker ${worker.name}: recovered and healthy`);
+        }
       } else {
+        if (worker.healthy) {
+          console.log(`Worker ${worker.name}: health check returned ${response.status}`);
+        }
         unhealthyWorkers.push(worker);
       }
-    } catch {
+    } catch (error) {
+      if (worker.healthy) {
+        console.log(`Worker ${worker.name}: health check failed - ${String(error)}`);
+      }
       unhealthyWorkers.push(worker);
     }
     
@@ -160,7 +179,8 @@ async function checkAndRecoverWorkers() {
   
   // Attempt to recover unhealthy workers
   for (const worker of unhealthyWorkers) {
-    console.log(`Worker ${worker.name}: unhealthy (${worker.failedAttempts} failed attempts)`);
+    worker.failedAttempts++;
+    console.log(`Worker ${worker.name}: unhealthy (${worker.failedAttempts}/${MAX_FAILED_ATTEMPTS} failed attempts)`);
     
     if (worker.failedAttempts >= MAX_FAILED_ATTEMPTS) {
       console.log(`Attempting to redeploy ${worker.name}...`);
@@ -169,22 +189,22 @@ async function checkAndRecoverWorkers() {
       if (redeployed) {
         // Reset failed attempts, health will be updated on next check
         worker.failedAttempts = 0;
-        worker.lastHealthCheck = now - HEALTH_CHECK_INTERVAL; // Check again soon
+        worker.lastHealthCheck = now - 25000; // Check again in 5 seconds
       }
+    } else {
+      // Mark as unhealthy so we don't route to it
+      markWorkerUnhealthy(worker.name);
     }
   }
 }
 
-// Run health check every 30 seconds using waitUntil
-function scheduleHealthChecks(c: any) {
-  c.executionCtx.waitUntil(
-    (async () => {
-      while (true) {
-        await checkAndRecoverWorkers();
-        await new Promise(resolve => setTimeout(resolve, HEALTH_CHECK_INTERVAL));
-      }
-    })()
-  );
+// Trigger health check on every request - runs in background
+// This ensures we always know which workers are healthy before routing
+async function triggerHealthCheck(c: any, quickCheck = true) {
+  // Run health check in background without blocking response
+  // quickCheck=true: only check workers not checked in last 5s (for request routing)
+  // quickCheck=false: full health check (for /health endpoint)
+  c.executionCtx.waitUntil(checkAndRecoverWorkers(quickCheck));
 }
 
 // Reset request counts every minute
@@ -192,8 +212,8 @@ function scheduleRequestReset(c: any) {
   c.executionCtx.waitUntil(
     (async () => {
       while (true) {
-        resetRequestCounts();
         await new Promise(resolve => setTimeout(resolve, 60000));
+        resetRequestCounts();
       }
     })()
   );
@@ -211,18 +231,188 @@ interface FileChunk {
   size: number;
 }
 
+/**
+ * Check if a line is the start of a new log entry
+ * Different log types have different patterns for new entries
+ */
+function isNewLogEntry(line: string): boolean {
+  if (!line || line.trim() === '') return false;
+  
+  // Common patterns that indicate start of a new log entry:
+  
+  // 1. Timestamp patterns (most common)
+  // ISO format: 2024-01-15T10:30:00Z or 2024-01-15 10:30:00
+  if (/^\d{4}[-/]\d{2}[-/]\d{2}[T ]\d{2}:\d{2}:\d{2}/.test(line)) return true;
+  
+  // Unix timestamp: 1705315800 or 1705315800.123
+  if (/^\d{10,13}(\.\d+)?\s/.test(line)) return true;
+  
+  // 2. Syslog format: Jan 15 10:30:00
+  if (/^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}/.test(line)) return true;
+  
+  // 3. Log level indicators at start
+  if (/^(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL|TRACE)\s*[\[:\-]/i.test(line)) return true;
+  
+  // 4. Bracketed timestamps: [2024-01-15 10:30:00]
+  if (/^\[\d{4}[-/]\d{2}[-/]\d{2}/.test(line)) return true;
+  
+  // 5. Apache/Nginx format: 127.0.0.1 - - [15/Jan/2024:10:30:00
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\s+\S+\s+\S+\s+\[/.test(line)) return true;
+  
+  // 6. JSON logs starting with {"timestamp": or {"time":
+  if (/^\{\s*"(timestamp|time|ts|date)"\s*:/.test(line)) return true;
+  
+  // 7. Windows Event Log format
+  if (/^\d{4}[-\d\s:]+,(Information|Warning|Error|Success|Failure)/i.test(line)) return true;
+  
+  // 8. Common application log prefixes
+  if (/^\[?[A-Z][a-z]+\s+\d{1,2},?\s+\d{4}/.test(line)) return true;
+  
+  return false;
+}
+
+/**
+ * Check if a line is a continuation of the previous log entry (multiline)
+ * Examples: stack traces, indented lines, etc.
+ */
+function isContinuationLine(line: string): boolean {
+  if (!line) return false;
+  
+  // Stack trace lines (Java, Python, etc.)
+  if (/^\s+(at|File|line|in)\s+/.test(line)) return true;
+  if (/^\s+\d+\s+│\s*/.test(line)) return true; // Python tracebacks with │
+  
+  // Indented continuation (spaces or tabs at start)
+  if (/^[\t ]{2,}/.test(line)) return true;
+  
+  // Caused by / Exception lines in stack traces
+  if (/^(Caused by|Exception|Traceback|\s+\.{3}\s+\d+ more)/i.test(line)) return true;
+  
+  // JSON continuation (lines starting with whitespace and quotes)
+  if (/^[\t ]+"/.test(line)) return true;
+  
+  // XML/HTML continuation
+  if (/^[\t ]*[<\/]/.test(line)) return true;
+  
+  return false;
+}
+
+/**
+ * Group lines into complete log entries
+ * Ensures multiline entries stay together
+ */
+function groupIntoLogEntries(lines: string[]): string[] {
+  const entries: string[] = [];
+  let currentEntry: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const nextLine = lines[i + 1];
+    
+    // Empty line - might be separator between entries
+    if (line.trim() === '') {
+      if (currentEntry.length > 0) {
+        entries.push(currentEntry.join('\n'));
+        currentEntry = [];
+      }
+      continue;
+    }
+    
+    // Check if this is a new log entry
+    if (isNewLogEntry(line)) {
+      // Save previous entry if exists
+      if (currentEntry.length > 0) {
+        entries.push(currentEntry.join('\n'));
+      }
+      currentEntry = [line];
+    } else if (isContinuationLine(line) && currentEntry.length > 0) {
+      // This is a continuation of current entry (stack trace, etc.)
+      currentEntry.push(line);
+    } else if (currentEntry.length === 0) {
+      // Start of file without clear timestamp - assume new entry
+      currentEntry = [line];
+    } else {
+      // Ambiguous - check if next line is a new entry
+      if (nextLine && isNewLogEntry(nextLine)) {
+        // Current line is end of previous entry
+        currentEntry.push(line);
+        entries.push(currentEntry.join('\n'));
+        currentEntry = [];
+      } else {
+        // Likely continuation
+        currentEntry.push(line);
+      }
+    }
+  }
+  
+  // Don't forget the last entry
+  if (currentEntry.length > 0) {
+    entries.push(currentEntry.join('\n'));
+  }
+  
+  return entries;
+}
+
 function distributeContent(content: string, numWorkers: number): FileChunk[] {
   const lines = content.split('\n');
-  const totalLines = lines.length;
-  const linesPerWorker = Math.ceil(totalLines / numWorkers);
+  
+  // Group lines into complete log entries
+  const logEntries = groupIntoLogEntries(lines);
+  const totalEntries = logEntries.length;
+  
+  console.log(`Grouped ${lines.length} lines into ${totalEntries} complete log entries`);
+  
+  if (totalEntries === 0) {
+    return [];
+  }
+  
+  // Calculate entries per worker
+  const entriesPerWorker = Math.ceil(totalEntries / numWorkers);
   
   const chunks: FileChunk[] = [];
   
   for (let i = 0; i < numWorkers; i++) {
-    const startLine = i * linesPerWorker;
-    const endLine = Math.min(startLine + linesPerWorker, totalLines) - 1;
-    const chunkLines = lines.slice(startLine, endLine + 1);
-    const chunkContent = chunkLines.join('\n');
+    const startEntry = i * entriesPerWorker;
+    const endEntry = Math.min(startEntry + entriesPerWorker, totalEntries);
+    
+    if (startEntry >= totalEntries) {
+      break; // No more entries for this worker
+    }
+    
+    // Get all entries for this chunk
+    const chunkEntries = logEntries.slice(startEntry, endEntry);
+    
+    // Reconstruct the content preserving original format
+    // Join entries with single newline (since each entry already has its internal newlines)
+    const chunkContent = chunkEntries.join('\n');
+    
+    // Calculate original line numbers
+    let startLine = 0;
+    let endLine = 0;
+    let currentEntryIdx = 0;
+    let lineIdx = 0;
+    
+    // Build a map of entry index to start line number
+    const entryStartLines: number[] = [];
+    let currentLineIdx = 0;
+    
+    for (const entry of logEntries) {
+      entryStartLines.push(currentLineIdx);
+      currentLineIdx += entry.split('\n').length;
+    }
+    
+    startLine = entryStartLines[startEntry] || 0;
+    
+    // Calculate end line
+    const lastEntryIdx = endEntry - 1;
+    if (lastEntryIdx < logEntries.length) {
+      const lastEntry = logEntries[lastEntryIdx];
+      const lastEntryStart = entryStartLines[lastEntryIdx] || 0;
+      const lastEntryLines = lastEntry.split('\n').length;
+      endLine = lastEntryStart + lastEntryLines - 1;
+    } else {
+      endLine = lines.length - 1;
+    }
     
     if (chunkContent.trim()) {
       chunks.push({
@@ -232,10 +422,83 @@ function distributeContent(content: string, numWorkers: number): FileChunk[] {
         endLine,
         size: new TextEncoder().encode(chunkContent).length
       });
+      
+      console.log(`Chunk ${i}: entries ${startEntry}-${endEntry - 1}, lines ${startLine}-${endLine}, ${chunkEntries.length} entries`);
     }
   }
   
   return chunks;
+}
+
+async function processChunkWithRetry(
+  chunk: FileChunk,
+  worker: WorkerConfig,
+  fileName: string,
+  totalChunks: number,
+  retryCount = 0
+): Promise<any> {
+  incrementRequests(worker.name);
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    
+    const response = await fetch(`https://${worker.url}/parse`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Chunk-Index': String(chunk.workerIndex),
+        'X-Total-Chunks': String(totalChunks),
+        'X-File-Name': fileName,
+      },
+      body: JSON.stringify({ 
+        content: chunk.content,
+        forceType: 'auto',
+        _chunkMetadata: {
+          chunkIndex: chunk.workerIndex,
+          totalChunks: totalChunks,
+          startLine: chunk.startLine,
+          endLine: chunk.endLine,
+          isDistributed: true
+        }
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    decrementRequests(worker.name);
+    
+    if (!response.ok) {
+      throw new Error(`Worker ${worker.name} returned ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    return {
+      worker: worker.name,
+      chunkIndex: chunk.workerIndex,
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    decrementRequests(worker.name);
+    
+    // Retry logic
+    if (retryCount < MAX_RETRIES) {
+      console.log(`Retrying chunk ${chunk.workerIndex} on ${worker.name} (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+      return processChunkWithRetry(chunk, worker, fileName, totalChunks, retryCount + 1);
+    }
+    
+    markWorkerUnhealthy(worker.name);
+    
+    return {
+      worker: worker.name,
+      chunkIndex: chunk.workerIndex,
+      success: false,
+      error: String(error)
+    };
+  }
 }
 
 async function distributeFileToWorkers(
@@ -251,56 +514,9 @@ async function distributeFileToWorkers(
   
   const promises = chunks.map(async (chunk, idx) => {
     const worker = healthyWorkers[idx];
-    incrementRequests(worker.name);
-    
-    try {
-      const response = await fetch(`https://${worker.url}/parse`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Chunk-Index': String(chunk.workerIndex),
-          'X-Total-Chunks': String(chunks.length),
-          'X-File-Name': fileName,
-        },
-        body: JSON.stringify({ 
-          content: chunk.content,
-          forceType: 'auto',
-          _chunkMetadata: {
-            chunkIndex: chunk.workerIndex,
-            totalChunks: chunks.length,
-            startLine: chunk.startLine,
-            endLine: chunk.endLine,
-            isDistributed: true
-          }
-        })
-      });
-      
-      decrementRequests(worker.name);
-      
-      if (!response.ok) {
-        throw new Error(`Worker ${worker.name} returned ${response.status}`);
-      }
-      
-      const result = await response.json();
-      onProgress?.(((idx + 1) / chunks.length) * 100);
-      
-      return {
-        worker: worker.name,
-        chunkIndex: chunk.workerIndex,
-        success: true,
-        data: result
-      };
-    } catch (error) {
-      decrementRequests(worker.name);
-      markWorkerUnhealthy(worker.name);
-      
-      return {
-        worker: worker.name,
-        chunkIndex: chunk.workerIndex,
-        success: false,
-        error: String(error)
-      };
-    }
+    const result = await processChunkWithRetry(chunk, worker, fileName, chunks.length);
+    onProgress?.(((idx + 1) / chunks.length) * 100);
+    return result;
   });
   
   const results = await Promise.all(promises);
@@ -449,9 +665,9 @@ app.use('*', cors({
 // ENDPOINTS
 // ============================================
 
-app.get('/', async (c) => {
-  // Schedule background health checks and request reset
-  scheduleHealthChecks(c);
+app.get('/', (c) => {
+  // Trigger health check in background and schedule request reset
+  triggerHealthCheck(c, true);
   scheduleRequestReset(c);
   
   return c.json({
@@ -483,8 +699,8 @@ app.get('/', async (c) => {
 });
 
 app.get('/health', async (c) => {
-  // Trigger immediate health check
-  await checkAndRecoverWorkers();
+  // Trigger immediate full health check (not quick check)
+  await checkAndRecoverWorkers(false);
   
   const results = WORKERS.map(worker => ({
     name: worker.name,
@@ -496,15 +712,10 @@ app.get('/health', async (c) => {
   const healthy = results.filter(r => r.status === 'healthy').length;
   const unhealthy = results.filter(r => r.status === 'unhealthy');
   
-  // Trigger recovery for unhealthy workers
-  if (unhealthy.length > 0) {
-    c.executionCtx.waitUntil(checkAndRecoverWorkers());
-  }
-  
   return c.json({
     summary: { total: WORKERS.length, healthy, unhealthy: unhealthy.length },
     workers: results,
-    autoRecovery: unhealthy.length > 0 ? 'Triggered recovery for unhealthy workers' : 'All workers healthy',
+    autoRecovery: unhealthy.length > 0 ? 'Some workers unhealthy - recovery may be triggered' : 'All workers healthy',
   });
 });
 
@@ -558,8 +769,9 @@ app.get('/stats', (c) => {
 // ============================================
 
 app.post('/parse', async (c) => {
-  // Schedule background health check
-  scheduleHealthChecks(c);
+  // Trigger health check in background before processing
+  // This ensures we have latest worker status without blocking the request
+  triggerHealthCheck(c, true);
   
   const contentType = c.req.header('Content-Type') || '';
   let content: string;
@@ -596,15 +808,20 @@ app.post('/parse', async (c) => {
       incrementRequests(worker.name);
       
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+        
         const response = await fetch(`https://${worker.url}/parse`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-File-Name': fileName,
           },
-          body: JSON.stringify({ content, forceType: 'auto' })
+          body: JSON.stringify({ content, forceType: 'auto' }),
+          signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
         decrementRequests(worker.name);
         
         if (!response.ok) {
@@ -680,7 +897,17 @@ async function routeToWorker(c: any, path: string, body: string | null): Promise
       if (value) headers[header] = value;
     }
     
-    const response = await fetch(url, { method, headers, body: body || undefined });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    
+    const response = await fetch(url, { 
+      method, 
+      headers, 
+      body: body || undefined,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
     decrementRequests(worker.name);
     
     if (path === '/parsers') {

@@ -2,7 +2,7 @@
 // Exports all ML functionality for log correlation and anomaly detection
 
 export * from './types';
-export { extractFeatures, buildBaseline } from './feature-extractor';
+export { extractFeatures, buildBaseline, extractAdvancedFeatures, detectAttackPatterns } from './feature-extractor';
 export { classifyAttack, getMitreTactics, getMitreTechniques } from './classifier';
 export { correlateMultipleLogs } from './correlator';
 export {
@@ -10,7 +10,11 @@ export {
   detectAttacksInEntries,
   enrichEntryWithAttackDetection,
   enrichEntriesWithAttacks,
+  getAttackTypesForLogType,
+  isAttackTypeApplicable,
+  getLogTypeCategory,
   type EntryAttackDetection,
+  type LogTypeCategory,
 } from './entry-classifier';
 export {
   extractFeatures as extractMLFeatures,

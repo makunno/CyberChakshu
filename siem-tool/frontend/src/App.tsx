@@ -655,7 +655,7 @@ function App() {
                     <AlertTriangle size={24} color="#ef4444" />
                   </div>
                   <div className="kpi-content">
-                    <div className="kpi-value">{data.stats.bySeverity.error || 0}</div>
+                    <div className="kpi-value">{data?.stats?.bySeverity?.error || 0}</div>
                     <div className="kpi-label">Errors</div>
                   </div>
                 </div>
