@@ -35,15 +35,41 @@ const WORKERS: WorkerConfig[] = [
   { name: 'siem-worker-8', url: 'siem-worker-8.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
   { name: 'siem-worker-9', url: 'siem-worker-9.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
   { name: 'siem-worker-10', url: 'siem-worker-10.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
-
+  { name: 'siem-worker-11', url: 'siem-worker-11.tanubhavj.workers.dev', healthy: true, requests: 0, lastHealthCheck: 0, failedAttempts: 0 },
 ];
+
+// Track if this is the first request (cold start)
+let isFirstRequest = true;
+
+// Reset all workers to healthy on module load (deployment)
+function resetAllWorkers() {
+  for (const worker of WORKERS) {
+    worker.healthy = true;
+    worker.failedAttempts = 0;
+    worker.requests = 0;
+    worker.lastHealthCheck = 0;
+  }
+  console.log('All workers reset to healthy state on deployment');
+}
+
+// Call reset on module load
+resetAllWorkers();
 
 const MAX_FAILED_ATTEMPTS = 3;
 const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 const REQUEST_TIMEOUT = 30000; // 30 seconds timeout for worker requests
 const MAX_RETRIES = 2; // Maximum retries for failed chunks
 
+// NOTE: Health checks via subrequests to other workers are currently not working
+// due to Cloudflare Error 1042 (origin DNS error). 
+// Workaround: Assume all workers are healthy unless they fail during request processing.
+const BYPASS_HEALTH_CHECKS = true;
+
 function getHealthyWorkers(): WorkerConfig[] {
+  if (BYPASS_HEALTH_CHECKS) {
+    // Return all workers - circuit breaker pattern handles failures during requests
+    return WORKERS;
+  }
   return WORKERS.filter(w => w.healthy);
 }
 
@@ -136,18 +162,26 @@ async function checkAndRecoverWorkers(quickCheck = true) {
   const now = Date.now();
   const unhealthyWorkers: WorkerConfig[] = [];
   
+  // On first request, skip interval check and force health check on all workers
+  const forceCheck = isFirstRequest;
+  let checkedCount = 0;
+  
   for (const worker of WORKERS) {
-    // For quick checks, only check workers that haven't been checked recently (5s)
+    // For quick checks, only check workers that haven't been checked recently (2s)
     // For full checks, use the longer interval (30s)
-    const minInterval = quickCheck ? 5000 : HEALTH_CHECK_INTERVAL;
+    // On first request, check all workers regardless of last check time
+    const minInterval = quickCheck ? 2000 : HEALTH_CHECK_INTERVAL;
     
-    if (now - worker.lastHealthCheck < minInterval) {
+    if (!forceCheck && (now - worker.lastHealthCheck < minInterval)) {
       continue;
     }
     
+    checkedCount++;
+    
     try {
+      // Use longer timeout (15s) to handle Cloudflare Workers cold starts
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for quick health checks
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       
       const response = await fetch(`https://${worker.url}/`, {
         method: 'GET',
@@ -157,19 +191,23 @@ async function checkAndRecoverWorkers(quickCheck = true) {
       clearTimeout(timeoutId);
       
       if (response.ok) {
+        // Worker is healthy - reset failed attempts and mark healthy
         if (!worker.healthy) {
           markWorkerHealthy(worker.name);
           console.log(`Worker ${worker.name}: recovered and healthy`);
         }
+        worker.failedAttempts = 0; // Reset on success
+        console.log(`Worker ${worker.name}: health check OK (HTTP ${response.status})`);
       } else {
-        if (worker.healthy) {
-          console.log(`Worker ${worker.name}: health check returned ${response.status}`);
-        }
+        console.log(`Worker ${worker.name}: health check returned HTTP ${response.status}`);
         unhealthyWorkers.push(worker);
       }
     } catch (error) {
-      if (worker.healthy) {
-        console.log(`Worker ${worker.name}: health check failed - ${String(error)}`);
+      const errorMsg = String(error);
+      if (errorMsg.includes('abort')) {
+        console.log(`Worker ${worker.name}: health check timed out (15s)`);
+      } else {
+        console.log(`Worker ${worker.name}: health check failed - ${errorMsg}`);
       }
       unhealthyWorkers.push(worker);
     }
@@ -177,23 +215,33 @@ async function checkAndRecoverWorkers(quickCheck = true) {
     worker.lastHealthCheck = now;
   }
   
+  if (forceCheck) {
+    console.log(`First request: checked ${checkedCount} workers, ${unhealthyWorkers.length} unhealthy`);
+    isFirstRequest = false;
+  }
+  
   // Attempt to recover unhealthy workers
   for (const worker of unhealthyWorkers) {
-    worker.failedAttempts++;
-    console.log(`Worker ${worker.name}: unhealthy (${worker.failedAttempts}/${MAX_FAILED_ATTEMPTS} failed attempts)`);
+    // Only increment failed attempts if worker was previously healthy
+    // This prevents runaway failed attempts on cold-starting workers
+    if (worker.healthy) {
+      worker.failedAttempts++;
+      markWorkerUnhealthy(worker.name);
+      console.log(`Worker ${worker.name}: marked unhealthy (${worker.failedAttempts}/${MAX_FAILED_ATTEMPTS} failed attempts)`);
+    } else {
+      // Worker already unhealthy, just increment counter
+      worker.failedAttempts++;
+    }
     
     if (worker.failedAttempts >= MAX_FAILED_ATTEMPTS) {
-      console.log(`Attempting to redeploy ${worker.name}...`);
+      console.log(`Worker ${worker.name}: attempting redeployment after ${worker.failedAttempts} failures...`);
       const redeployed = await redeployWorker(worker.name);
       
       if (redeployed) {
         // Reset failed attempts, health will be updated on next check
         worker.failedAttempts = 0;
-        worker.lastHealthCheck = now - 25000; // Check again in 5 seconds
+        worker.lastHealthCheck = now - 13000; // Check again in 2 seconds
       }
-    } else {
-      // Mark as unhealthy so we don't route to it
-      markWorkerUnhealthy(worker.name);
     }
   }
 }
@@ -446,22 +494,13 @@ async function processChunkWithRetry(
     const response = await fetch(`https://${worker.url}/parse`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/plain',
         'X-Chunk-Index': String(chunk.workerIndex),
         'X-Total-Chunks': String(totalChunks),
         'X-File-Name': fileName,
+        'X-Distributed': 'true',
       },
-      body: JSON.stringify({ 
-        content: chunk.content,
-        forceType: 'auto',
-        _chunkMetadata: {
-          chunkIndex: chunk.workerIndex,
-          totalChunks: totalChunks,
-          startLine: chunk.startLine,
-          endLine: chunk.endLine,
-          isDistributed: true
-        }
-      }),
+      body: chunk.content,
       signal: controller.signal
     });
     
@@ -469,7 +508,9 @@ async function processChunkWithRetry(
     decrementRequests(worker.name);
     
     if (!response.ok) {
-      throw new Error(`Worker ${worker.name} returned ${response.status}`);
+      const errorBody = await response.text();
+      console.error(`Worker ${worker.name} error: HTTP ${response.status}, Body: ${errorBody.substring(0, 200)}`);
+      throw new Error(`Worker ${worker.name} returned ${response.status}: ${errorBody.substring(0, 100)}`);
     }
     
     const result = await response.json();
@@ -665,10 +706,10 @@ app.use('*', cors({
 // ENDPOINTS
 // ============================================
 
-app.get('/', (c) => {
-  // Trigger health check in background and schedule request reset
-  triggerHealthCheck(c, true);
-  scheduleRequestReset(c);
+app.get('/', async (c) => {
+  // Always run health check synchronously on root endpoint to ensure fresh status
+  // This is critical for the initial health check when workers are cold
+  await checkAndRecoverWorkers(true);
   
   return c.json({
     status: 'ok',
@@ -717,6 +758,77 @@ app.get('/health', async (c) => {
     workers: results,
     autoRecovery: unhealthy.length > 0 ? 'Some workers unhealthy - recovery may be triggered' : 'All workers healthy',
   });
+});
+
+// Diagnostic endpoint - test fetching a specific worker
+app.get('/test-worker/:workerNum', async (c) => {
+  const workerNum = parseInt(c.req.param('workerNum')) || 1;
+  const worker = WORKERS.find(w => w.name === `siem-worker-${workerNum}`);
+  
+  if (!worker) {
+    return c.json({ error: `Worker ${workerNum} not found` }, 404);
+  }
+  
+  const testResults: any = {
+    worker: worker.name,
+    url: worker.url,
+    tests: []
+  };
+  
+  // Test 1: Basic fetch with long timeout
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    
+    const startTime = Date.now();
+    const response = await fetch(`https://${worker.url}/`, {
+      method: 'GET',
+      signal: controller.signal
+    });
+    const duration = Date.now() - startTime;
+    clearTimeout(timeoutId);
+    
+    const body = await response.text();
+    testResults.tests.push({
+      name: 'Basic fetch',
+      success: response.ok,
+      status: response.status,
+      duration: `${duration}ms`,
+      bodyLength: body.length,
+      bodyPreview: body.substring(0, 200)
+    });
+  } catch (error) {
+    testResults.tests.push({
+      name: 'Basic fetch',
+      success: false,
+      error: String(error)
+    });
+  }
+  
+  // Test 2: Try HTTP instead of HTTPS
+  try {
+    const startTime = Date.now();
+    const response = await fetch(`http://${worker.url}/`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(10000)
+    });
+    const duration = Date.now() - startTime;
+    
+    testResults.tests.push({
+      name: 'HTTP fetch (not HTTPS)',
+      success: response.ok,
+      status: response.status,
+      duration: `${duration}ms`
+    });
+  } catch (error) {
+    testResults.tests.push({
+      name: 'HTTP fetch',
+      success: false,
+      error: String(error)
+    });
+  }
+  
+  return c.json(testResults);
 });
 
 app.post('/recover', async (c) => {
@@ -769,9 +881,15 @@ app.get('/stats', (c) => {
 // ============================================
 
 app.post('/parse', async (c) => {
-  // Trigger health check in background before processing
-  // This ensures we have latest worker status without blocking the request
-  triggerHealthCheck(c, true);
+  // CRITICAL: Run health check SYNCHRONOUSLY first
+  // This ensures workers are marked healthy before we try to use them
+  // Background health checks via waitUntil don't complete fast enough
+  try {
+    await checkAndRecoverWorkers(true);
+  } catch (healthCheckError) {
+    console.error('Health check error:', healthCheckError);
+    // Continue anyway - we'll check healthy workers below
+  }
   
   const contentType = c.req.header('Content-Type') || '';
   let content: string;
@@ -795,10 +913,17 @@ app.post('/parse', async (c) => {
       return c.json({ error: 'No log content provided' }, 400);
     }
     
+    // Get healthy workers (with bypass, this returns all workers)
     const healthyWorkers = getHealthyWorkers();
+    
     if (healthyWorkers.length === 0) {
-      return c.json({ error: 'No healthy workers available. Try /recover endpoint.' }, 503);
+      return c.json({ 
+        error: 'No workers configured',
+        details: 'Worker pool is empty. Check configuration.'
+      }, 503);
     }
+    
+    console.log(`Processing with ${healthyWorkers.length} workers`);
     
     console.log(`Processing file ${fileName} (${content.length} bytes) with ${healthyWorkers.length} workers`);
     
@@ -814,10 +939,10 @@ app.post('/parse', async (c) => {
         const response = await fetch(`https://${worker.url}/parse`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'text/plain',
             'X-File-Name': fileName,
           },
-          body: JSON.stringify({ content, forceType: 'auto' }),
+          body: content,
           signal: controller.signal
         });
         
@@ -851,10 +976,36 @@ app.post('/parse', async (c) => {
     const distributionResult = await distributeFileToWorkers(content, fileName, healthyWorkers);
     
     if (distributionResult.successful === 0) {
+      // Fallback: Try using first worker directly (Error 1042 workaround)
+      console.log('Distribution failed, trying fallback to worker-1...');
+      try {
+        const fallbackWorker = WORKERS[0];
+        const response = await fetch(`https://${fallbackWorker.url}/parse`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain',
+            'X-File-Name': fileName,
+          },
+          body: content
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          return c.json({
+            ...result,
+            fallback: true,
+            note: 'Used fallback mode due to worker communication issues'
+          });
+        }
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+      }
+      
       return c.json({ 
         error: 'All workers failed to process the file',
         distribution: distributionResult,
-        suggestion: 'Try POST /recover to redeploy all workers'
+        note: 'Cloudflare Error 1042: Workers cannot communicate with each other. Consider using custom domains.',
+        suggestion: 'The system is experiencing infrastructure issues. Please try again later.'
       }, 502);
     }
     

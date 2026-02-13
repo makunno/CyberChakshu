@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import JSZip from 'jszip';
-import { parseLogsFromFile, parseLogsFromText, correlateMultipleFiles, EVTXUploadError, isEVTXFile, type SplitFileResult } from './api';
+import { parseLogsFromFile, parseLogsFromText, correlateMultipleFiles, EVTXUploadError, isEVTXFile, splitFileClient, type SplitFileResult } from './api';
 import type { ParseResponse, ParsedLogEntry, CorrelateResponse, AttackChain, TimelineEvent } from './types';
 import { DynamicTable } from './DynamicTable';
 import { EVTXTutorial } from './EVTXTutorial';
@@ -198,9 +198,7 @@ function App() {
       return;
     }
 
-    // DISABLED: File splitting - now handled by master worker
-    // Master worker distributes large files equally among all workers
-    /*
+    // File splitting - client-side for single backend worker
     if (file.size > CLIENT_SPLIT_THRESHOLD) {
       console.log('Large file detected, splitting...');
       setLoading(true);
@@ -217,9 +215,8 @@ function App() {
         return;
       }
     }
-    */
 
-    // Send file directly to master worker - it handles distribution
+    // Send file to backend worker
     console.log('Sending file to master worker...');
     setLoading(true);
     setError(null);
@@ -243,15 +240,13 @@ function App() {
   const handleRunCorrelation = useCallback(async () => {
     if (uploadedFiles.length === 0) return;
 
-    // DISABLED: File size check - master worker handles distribution
-    /*
+    // File size check - prevent very large files
     const largeFiles = uploadedFiles.filter(f => f.size > CLIENT_SPLIT_THRESHOLD);
     if (largeFiles.length > 0) {
       const fileNames = largeFiles.map(f => f.name).join(', ');
-      setError(`Files too large for correlation (${largeFiles.length} file(s) > 1MB): ${fileNames}. Please split large files or upload smaller files.`);
+      setError(`Files too large (${largeFiles.length} file(s) > 200KB): ${fileNames}. Please split large files or upload smaller files.`);
       return;
     }
-    */
 
     setLoading(true);
     setError(null);
@@ -274,15 +269,13 @@ function App() {
     if (files.length === 0) return;
 
     if (mode === 'multi' || files.length > 1) {
-      // DISABLED: File size check - master worker handles distribution
-      /*
+      // File size check for multi-file mode
       const largeFiles = files.filter(f => f.size > CLIENT_SPLIT_THRESHOLD);
       if (largeFiles.length > 0) {
         const fileNames = largeFiles.map(f => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ');
-        setError(`Files too large for multi-file upload: ${fileNames}. Files over 1MB will cause 413 errors. Please upload smaller files or use single file mode.`);
+        setError(`Files too large for multi-file upload: ${fileNames}. Files over 200KB will cause 413 errors. Please upload smaller files or use single file mode.`);
         return;
       }
-      */
       setUploadedFiles(prev => [...prev, ...files]);
       return;
     }
@@ -296,8 +289,7 @@ function App() {
       return;
     }
 
-    // DISABLED: File splitting in drop handler
-    /*
+    // File splitting in drop handler
     if (file.size > CLIENT_SPLIT_THRESHOLD) {
       console.log('Large file detected in drop, splitting...');
       setLoading(true);
@@ -314,7 +306,6 @@ function App() {
         return;
       }
     }
-    */
 
     setLoading(true);
     setError(null);
