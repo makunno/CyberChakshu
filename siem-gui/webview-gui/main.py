@@ -189,6 +189,74 @@ class FlaskServer(QThread):
         self.server_output.emit(text)
 
 
+class MasterSlaveServer(QThread):
+    """Thread to run Master-Slave Flask server (port 5001)"""
+    server_started = Signal()
+    server_error = Signal(str)
+    server_output = Signal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.running = False
+        self._shutdown = False
+        self.server = None
+        self.capture = FlaskOutputCapture()
+        self.capture.output.connect(self.on_server_output)
+
+    def run(self):
+        try:
+            from api.master_app import app as master_app
+            self.running = True
+
+            self.server_output.emit("\n>>> Master-Slave server initializing...\n")
+            self.capture.start_capture()
+
+            from werkzeug.serving import make_server
+            self.server = make_server('127.0.0.1', 5001, master_app, threaded=True)
+            self.server_started.emit()
+
+            self.server_output.emit(">>> Master-Slave server ready on http://127.0.0.1:5001\n")
+
+            self.server.serve_forever()
+
+        except ImportError:
+            if not self._shutdown:
+                self.server_error.emit("Master-Slave backend not available")
+        except Exception as e:
+            if not self._shutdown:
+                self.server_error.emit(str(e))
+        finally:
+            self.running = False
+            self.capture.stop_capture()
+            if self.server:
+                try:
+                    self.server.shutdown()
+                except:
+                    pass
+
+    def stop(self):
+        """Stop the Master-Slave server"""
+        self._shutdown = True
+        self.running = False
+
+        if self.server:
+            try:
+                self.server.shutdown()
+                import time
+                time.sleep(0.5)
+            except:
+                pass
+
+        if self.isRunning():
+            self.terminate()
+            if not self.wait(3000):
+                print("Warning: Master-Slave thread did not terminate cleanly")
+
+    def on_server_output(self, text):
+        """Emit server output to UI"""
+        self.server_output.emit(text)
+
+
 class BackendChecker(QThread):
     """Thread to check backend availability"""
     result_ready = Signal(str, bool)
@@ -225,6 +293,8 @@ class FreeKhanaMainWindow(QMainWindow):
         self.webview_widget = None
         self.flask_thread = None
         self.flask_server_running = False
+        self.master_slave_thread = None
+        self.master_slave_server_running = False
         self.backend_checkers = []
         self.terminal_output = ""
         self.current_tab = "webview"
@@ -272,38 +342,60 @@ class FreeKhanaMainWindow(QMainWindow):
         self.backend_combo = QComboBox()
         self.backend_combo.addItem("Offline (Local)", "localhost")
         self.backend_combo.addItem("Online (Cloud)", "online")
+        self.backend_combo.addItem("Master-Slave", "master")
         self.backend_combo.currentTextChanged.connect(self.on_backend_changed)
         layout.addWidget(self.backend_combo)
 
         # Status indicators
         self.local_status = QLabel("Offline: Checking...")
         self.online_status = QLabel("Online: Checking...")
+        self.master_status = QLabel("Master: Checking...")
         layout.addWidget(self.local_status)
         layout.addWidget(self.online_status)
+        layout.addWidget(self.master_status)
+
+        # Local Backend toggle button
+        self.local_toggle_btn = QPushButton("Start Local Backend")
+        self.local_toggle_btn.clicked.connect(self.on_local_toggle_click)
+        self.local_toggle_btn.setEnabled(False)
+        
+        # Restart Local button (refresh icon)
+        self.restart_local_btn = QPushButton()
+        self.restart_local_btn.setIcon(QIcon.fromTheme("view-refresh"))
+        self.restart_local_btn.setToolTip("Restart Local Backend")
+        self.restart_local_btn.clicked.connect(self.restart_local_backend)
+        self.restart_local_btn.setEnabled(False)
+        
+        local_layout = QHBoxLayout()
+        local_layout.setSpacing(2)
+        local_layout.addWidget(self.local_toggle_btn)
+        local_layout.addWidget(self.restart_local_btn)
+        local_layout.addStretch()
+        layout.addLayout(local_layout)
+
+        # Master-Slave toggle button
+        self.master_toggle_btn = QPushButton("Start Master-Slave")
+        self.master_toggle_btn.clicked.connect(self.on_master_toggle_click)
+        self.master_toggle_btn.setEnabled(False)
+        
+        # Restart Master-Slave button (refresh icon)
+        self.restart_master_btn = QPushButton()
+        self.restart_master_btn.setIcon(QIcon.fromTheme("view-refresh"))
+        self.restart_master_btn.setToolTip("Restart Master-Slave Backend")
+        self.restart_master_btn.clicked.connect(self.restart_master_slave_backend)
+        self.restart_master_btn.setEnabled(False)
+        
+        master_layout = QHBoxLayout()
+        master_layout.setSpacing(2)
+        master_layout.addWidget(self.master_toggle_btn)
+        master_layout.addWidget(self.restart_master_btn)
+        master_layout.addStretch()
+        layout.addLayout(master_layout)
 
         # Refresh button
         refresh_btn = QPushButton("Refresh Status")
         refresh_btn.clicked.connect(self.check_backends)
         layout.addWidget(refresh_btn)
-
-        # Start/Stop Local button
-        self.start_local_btn = QPushButton("Start Local Backend")
-        self.start_local_btn.clicked.connect(self.start_local_backend)
-        self.start_local_btn.setEnabled(False)
-        layout.addWidget(self.start_local_btn)
-
-        # Stop Local button
-        self.stop_local_btn = QPushButton("Stop Local Backend")
-        self.stop_local_btn.clicked.connect(self.stop_local_backend)
-        self.stop_local_btn.setEnabled(False)
-        self.stop_local_btn.setVisible(False)
-        layout.addWidget(self.stop_local_btn)
-
-        # Restart Local Server button (only active when server is running)
-        self.restart_local_btn = QPushButton("Restart Local Server")
-        self.restart_local_btn.clicked.connect(self.restart_local_backend)
-        self.restart_local_btn.setEnabled(False)
-        layout.addWidget(self.restart_local_btn)
 
         layout.addStretch()
 
@@ -424,7 +516,7 @@ class FreeKhanaMainWindow(QMainWindow):
 
         self.flask_server_running = True
         self.status_bar.showMessage("Starting offline backend...")
-        self.start_local_btn.setEnabled(False)
+        self.local_toggle_btn.setText("Starting...")
 
         # Clear previous terminal output
         self.terminal_output_edit.clear()
@@ -447,7 +539,7 @@ class FreeKhanaMainWindow(QMainWindow):
 
         self.append_terminal("\nStopping local Flask backend...\n")
         self.status_bar.showMessage("Stopping local backend...")
-        self.stop_local_btn.setEnabled(False)
+        self.local_toggle_btn.setText("Stopping...")
 
         # Switch to online backend first
         self.backend_combo.setCurrentText("Online (Cloud)")
@@ -476,6 +568,13 @@ class FreeKhanaMainWindow(QMainWindow):
             else:
                 QMessageBox.warning(self, "Online Backend Unavailable",
                                   "Online backend is not accessible. Please check your internet connection.")
+                return
+        elif backend_choice == 'master':
+            if "✓ Available" in self.master_status.text():
+                self.switch_to_master_backend()
+            else:
+                QMessageBox.warning(self, "Master Backend Unavailable",
+                                  "Master backend is not accessible. This requires custom domains to be configured.")
                 return
 
     def create_webview_container(self):
@@ -600,12 +699,13 @@ class FreeKhanaMainWindow(QMainWindow):
             self.backend_checkers.remove(checker)
 
     def check_backends(self):
-        """Check availability of both backends"""
+        """Check availability of all backends"""
         self.status_bar.showMessage("Checking backend availability...")
         self.cleanup_checker_threads()
 
         self.local_status.setText("Offline: Checking...")
         self.online_status.setText("Online: Checking...")
+        self.master_status.setText("Master: Checking...")
 
         # Check localhost
         localhost_checker = BackendChecker('localhost', 'http://127.0.0.1:5000')
@@ -621,6 +721,13 @@ class FreeKhanaMainWindow(QMainWindow):
         self.backend_checkers.append(online_checker)
         online_checker.start()
 
+        # Check master-slave (port 5001)
+        master_checker = BackendChecker('master', 'http://127.0.0.1:5001')
+        master_checker.result_ready.connect(self.on_backend_check_result)
+        master_checker.finished.connect(lambda: self.remove_checker(master_checker))
+        self.backend_checkers.append(master_checker)
+        master_checker.start()
+
     def on_backend_check_result(self, backend_type, available):
         """Handle backend check results"""
         if backend_type == 'localhost':
@@ -631,24 +738,40 @@ class FreeKhanaMainWindow(QMainWindow):
 
             if not self.flask_server_running:
                 if available:
-                    self.start_local_btn.setVisible(False)
-                    self.stop_local_btn.setVisible(True)
-                    self.stop_local_btn.setEnabled(True)
+                    self.local_toggle_btn.setText("Stop Local Backend")
+                    self.local_toggle_btn.setEnabled(True)
+                    self.restart_local_btn.setEnabled(True)
                     self.flask_server_running = True
                 else:
-                    self.start_local_btn.setVisible(True)
-                    self.start_local_btn.setEnabled(True)
-                    self.stop_local_btn.setVisible(False)
-        else:
+                    self.local_toggle_btn.setText("Start Local Backend")
+                    self.local_toggle_btn.setEnabled(True)
+                    self.restart_local_btn.setEnabled(False)
+        elif backend_type == 'online':
             ui_status = "✓ Available" if available else "✗ Not Available"
             color = "#22c55e" if available else "#ef4444"
             self.online_status.setText(f"Online: {ui_status}")
             self.online_status.setStyleSheet(f"color: {color}; font-size: 11px;")
 
-        # Default to online backend only on initial load
-        if self.initial_load and backend_type == 'online' and available:
-            self.backend_combo.setCurrentText("Online (Cloud)")
-            self.initial_load = False
+            # Default to online backend only on initial load
+            if self.initial_load and available:
+                self.backend_combo.setCurrentText("Online (Cloud)")
+                self.initial_load = False
+        else:
+            ui_status = "✓ Available" if available else "✗ Not Available"
+            color = "#22c55e" if available else "#ef4444"
+            self.master_status.setText(f"Master: {ui_status}")
+            self.master_status.setStyleSheet(f"color: {color}; font-size: 11px;")
+
+            if not self.master_slave_server_running:
+                if available:
+                    self.master_toggle_btn.setText("Stop Master-Slave")
+                    self.master_toggle_btn.setEnabled(True)
+                    self.restart_master_btn.setEnabled(True)
+                    self.master_slave_server_running = True
+                else:
+                    self.master_toggle_btn.setText("Start Master-Slave")
+                    self.master_toggle_btn.setEnabled(True)
+                    self.restart_master_btn.setEnabled(False)
 
     def switch_to_offline_backend(self):
         """Switch to offline (local) backend"""
@@ -660,10 +783,25 @@ class FreeKhanaMainWindow(QMainWindow):
         """Switch to online backend"""
         self.switch_webview_backend('https://freekhana-frontend.pages.dev')
 
+    def switch_to_master_backend(self):
+        """Switch to master-slave backend (Flask server on port 5001 that distributes to Cloudflare workers)"""
+        # Start Master-Slave Flask server if not running
+        if not self.master_slave_server_running:
+            self.append_terminal("\nStarting Master-Slave backend (port 5001)...\n")
+            self.start_master_slave_backend()
+        
+        # Point webview to Master-Slave frontend (served at root URL, same as offline)
+        self.switch_webview_backend('http://127.0.0.1:5001')
+
     def on_webview_load_finished(self, success):
         """Handle WebView load finished"""
         if success:
-            backend_name = "Offline" if self.current_backend and "127.0.0.1" in self.current_backend else "Online"
+            if self.current_backend and "127.0.0.1" in self.current_backend:
+                backend_name = "Offline"
+            elif self.current_backend and "siem-master" in self.current_backend:
+                backend_name = "Master-Slave"
+            else:
+                backend_name = "Online"
             self.status_bar.showMessage(f"Connected to {backend_name} backend")
         else:
             self.status_bar.showMessage("Failed to load web content")
@@ -714,10 +852,23 @@ class FreeKhanaMainWindow(QMainWindow):
         self.flask_server_running = False
         self.status_bar.showMessage("Offline backend stopped")
 
-        self.start_local_btn.setVisible(True)
-        self.start_local_btn.setEnabled(True)
-        self.stop_local_btn.setVisible(False)
+        self.local_toggle_btn.setText("Start Local Backend")
+        self.local_toggle_btn.setEnabled(True)
         self.restart_local_btn.setEnabled(False)
+
+    def on_local_toggle_click(self):
+        """Handle Local toggle button click"""
+        if self.flask_server_running:
+            self.stop_local_backend()
+        else:
+            self.start_local_backend()
+
+    def on_master_toggle_click(self):
+        """Handle Master-Slave toggle button click"""
+        if self.master_slave_server_running:
+            self.stop_master_slave_backend()
+        else:
+            self.start_master_slave_backend()
 
     def restart_local_backend(self):
         """Restart the local Flask server"""
@@ -733,6 +884,130 @@ class FreeKhanaMainWindow(QMainWindow):
         # Start new server after a short delay
         QTimer.singleShot(500, self.start_flask_server)
 
+    def restart_master_slave_backend(self):
+        """Restart the Master-Slave Flask server"""
+        if not self.master_slave_server_running:
+            return
+
+        self.append_terminal("\nRestarting Master-Slave Flask backend...\n")
+        self.status_bar.showMessage("Restarting Master-Slave backend...")
+
+        # Stop current server
+        self.stop_master_slave_server()
+
+        # Start new server after a short delay
+        QTimer.singleShot(500, self.start_master_slave_backend)
+
+    def start_master_slave_backend(self):
+        """Start the Master-Slave Flask backend"""
+        if not FLASK_AVAILABLE:
+            QMessageBox.critical(self, "Error", "Master-Slave backend is not available.")
+            return
+
+        self.append_terminal("\nStarting Master-Slave Flask backend...\n")
+        self.status_bar.showMessage("Starting Master-Slave backend...")
+
+        self.master_slave_server_running = True
+        self.master_toggle_btn.setText("Starting...")
+
+        # Clear previous terminal output
+        self.terminal_output_edit.clear()
+        self.append_terminal("FreeKhana SIEM Terminal\n")
+        self.append_terminal("=" * 50 + "\n\n")
+        self.append_terminal("Master-Slave Mode: Distributing work to Cloudflare Workers\n\n")
+
+        # Start Master-Slave Flask server in background thread
+        self.master_slave_thread = MasterSlaveServer()
+        self.master_slave_thread.server_started.connect(self.on_master_slave_started)
+        self.master_slave_thread.server_error.connect(self.on_master_slave_error)
+        self.master_slave_thread.server_output.connect(self.on_master_slave_output)
+        self.master_slave_thread.finished.connect(self.on_master_slave_finished)
+        self.master_slave_thread.start()
+
+    def stop_master_slave_backend(self):
+        """Stop the Master-Slave Flask backend"""
+        if not self.master_slave_server_running:
+            QMessageBox.information(self, "Info", "Master-Slave backend is not running.")
+            return
+
+        self.append_terminal("\nStopping Master-Slave Flask backend...\n")
+        self.status_bar.showMessage("Stopping Master-Slave backend...")
+        self.master_toggle_btn.setText("Stopping...")
+
+        # Stop the Master-Slave server
+        self.stop_master_slave_server()
+
+    def stop_master_slave_server(self):
+        """Stop the Master-Slave Flask server"""
+        if self.master_slave_thread:
+            if self.master_slave_thread.isRunning():
+                self.master_slave_thread.stop()
+                if not self.master_slave_thread.wait(5000):
+                    print("Warning: Master-Slave thread did not stop cleanly")
+
+            self.master_slave_thread = None
+
+        self.master_slave_server_running = False
+        self.status_bar.showMessage("Master-Slave backend stopped")
+
+        self.master_toggle_btn.setText("Start Master-Slave")
+        self.master_toggle_btn.setEnabled(True)
+        self.restart_master_btn.setEnabled(False)
+
+    def on_master_slave_started(self):
+        """Handle Master-Slave server startup"""
+        self.master_slave_server_running = True
+        self.status_bar.showMessage("Master-Slave backend ready")
+        self.append_terminal("\n✓ Master-Slave server started successfully!\n")
+        self.append_terminal("Server listening on http://127.0.0.1:5001\n")
+
+        # Update button states
+        self.master_toggle_btn.setText("Stop Master-Slave")
+        self.master_toggle_btn.setEnabled(True)
+        self.restart_master_btn.setEnabled(True)
+
+        # Check availability again
+        QTimer.singleShot(1000, lambda: self.check_backends())
+
+    def on_master_slave_error(self, error):
+        """Handle Master-Slave server error"""
+        self.append_terminal(f"\n✗ Master-Slave server error: {error}\n")
+        QMessageBox.critical(self, "Master-Slave Backend Error", f"Failed to start Master-Slave backend:\n{error}")
+        self.status_bar.showMessage("Master-Slave backend failed")
+
+        self.master_slave_server_running = False
+        self.master_toggle_btn.setText("Start Master-Slave")
+        self.master_toggle_btn.setEnabled(True)
+        self.restart_master_btn.setEnabled(False)
+
+    def on_master_slave_output(self, text):
+        """Handle Master-Slave server output"""
+        if not text or not text.strip():
+            return
+
+        filtered = False
+        if "127.0.0.1 - - [" in text and "GET /static/" in text:
+            filtered = True
+        elif text.strip() in [' ', '', '\n']:
+            filtered = True
+
+        if not filtered:
+            self.append_terminal(text)
+
+    def on_master_slave_finished(self):
+        """Handle Master-Slave server thread finished"""
+        if self.master_slave_server_running:
+            self.master_slave_server_running = False
+            self.status_bar.showMessage("Master-Slave backend stopped")
+            self.append_terminal("\nMaster-Slave server stopped.\n")
+
+        self.master_slave_thread = None
+
+        if self.master_toggle_btn.text() == "Stop Master-Slave":
+            self.master_toggle_btn.setText("Start Master-Slave")
+            self.master_toggle_btn.setEnabled(True)
+            self.restart_master_btn.setEnabled(False)
+
     def on_flask_started(self):
         """Handle Flask server startup"""
         self.flask_server_running = True
@@ -741,9 +1016,8 @@ class FreeKhanaMainWindow(QMainWindow):
         self.append_terminal("Server listening on http://127.0.0.1:5000\n")
 
         # Update button states
-        self.start_local_btn.setVisible(False)
-        self.stop_local_btn.setVisible(True)
-        self.stop_local_btn.setEnabled(True)
+        self.local_toggle_btn.setText("Stop Local Backend")
+        self.local_toggle_btn.setEnabled(True)
         self.restart_local_btn.setEnabled(True)
 
         # Check availability again
@@ -756,9 +1030,9 @@ class FreeKhanaMainWindow(QMainWindow):
         self.status_bar.showMessage("Offline backend failed")
 
         self.flask_server_running = False
-        self.start_local_btn.setVisible(True)
-        self.start_local_btn.setEnabled(True)
-        self.stop_local_btn.setVisible(False)
+        self.local_toggle_btn.setText("Start Local Backend")
+        self.local_toggle_btn.setEnabled(True)
+        self.restart_local_btn.setEnabled(False)
 
     def on_flask_output(self, text):
         """Handle Flask server output"""
@@ -784,10 +1058,9 @@ class FreeKhanaMainWindow(QMainWindow):
 
         self.flask_thread = None
 
-        if not self.start_local_btn.isVisible():
-            self.start_local_btn.setVisible(True)
-            self.start_local_btn.setEnabled(True)
-            self.stop_local_btn.setVisible(False)
+        if self.local_toggle_btn.text() == "Stop Local Backend":
+            self.local_toggle_btn.setText("Start Local Backend")
+            self.local_toggle_btn.setEnabled(True)
             self.restart_local_btn.setEnabled(False)
 
     def switch_webview_backend(self, backend_url):
@@ -800,10 +1073,17 @@ class FreeKhanaMainWindow(QMainWindow):
 
         if 'freekhana-frontend.pages.dev' in backend_url:
             webview_url = 'https://freekhana-frontend.pages.dev'
+        elif 'siem-master' in backend_url:
+            webview_url = 'https://siem-master.tanubhavj.workers.dev'
         else:
             webview_url = backend_url
 
-        backend_name = "Offline" if "127.0.0.1" in backend_url else "Online"
+        if "127.0.0.1" in backend_url:
+            backend_name = "Offline"
+        elif 'siem-master' in backend_url:
+            backend_name = "Master-Slave"
+        else:
+            backend_name = "Online"
 
         if self.webview_widget and WEBVIEW_AVAILABLE:
             self.webview_widget.loadFinished.connect(self.on_webview_load_finished)
@@ -821,6 +1101,7 @@ class FreeKhanaMainWindow(QMainWindow):
 
         self.cleanup_checker_threads()
         self.stop_flask_server()
+        self.stop_master_slave_server()
 
         if self.webview_widget:
             try:
@@ -869,6 +1150,10 @@ def main():
             pass
         try:
             window.stop_flask_server()
+        except:
+            pass
+        try:
+            window.stop_master_slave_server()
         except:
             pass
         try:

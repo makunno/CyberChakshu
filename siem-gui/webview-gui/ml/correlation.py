@@ -501,19 +501,19 @@ ATTACK_PATTERNS = {
 def extract_attack_features(entry: dict) -> List[float]:
     """Extract features for attack classification from a log entry dict"""
     features = []
-    message = entry.get('message', '').lower()
-    raw_line = entry.get('rawLine', '').lower()
-    action = entry.get('action', '').lower()
+    message = (entry.get('message') or '').lower()
+    raw_line = (entry.get('rawLine') or '').lower()
+    action = (entry.get('action') or '').lower()
     source = entry.get('source') or {}
-    source_ip = source.get('ip', '')
-    severity = entry.get('severity', 'info')
-    outcome = entry.get('outcome', '')
+    source_ip = source.get('ip') or ''
+    severity = entry.get('severity') or 'info'
+    outcome = (entry.get('outcome') or '') or ''
     user_dict = entry.get('user')
     user = user_dict.get('name', '') if user_dict else ''
     
     # For web server logs, also check path and query parameters from raw line
-    fields = entry.get('fields', {})
-    path = fields.get('path', '').lower()
+    fields = entry.get('fields') or {}
+    path = (fields.get('path') or '').lower()
     
     # Combine message, path, and raw line for comprehensive attack detection
     # Use raw_line for web logs as it contains the full request with query params

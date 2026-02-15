@@ -12,6 +12,14 @@ from ml.correlation import correlate_multiple_logs
 from ml.enhanced_correlation import correlate_multiple_logs_enhanced
 from detectors.alerts import run_detections, generate_stats
 
+# Import master server for distributed processing
+try:
+    from master_server import distribute_and_process
+    MASTER_SERVER_AVAILABLE = True
+except ImportError:
+    MASTER_SERVER_AVAILABLE = False
+    print("[WARNING] Master server not available")
+
 # Determine static folder path
 WEBVIEW_STATIC = Path(__file__).parent.parent / 'static'
 FRONTEND_DIST = Path(__file__).parent.parent / 'siem-tool' / 'frontend' / 'dist'
@@ -40,7 +48,18 @@ def log_request():
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
+@app.route('/parsers', methods=['OPTIONS'])
+@app.route('/parse', methods=['OPTIONS'])
+@app.route('/correlate', methods=['OPTIONS'])
+def handle_options(*args, **kwargs):
+    """Handle CORS preflight requests"""
+    response = app.make_default_options_response()
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
 
@@ -833,6 +852,60 @@ def parse_chunked():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': 'Failed to parse chunks', 'details': str(e)}), 500
+
+
+@app.route('/parse/distributed', methods=['POST'])
+def parse_logs_distributed():
+    """Distributed parse endpoint - uses master-slave architecture"""
+    if not MASTER_SERVER_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'error': 'Master server not available',
+            'fallback': True
+        }), 503
+    
+    try:
+        print(f"[DISTRIBUTED PARSE] Processing request from {request.remote_addr}")
+        content_type = request.content_type or ''
+        content = None
+        file_name = 'logs.log'
+
+        # Handle multipart form data
+        if 'multipart/form-data' in content_type:
+            if 'file' in request.files:
+                file = request.files['file']
+                content = file.read().decode('utf-8', errors='ignore')
+                file_name = file.filename or 'logs.log'
+        # Handle JSON
+        elif 'application/json' in content_type:
+            data = request.get_json()
+            content = data.get('content') or data.get('logs') or ''
+            file_name = data.get('fileName', 'logs.log')
+        # Handle raw text
+        else:
+            content = request.get_data(as_text=True)
+            file_name = request.headers.get('X-File-Name', 'logs.log')
+
+        if not content or len(content.strip()) == 0:
+            return jsonify({'error': 'No log content provided'}), 400
+
+        # Use master server to distribute work
+        result = distribute_and_process(content, file_name)
+        
+        if result.get('success'):
+            print(f"[DISTRIBUTED PARSE] Successfully processed {result.get('totalLines', 0)} lines")
+        else:
+            print(f"[DISTRIBUTED PARSE] Failed: {result.get('error', 'Unknown error')}")
+        
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"[DISTRIBUTED PARSE ERROR] {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to process distributed parse',
+            'details': str(e)
+        }), 500
 
 
 if __name__ == '__main__':
