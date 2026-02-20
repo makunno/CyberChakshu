@@ -68,6 +68,25 @@ export interface Alert {
   metadata: Record<string, unknown>;
 }
 
+export interface AutoSplitInfo {
+  originalFile: {
+    sizeMB: number;
+    lineCount: number;
+    name: string;
+  };
+  splitConfig: {
+    chunkSizeMB: number;
+    totalChunks: number;
+    format: string;
+  };
+  chunks: Array<{
+    index: number;
+    name: string;
+    lineCount: number;
+    byteSize: number;
+  }>;
+}
+
 export interface ParseResponse {
   success: boolean;
   detectedType: LogType;
@@ -84,12 +103,20 @@ export interface ParseResponse {
     topUsers: Array<{ user: string; count: number }>;
     timeline: Array<{ time: string; count: number }>;
   };
+  autoSplitInfo?: AutoSplitInfo;
   mlAttacks?: Array<{
     entry: ParsedLogEntry;
     attackType: string;
     confidence: number;
     mitreTactics: string[];
     mitreTechniques: string[];
+  }>;
+  mlPredictions?: Array<{
+    attackType: string;
+    confidence: number;
+    probability: number;
+    explanation: string[];
+    isFalsePositive: boolean;
   }>;
   attackChains?: Array<{
     id: string;

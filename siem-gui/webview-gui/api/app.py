@@ -3,6 +3,7 @@
 from flask import Flask, request, jsonify, send_file, send_from_directory
 import os
 import sys
+import json
 from pathlib import Path
 
 # Import parsing and detection modules
@@ -275,10 +276,57 @@ def parse_logs():
         # Generate statistics
         stats = generate_stats(parse_result['entries'])
 
-        # Run ML attack detection
-        from ml.correlation import detect_attack_types, correlate_attacks
-        attacks = detect_attack_types(parse_result['entries'])
-        attack_chains = correlate_attacks(parse_result['entries'], attacks)
+        # Run ML attack detection using local ML models
+        attacks = []
+        
+        try:
+            # Import ML inference engine directly
+            from ml.inference import MLInferenceEngine
+            
+            # Initialize ML engine (singleton pattern)
+            if not hasattr(app, '_ml_engine'):
+                print("[ML] Initializing ML Inference Engine...")
+                app._ml_engine = MLInferenceEngine()
+            
+            ml_engine = app._ml_engine
+            
+            if ml_engine.models_loaded:
+                for entry in parse_result['entries']:
+                    message = entry.get('message', '')
+                    log_type = entry.get('logType', 'unknown')
+                    
+                    # Predict using local ML model
+                    prediction = ml_engine.predict(message, log_type)
+                    
+                    if prediction.is_attack:
+                        attacks.append({
+                            'entry': entry,
+                            'attackType': prediction.attack_type,
+                            'confidence': prediction.confidence,
+                            'mitreTactics': [],
+                            'mitreTechniques': []
+                        })
+                        entry['attackType'] = prediction.attack_type
+                        entry['attackConfidence'] = prediction.confidence
+            else:
+                print("[ML] Warning: ML models not loaded, skipping ML predictions")
+                    
+        except Exception as ml_err:
+            print(f"[ML] Warning: ML inference failed: {ml_err}")
+            # Fallback to old ML
+            try:
+                from ml.correlation import detect_attack_types
+                attacks = detect_attack_types(parse_result['entries'])
+            except:
+                attacks = []
+        
+        # Generate attack chains if possible
+        attack_chains = []
+        try:
+            from ml.correlation import correlate_attacks
+            attack_chains = correlate_attacks(parse_result['entries'], attacks)
+        except:
+            attack_chains = []
 
         # Add attack info to each entry
         attack_by_entry = {a['entry'].get('id'): a for a in attacks}
@@ -906,6 +954,302 @@ def parse_logs_distributed():
             'error': 'Failed to process distributed parse',
             'details': str(e)
         }), 500
+
+
+# ML Inference endpoints
+ML_ENGINE = None
+
+def get_ml_engine():
+    """Get ML inference engine"""
+    global ML_ENGINE
+    if ML_ENGINE is None:
+        try:
+            sys.path.insert(0, str(Path(__file__).parent.parent / 'siem-tool' / 'ml-training'))
+            from inference import get_inference_engine
+            ML_ENGINE = get_inference_engine()
+            print("[ML] Inference engine loaded successfully")
+        except Exception as e:
+            print(f"[ML] Failed to load inference engine: {e}")
+            return None
+    return ML_ENGINE
+
+@app.route('/ml/predict', methods=['POST'])
+def ml_predict():
+    """ML-based attack prediction endpoint"""
+    engine = get_ml_engine()
+    
+    if engine is None:
+        return jsonify({
+            'success': False,
+            'error': 'ML model not available',
+            'attackType': 'unknown',
+            'confidence': 0.0,
+            'isAttack': False
+        }), 503
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Handle single entry
+        if 'message' in data:
+            message = data.get('message', '')
+            log_type = data.get('log_type', 'unknown')
+            
+            prediction = engine.predict(message, log_type)
+            
+            return jsonify({
+                'success': True,
+                'attackType': prediction.attack_type,
+                'confidence': prediction.confidence,
+                'probability': prediction.probability,
+                'isAttack': prediction.is_attack,
+                'category': prediction.category,
+                'explanation': prediction.explanation
+            })
+        
+        # Handle batch
+        elif 'logs' in data:
+            logs = data['logs']
+            results = []
+            
+            for log in logs:
+                if isinstance(log, dict):
+                    message = log.get('message', log.get('raw_line', ''))
+                    log_type = log.get('log_type', 'unknown')
+                else:
+                    message = str(log)
+                    log_type = 'unknown'
+                
+                prediction = engine.predict(message, log_type)
+                results.append({
+                    'attackType': prediction.attack_type,
+                    'confidence': prediction.confidence,
+                    'isAttack': prediction.is_attack,
+                    'explanation': prediction.explanation
+                })
+            
+            return jsonify({
+                'success': True,
+                'predictions': results,
+                'count': len(results)
+            })
+        
+        return jsonify({'error': 'Invalid format'}), 400
+    
+    except Exception as e:
+        print(f"[ML PREDICT ERROR] {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/ml/batch', methods=['POST'])
+def ml_batch_predict():
+    """Batch ML prediction with aggregation"""
+    engine = get_ml_engine()
+    
+    if engine is None:
+        return jsonify({'error': 'ML model not available'}), 503
+    
+    try:
+        data = request.get_json()
+        logs = data.get('logs', [])
+        
+        results = []
+        for log in logs:
+            message = log.get('message', log.get('raw_line', ''))
+            log_type = log.get('log_type', 'unknown')
+            prediction = engine.predict(message, log_type)
+            
+            results.append({
+                'attackType': prediction.attack_type,
+                'confidence': prediction.confidence,
+                'isAttack': prediction.is_attack,
+                'category': prediction.category,
+                'explanation': prediction.explanation
+            })
+        
+        # Aggregate
+        attack_count = sum(1 for r in results if r['isAttack'])
+        avg_confidence = sum(r['confidence'] for r in results) / len(results) if results else 0
+        
+        return jsonify({
+            'results': results,
+            'summary': {
+                'total_logs': len(results),
+                'attacks_detected': attack_count,
+                'avg_confidence': avg_confidence,
+                'risk_score': min(attack_count * 10, 100)
+            }
+        })
+    
+    except Exception as e:
+        print(f"[ML BATCH ERROR] {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/ml/feedback', methods=['POST'])
+def ml_feedback():
+    """Submit user feedback for retraining"""
+    try:
+        data = request.get_json()
+        
+        feedback_entry = {
+            'timestamp': data.get('timestamp'),
+            'log_message': data.get('log_message'),
+            'log_type': data.get('log_type'),
+            'predicted_attack': data.get('predicted_attack'),
+            'actual_attack': data.get('actual_attack'),
+            'user_correct': data.get('user_correct'),
+            'confidence': data.get('confidence')
+        }
+        
+        # Save to file
+        feedback_dir = Path(__file__).parent.parent / 'siem-tool' / 'ml-training' / 'data'
+        feedback_dir.mkdir(parents=True, exist_ok=True)
+        feedback_file = feedback_dir / 'feedback.json'
+        
+        existing = []
+        if feedback_file.exists():
+            with open(feedback_file, 'r') as f:
+                existing = json.load(f)
+        
+        existing.append(feedback_entry)
+        
+        with open(feedback_file, 'w') as f:
+            json.dump(existing, f, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'feedback_count': len(existing)
+        })
+    
+    except Exception as e:
+        print(f"[ML FEEDBACK ERROR] {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/ml/stats')
+def ml_stats():
+    """Get ML model statistics"""
+    engine = get_ml_engine()
+    
+    if engine is None:
+        return jsonify({
+            'status': 'ML model not loaded',
+            'available': False
+        })
+    
+    return jsonify({
+        'status': 'ok',
+        'available': True,
+        'model_type': 'category_specific' if engine.use_category_models else 'unified',
+        'categories': list(engine.category_models.keys()) if engine.category_models else []
+    })
+
+
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    """Legacy feedback endpoint for frontend compatibility"""
+    return ml_feedback()
+
+
+# ============================================================================
+# SOC Analyst LLM Integration
+# ============================================================================
+
+_soc_llm_engine = None
+
+def get_soc_llm_engine():
+    """Get or initialize SOC Analyst LLM engine"""
+    global _soc_llm_engine
+    if _soc_llm_engine is None:
+        try:
+            # Try to import and initialize the LLM
+            print("[SOC-LLM] Initializing SOC Analyst LLM...")
+            
+            # Check if SOC LLM API is available
+            import requests
+            llm_api_url = os.environ.get('SOC_LLM_API_URL', 'http://127.0.0.1:8000')
+            
+            response = requests.get(f"{llm_api_url}/health", timeout=2)
+            if response.status_code == 200:
+                _soc_llm_engine = {'type': 'api', 'url': llm_api_url}
+                print(f"[SOC-LLM] Connected to LLM API at {llm_api_url}")
+            else:
+                print("[SOC-LLM] LLM API not available")
+                _soc_llm_engine = None
+        except Exception as e:
+            print(f"[SOC-LLM] Could not initialize: {e}")
+            _soc_llm_engine = None
+    
+    return _soc_llm_engine
+
+@app.route('/soc-analyze', methods=['POST'])
+def soc_analyze():
+    """Analyze logs using SOC Analyst LLM"""
+    try:
+        engine = get_soc_llm_engine()
+        if not engine:
+            return jsonify({'error': 'SOC Analyst LLM not available'}), 503
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        log_entry = data.get('log_entry', '')
+        log_type = data.get('log_type', 'unknown')
+        
+        import requests
+        response = requests.post(
+            f"{engine['url']}/analyze/log",
+            json={'log_entry': log_entry, 'log_type': log_type},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'error': 'LLM analysis failed'}), 500
+            
+    except Exception as e:
+        print(f"[SOC-LLM] Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/soc-chat', methods=['POST'])
+def soc_chat():
+    """Chat with SOC Analyst LLM"""
+    try:
+        engine = get_soc_llm_engine()
+        if not engine:
+            return jsonify({'error': 'SOC Analyst LLM not available'}), 503
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        message = data.get('message', '')
+        context = data.get('context', [])
+        
+        import requests
+        response = requests.post(
+            f"{engine['url']}/chat",
+            json={'message': message, 'context': context},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'error': 'Chat failed'}), 500
+            
+    except Exception as e:
+        print(f"[SOC-LLM] Error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

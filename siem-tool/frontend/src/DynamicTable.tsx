@@ -92,14 +92,48 @@ const getColumnsForLogType = (_logType: string, sampleEntries: ParsedLogEntry[])
     columns.push({
       key: 'attack',
       label: 'Attack',
-      width: 130,
+      width: 150,
       visible: true,
       sortable: false,
       getValue: (e) => {
-        if (!e.attackType) return '-';
+        const confidence = e.attackConfidence || 0;
+        const attackType = e.attackType || 'safe';
+        
+        // For "normal" entries, show as safe (green) regardless of confidence
+        // The confidence for "normal" means "confidence it's normal", not "confidence it's an attack"
+        const isNormal = attackType === 'normal' || attackType === 'safe';
+        
+        let bgColor = '#22c55e'; // green - safe/normal
+        let textColor = '#ffffff';
+        let displayType = isNormal ? 'Safe' : attackType.replace(/_/g, ' ');
+        
+        if (!isNormal) {
+          // For actual attacks: higher confidence = more dangerous = red
+          if (confidence >= 0.8) {
+            bgColor = '#dc2626'; // red - high confidence attack
+          } else if (confidence >= 0.6) {
+            bgColor = '#f97316'; // orange - medium-high confidence
+          } else if (confidence >= 0.4) {
+            bgColor = '#eab308'; // yellow - medium confidence
+          } else {
+            bgColor = '#84cc16'; // lime - low confidence attack
+          }
+        }
+        
         return (
-          <span className="attack-badge" title={`Confidence: ${(e.attackConfidence! * 100).toFixed(0)}%`}>
-            {e.attackType.replace(/_/g, ' ')}
+          <span 
+            className="attack-badge" 
+            style={{ 
+              backgroundColor: bgColor, 
+              color: textColor,
+              padding: '2px 8px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 'bold'
+            }}
+            title={`Confidence: ${(confidence * 100).toFixed(0)}%`}
+          >
+            {displayType} ({(confidence * 100).toFixed(0)}%)
           </span>
         );
       }

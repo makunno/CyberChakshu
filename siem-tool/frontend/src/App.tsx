@@ -1,15 +1,17 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
    Upload, Shield, AlertTriangle, Activity, FileText, 
    Download, RefreshCw, ChevronDown, X, Search, Terminal,
-   Layers, Clock, Target, Zap, TrendingUp, Scissors, File, Archive
+   Layers, Clock, Target, Zap, TrendingUp, Scissors, File, Archive,
+   MessageSquare
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import JSZip from 'jszip';
-import { parseLogsFromFile, parseLogsFromText, correlateMultipleFiles, EVTXUploadError, isEVTXFile, splitFileClient, type SplitFileResult } from './api';
+import { parseLogsFromFile, parseLogsFromText, parseLogsFromChunkedFile, splitFileClient, correlateMultipleFiles, EVTXUploadError, isEVTXFile, analyzeLogWithAI, type SplitFileResult } from './api';
 import type { ParseResponse, ParsedLogEntry, CorrelateResponse, AttackChain, TimelineEvent } from './types';
 import { DynamicTable } from './DynamicTable';
 import { EVTXTutorial } from './EVTXTutorial';
+import { SOCAnalystChat } from './components/SOCAnalystChat';
 import './App.css';
 
 const SEVERITY_COLORS = {
@@ -96,9 +98,29 @@ function App() {
   const [selectedEntryFeedback, setSelectedEntryFeedback] = useState<{ [entryId: string]: 'safe' | 'unsafe' | 'attack_pattern' }>({});
   const [selectedEntryAttackType, setSelectedEntryAttackType] = useState<string>('');
   const [showAttackTypeDropdown, setShowAttackTypeDropdown] = useState(false);
-  const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
+const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
   const [displayedEntryCount, setDisplayedEntryCount] = useState(500);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatContext] = useState<{logEntry: string; logType: string} | null>(null);
+  const [llmReady, setLlmReady] = useState(false);
+
+  // Auto-feed logs to LLM after parsing completes
+  useEffect(() => {
+    if (data && data.entries && data.entries.length > 0 && !llmReady) {
+      const feedLogsToLLM = async () => {
+        try {
+          // Send a sample log entry to LLM to warm it up
+          const sampleEntry = data.entries[0];
+          await analyzeLogWithAI(sampleEntry.message, sampleEntry.logType);
+          setLlmReady(true);
+        } catch (e) {
+          console.log('LLM not available yet:', e);
+        }
+      };
+      feedLogsToLLM();
+    }
+  }, [data]);
 
   // Get unique attack types from entries for filter
   const attackTypesInData = [...new Set((data?.entries || []).filter(e => e.attackType).map(e => e.attackType))].sort();
@@ -260,8 +282,27 @@ function App() {
     setError(null);
 
     try {
-      const result = await parseLogsFromFile(file);
-      setData(result);
+      // Check if file needs to be split (larger than 200KB)
+      const CLIENT_SPLIT_THRESHOLD = 200 * 1024; // 200KB
+      
+      if (file.size > CLIENT_SPLIT_THRESHOLD) {
+        console.log('File too large, splitting on client side:', file.size, 'bytes');
+        
+        // Split file on client side
+        const splitResult = await splitFileClient(file);
+        console.log('Split into', splitResult.totalChunks, 'chunks');
+        
+        // Process each chunk and combine results
+        const chunkContents = splitResult.chunks.map(c => c.content);
+        const result = await parseLogsFromChunkedFile(chunkContents, file.name);
+        
+        setData(result);
+        setSplitFileResult(splitResult);
+      } else {
+        const result = await parseLogsFromFile(file);
+        setData(result);
+      }
+      
       setCorrelationData(null);
       setActiveTab('logs');
     } catch (err) {
@@ -283,7 +324,35 @@ function App() {
     setError(null);
 
     try {
+      // Send the pasted text directly to the parse endpoint
       const result = await parseLogsFromText(text);
+      
+      // Check if file was auto-split by the backend
+      if (result.autoSplitInfo) {
+        console.log('File was auto-split by backend:', result.autoSplitInfo);
+        // Create a split file result from the auto-split info
+        setSplitFileResult({
+          originalFile: {
+            name: result.autoSplitInfo.originalFile.name,
+            size: result.autoSplitInfo.originalFile.sizeMB * 1024 * 1024,
+            sizeMB: result.autoSplitInfo.originalFile.sizeMB,
+            lineCount: result.autoSplitInfo.originalFile.lineCount
+          },
+          totalChunks: result.autoSplitInfo.splitConfig.totalChunks,
+          chunkSizeMB: result.autoSplitInfo.splitConfig.chunkSizeMB,
+          chunks: result.autoSplitInfo.chunks.map((c) => ({
+            name: c.name,
+            content: '', // Not available from backend
+            size: c.byteSize,
+            lineCount: c.lineCount,
+            index: c.index
+          }))
+        });
+        setData(null);
+        setLoading(false);
+        return;
+      }
+      
       setData(result);
       setCorrelationData(null);
       setActiveTab('logs');
@@ -955,10 +1024,14 @@ function App() {
                                 <div className="ml-attack-header">
                                   <span className="ml-attack-icon">🎯</span>
                                   <span className="ml-attack-type">
-                                    {entryWithConf.attackType?.replace(/_/g, ' ').toUpperCase()}
+                                    {entryWithConf.attackType === 'normal' ? 'Safe' : entryWithConf.attackType?.replace(/_/g, ' ').toUpperCase()}
                                   </span>
                                   <span className="ml-attack-confidence" style={{
-                                    color: entryWithConf._confidence >= 0.8 ? '#22c55e' : entryWithConf._confidence >= 0.5 ? '#f59e0b' : '#ef4444'
+                                    // Safe (normal) = green, high confidence attack = red
+                                    color: entryWithConf.attackType === 'normal' ? '#22c55e' : 
+                                           entryWithConf._confidence >= 0.8 ? '#dc2626' : 
+                                           entryWithConf._confidence >= 0.6 ? '#f97316' : 
+                                           entryWithConf._confidence >= 0.4 ? '#eab308' : '#84cc16'
                                   }}>
                                     {(entryWithConf._confidence * 100).toFixed(0)}%
                                   </span>
@@ -987,7 +1060,7 @@ function App() {
                       )}
 
                       {/* Traditional Alerts Section */}
-                      {data.alerts.length > 0 && (
+                      {data?.alerts?.length > 0 && (
                         <div className="traditional-alerts-section">
                           <h3 className="section-title">Rule-Based Alerts ({data.alerts.length})</h3>
                           <div className="alerts-list">
@@ -1035,11 +1108,11 @@ function App() {
                     <span className="quick-stat-label">Parsed</span>
                   </div>
                   <div className="quick-stat-card">
-                    <span className="quick-stat-value">{data?.entries.filter(e => e.attackType).length || 0}</span>
+                    <span className="quick-stat-value">{data?.entries?.filter(e => e.attackType).length || 0}</span>
                     <span className="quick-stat-label">Attacks</span>
                   </div>
                   <div className="quick-stat-card">
-                    <span className="quick-stat-value">{data?.alerts.length || 0}</span>
+                    <span className="quick-stat-value">{data?.alerts?.length || 0}</span>
                     <span className="quick-stat-label">Alerts</span>
                   </div>
                   <div className="quick-stat-card">
@@ -1235,13 +1308,24 @@ function App() {
                 {selectedEntry.attackType && (
                   <div className="detail-item">
                     <label>ML Detection</label>
-                    <span className="attack-badge">{selectedEntry.attackType.replace(/_/g, ' ')}</span>
+                    <span 
+                      className="attack-badge"
+                      style={{
+                        backgroundColor: selectedEntry.attackType === 'normal' ? '#22c55e' :
+                                       (selectedEntry.attackConfidence || 0) >= 0.8 ? '#dc2626' :
+                                       (selectedEntry.attackConfidence || 0) >= 0.6 ? '#f97316' :
+                                       (selectedEntry.attackConfidence || 0) >= 0.4 ? '#eab308' : '#84cc16',
+                        color: '#ffffff'
+                      }}
+                    >
+                      {selectedEntry.attackType === 'normal' ? 'Safe' : selectedEntry.attackType.replace(/_/g, ' ')} ({(selectedEntry.attackConfidence ? selectedEntry.attackConfidence * 100 : 0).toFixed(0)}%)
+                    </span>
                   </div>
                 )}
                 <div className="detail-item full-width">
                   <label>Tags</label>
                   <div className="tags">
-                    {selectedEntry.tags.map(tag => (
+                    {(selectedEntry.tags || []).map(tag => (
                       <span key={tag} className="tag">{tag}</span>
                     ))}
                   </div>
@@ -1254,7 +1338,7 @@ function App() {
                   <label>Raw Log</label>
                   <pre className="mono raw-log">{selectedEntry.rawLine}</pre>
                 </div>
-                {Object.keys(selectedEntry.fields).length > 0 && (
+                {selectedEntry.fields && Object.keys(selectedEntry.fields).length > 0 && (
                   <div className="detail-item full-width">
                     <label>Parsed Fields</label>
                     <pre className="mono">{JSON.stringify(selectedEntry.fields, null, 2)}</pre>
@@ -1613,6 +1697,45 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Chat Button */}
+      {/* SOC Analyst Chat Button - only show after data is parsed */}
+      {data && data.entries && data.entries.length > 0 && !showChat && (
+        <button
+          onClick={() => setShowChat(true)}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #9333ea 0%, #2563eb 100%)',
+            color: 'white',
+            border: 'none',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            transition: 'transform 0.2s ease'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          title="Chat with SOC Analyst AI"
+        >
+          <MessageSquare className="w-7 h-7" />
+        </button>
+      )}
+
+      {/* SOC Analyst Chat */}
+      {showChat && (
+        <SOCAnalystChat
+          logContext={chatContext}
+          onClose={() => setShowChat(false)}
+        />
       )}
     </div>
   );

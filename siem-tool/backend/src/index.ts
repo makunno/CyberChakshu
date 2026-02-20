@@ -10,6 +10,59 @@ import { correlateMultipleLogs as correlateMultipleLogsLegacy } from './ml/corre
 import { EVTXParser, EVTXDetector } from './parsers/evtx';
 import type { ParseResponse, LogType, ParsedLogEntry } from './types';
 
+// Helper functions for MITRE ATT&CK mapping
+function getMitreTacticsForAttack(attackType: string): string[] {
+  const tacticMap: Record<string, string[]> = {
+    bruteforce: ['TA0006 - Credential Access'],
+    password_spray: ['TA0006 - Credential Access'],
+    credential_stuffing: ['TA0006 - Credential Access'],
+    mfa_bypass: ['TA0006 - Credential Access', 'TA0005 - Defense Evasion'],
+    mfa_fatigue: ['TA0006 - Credential Access'],
+    session_hijacking: ['TA0006 - Credential Access', 'TA0008 - Lateral Movement'],
+    account_takeover: ['TA0006 - Credential Access', 'TA0001 - Initial Access'],
+    sql_injection: ['TA0001 - Initial Access', 'TA0009 - Collection'],
+    xss_attack: ['TA0001 - Initial Access', 'TA0009 - Collection'],
+    path_traversal: ['TA0001 - Initial Access', 'TA0009 - Collection'],
+    command_injection: ['TA0002 - Execution'],
+    privilege_escalation: ['TA0004 - Privilege Escalation'],
+    lateral_movement: ['TA0008 - Lateral Movement'],
+    data_exfiltration: ['TA0010 - Exfiltration'],
+    port_scan: ['TA0043 - Reconnaissance'],
+    ddos: ['TA0040 - Impact'],
+    reconnaissance: ['TA0043 - Reconnaissance'],
+    malware_activity: ['TA0002 - Execution', 'TA0003 - Persistence'],
+    c2_communication: ['TA0011 - Command and Control'],
+    insider_threat: ['TA0009 - Collection', 'TA0010 - Exfiltration'],
+    log4shell: ['TA0001 - Initial Access', 'TA0002 - Execution'],
+    ransomware: ['TA0040 - Impact', 'TA0002 - Execution'],
+    anomaly: ['TA0043 - Reconnaissance'],
+  };
+  return tacticMap[attackType] || ['Unknown'];
+}
+
+function getMitreTechniquesForAttack(attackType: string): string[] {
+  const techniqueMap: Record<string, string[]> = {
+    bruteforce: ['T1110.001 - Password Guessing'],
+    password_spray: ['T1110.003 - Password Spraying'],
+    credential_stuffing: ['T1110.004 - Credential Stuffing'],
+    sql_injection: ['T1190 - Exploit Public-Facing Application'],
+    xss_attack: ['T1189 - Drive-by Compromise'],
+    path_traversal: ['T1083 - File and Directory Discovery'],
+    command_injection: ['T1059 - Command and Scripting Interpreter'],
+    privilege_escalation: ['T1068 - Exploitation for Privilege Escalation'],
+    lateral_movement: ['T1021 - Remote Services'],
+    data_exfiltration: ['T1041 - Exfiltration Over C2 Channel'],
+    port_scan: ['T1046 - Network Service Discovery'],
+    ddos: ['T1498 - Network Denial of Service'],
+    reconnaissance: ['T1595 - Active Scanning'],
+    malware_activity: ['T1204 - User Execution'],
+    c2_communication: ['T1071 - Application Layer Protocol'],
+    log4shell: ['T1190 - Exploit Public-Facing Application'],
+    ransomware: ['T1486 - Data Encrypted for Impact'],
+  };
+  return techniqueMap[attackType] || ['Unknown'];
+}
+
 // Cloudflare Workers limits - reduced to 200KB to prevent CPU crashes
 const MAX_TEXT_SIZE = 200 * 1024; // 200KB hard limit per request
 const MAX_BINARY_SIZE = 200 * 1024; // 200KB for EVTX
@@ -307,16 +360,15 @@ app.post('/parse', async (c) => {
           chunks: chunks.slice(0, 10).map(c => ({
             index: c.index,
             name: `chunk_${String(c.index).padStart(3, '0')}.log`,
+            content: c.content, // Include content for frontend processing
             lineCount: c.lineCount,
             byteSize: c.size
           })),
           note: chunks.length > 10 ? `Showing 10 of ${chunks.length} chunks` : null,
           usage: {
-            option1: 'Use CLI tool: node split-log-file.js <evtxfile>',
+            option1: 'File will be automatically processed in chunks',
             option2: 'Export EVTX to text using Windows Event Viewer, then upload',
-            apiCall: `POST /parse/chunked\nBody: { "chunks": [chunk1_content, ...], "fileName": "${filename || 'logs.evtx'}" }`
           },
-          cliCommand: `node split-log-file.js ${filename || 'logs.evtx'} 200 ./chunks`
         }, 200);
       }
     } else if (content) {
@@ -366,9 +418,114 @@ app.post('/parse', async (c) => {
         
         console.log(`Auto-split into ${chunks.length} chunks`);
         
+        // If we have reasonable number of chunks, process them directly
+        // Increase limit to handle larger files (up to ~2MB)
+        if (chunks.length <= 10) {
+          // Process each chunk and combine results
+          const allEntries: any[] = [];
+          const allAlerts: any[] = [];
+          
+          for (const chunk of chunks) {
+            const { entries, stats } = autoParse(chunk.content);
+            allEntries.push(...entries);
+            const alerts = runDetections(entries);
+            allAlerts.push(...alerts);
+          }
+          
+          // Run ML-based attack detection on combined entries
+          const enrichedEntries = enrichEntriesWithAttacks(allEntries);
+          const detectedAttacks = detectAttacksInEntries(enrichedEntries);
+          const mlPredictions = detectMLAttacks(allEntries);
+          const multiLogAnomalies = detectAnomaliesForAllTypes(allEntries);
+          
+          // Add ML predictions to entries
+          if (mlPredictions.length > 0) {
+            const matchingPrediction = mlPredictions.find(p => 
+              p.attackType !== 'safe' && 
+              p.attackType !== 'anomaly' &&
+              p.confidence >= 0.3
+            );
+            
+            // Calculate average confidence
+            const avgConfidence = mlPredictions.reduce((sum, p) => sum + p.confidence, 0) / mlPredictions.length;
+            
+            if (matchingPrediction) {
+              for (const entry of enrichedEntries) {
+                if (!entry.attackType) {
+                  entry.attackType = matchingPrediction.attackType;
+                  entry.attackConfidence = matchingPrediction.confidence;
+                  entry.mitreTactics = matchingPrediction.features ? getMitreTacticsForAttack(matchingPrediction.attackType) : undefined;
+                  entry.mitreTechniques = matchingPrediction.features ? getMitreTechniquesForAttack(matchingPrediction.attackType) : undefined;
+                } else if (!entry.attackConfidence) {
+                  entry.attackConfidence = matchingPrediction.confidence;
+                }
+              }
+            } else {
+              // No attack detected - set normal with confidence
+              for (const entry of enrichedEntries) {
+                if (!entry.attackConfidence) {
+                  entry.attackConfidence = avgConfidence;
+                }
+                if (!entry.attackType) {
+                  entry.attackType = 'safe';
+                }
+              }
+            }
+          }
+          
+          // Generate attack summary
+          const attackTypes = [...new Set(detectedAttacks.map((a: any) => a.attack.attackType))];
+          const mlAttackTypes = [...new Set(mlPredictions.map((p: any) => p.attackType))];
+          const multiLogAttackTypes = multiLogAnomalies.flatMap((a: any) => a.detectedAttackTypes);
+          const allAttackTypes = [...new Set([...attackTypes, ...mlAttackTypes, ...multiLogAttackTypes])];
+          const attackSummary = {
+            totalAttacks: detectedAttacks.length + mlPredictions.length + multiLogAnomalies.filter((a: any) => a.isAnomaly).length,
+            attackTypes: allAttackTypes,
+            uniqueSources: new Set(allEntries.map((e: any) => e.source.ip).filter(Boolean)).size,
+            riskScore: Math.min(Math.max(detectedAttacks.length, mlPredictions.length) * 10, 100),
+          };
+          
+          // Generate stats
+          const uniqueIps = new Set(allEntries.map(e => e.source.ip).filter(Boolean));
+          const stats = {
+            byType: { [filename || 'logs']: allEntries.length },
+            bySeverity: allEntries.reduce((acc: any, e: any) => {
+              acc[e.severity] = (acc[e.severity] || 0) + 1;
+              return acc;
+            }, {}),
+            byOutcome: allEntries.reduce((acc: any, e: any) => {
+              acc[e.outcome || 'unknown'] = (acc[e.outcome || 'unknown'] || 0) + 1;
+              return acc;
+            }, {}),
+            topSources: Array.from(uniqueIps).slice(0, 10).map(ip => ({ ip, count: 1 })),
+            topUsers: [],
+            timeline: []
+          };
+          
+          return c.json({
+            success: true,
+            detectedType: 'auto_split_processed',
+            totalLines: lineCount,
+            parsedLines: allEntries.length,
+            failedLines: lineCount - allEntries.length,
+            entries: enrichedEntries,
+            alerts: allAlerts,
+            mlAttacks: detectedAttacks,
+            mlPredictions,
+            multiLogAnomalies,
+            attackSummary,
+            stats,
+            chunkInfo: {
+              processedChunks: chunks.length,
+              message: 'File was automatically split and processed'
+            }
+          }, 200);
+        }
+        
+        // For too many chunks, return chunk info for manual processing
         return c.json({
           status: 'auto_split',
-          message: 'File was automatically split into chunks (1MB limit)',
+          message: 'File was automatically split - too many chunks for auto-processing',
           originalFile: {
             sizeMB: parseFloat(sizeMB),
             lineCount,
@@ -382,16 +539,14 @@ app.post('/parse', async (c) => {
           chunks: chunks.map(c => ({
             index: c.index,
             name: `chunk_${String(c.index).padStart(3, '0')}.log`,
+            content: c.content, // Include content for frontend
             lineCount: c.lineCount,
             byteSize: c.byteSize
           })),
           usage: {
-            option1: 'Download chunks with range requests or re-upload with Range header',
-            option2: 'Use CLI tool: node split-log-file.js <file>',
-            option3: 'Process chunks locally and upload individually',
-            apiCall: `POST /parse/chunked\nBody: { "chunks": [chunk1_content, ...], "fileName": "${filename || 'logs.log'}" }`
-          },
-          cliCommand: `node split-log-file.js ${filename || 'logs.log'} 200 ./chunks`
+            option1: 'File will be processed in chunks if you upload via /parse/chunked',
+            option2: 'Upload smaller files (<200KB) for immediate processing'
+          }
         }, 200);
       }
     }
@@ -474,12 +629,69 @@ app.post('/parse', async (c) => {
     // Run detections
     const alerts = runDetections(entries);
     
-// Run ML-based per-entry attack detection
+    // Run ML-based per-entry attack detection
     const enrichedEntries = enrichEntriesWithAttacks(entries);
     const detectedAttacks = detectAttacksInEntries(enrichedEntries);
     
     // Run ML-based feature extraction and classification
     const mlPredictions = detectMLAttacks(entries);
+    
+    // Also enrich entries with ML predictions for frontend display
+    // Map ML predictions to individual entries
+    if (mlPredictions.length > 0 && entries.length > 0) {
+      // Get the best attack prediction that's not safe/anomaly
+      const matchingPrediction = mlPredictions.find(p => 
+        p.attackType !== 'safe' && 
+        p.attackType !== 'anomaly' &&
+        p.confidence >= 0.3
+      );
+      
+      // Calculate average confidence from all predictions
+      const avgConfidence = mlPredictions.reduce((sum, p) => sum + p.confidence, 0) / mlPredictions.length;
+      
+      if (matchingPrediction) {
+        // Apply to all entries that don't already have an attack
+        for (const entry of enrichedEntries) {
+          if (!entry.attackType) {
+            entry.attackType = matchingPrediction.attackType;
+            entry.attackConfidence = matchingPrediction.confidence;
+            entry.mitreTactics = matchingPrediction.features ? getMitreTacticsForAttack(matchingPrediction.attackType) : undefined;
+            entry.mitreTechniques = matchingPrediction.features ? getMitreTechniquesForAttack(matchingPrediction.attackType) : undefined;
+          } else if (!entry.attackConfidence) {
+            // Add confidence to entries that have attackType but no confidence
+            entry.attackConfidence = matchingPrediction.confidence;
+          }
+        }
+      } else {
+        // No significant attack detected - set confidence for all entries
+        for (const entry of enrichedEntries) {
+          if (!entry.attackConfidence) {
+            entry.attackConfidence = avgConfidence;
+          }
+          if (!entry.attackType) {
+            entry.attackType = 'safe';
+          }
+        }
+      }
+      
+      // Also populate mlAttacks from mlPredictions for frontend compatibility
+      const mlAttacksFromPredictions = entries.map((entry, idx) => ({
+        entry,
+        attack: {
+          attackType: mlPredictions[0]?.attackType || 'unknown',
+          confidence: mlPredictions[0]?.confidence || 0,
+          severity: mlPredictions[0]?.probability && mlPredictions[0].probability > 0.7 ? 'critical' : 
+                    mlPredictions[0]?.probability && mlPredictions[0].probability > 0.4 ? 'high' : 'medium',
+          mitreTactics: getMitreTacticsForAttack(mlPredictions[0]?.attackType || 'unknown'),
+          mitreTechniques: getMitreTechniquesForAttack(mlPredictions[0]?.attackType || 'unknown'),
+          explanation: mlPredictions[0]?.explanation || [],
+          isFalsePositive: mlPredictions[0]?.isFalsePositive || false,
+        }
+      })).filter(a => a.attack.attackType !== 'safe' && a.attack.attackType !== 'unknown' && a.attack.confidence >= 0.3);
+      
+      // Merge with detectedAttacks
+      detectedAttacks.push(...mlAttacksFromPredictions);
+    }
     
     // Run multi-log type anomaly detection
     const multiLogAnomalies = detectAnomaliesForAllTypes(entries);
@@ -1005,12 +1217,52 @@ app.post('/parse/chunked', async (c) => {
     const enrichedEntries = enrichEntriesWithAttacks(entries);
     const detectedAttacks = detectAttacksInEntries(enrichedEntries);
     
+    // Run ML-based feature extraction and classification
+    const mlPredictions = detectMLAttacks(entries);
+    
+    // Add ML predictions to entries
+    if (mlPredictions.length > 0) {
+      const matchingPrediction = mlPredictions.find(p => 
+        p.attackType !== 'safe' && 
+        p.attackType !== 'anomaly' &&
+        p.confidence >= 0.3
+      );
+      
+      // Calculate average confidence
+      const avgConfidence = mlPredictions.reduce((sum, p) => sum + p.confidence, 0) / mlPredictions.length;
+      
+      if (matchingPrediction) {
+        for (const entry of enrichedEntries) {
+          if (!entry.attackType) {
+            entry.attackType = matchingPrediction.attackType;
+            entry.attackConfidence = matchingPrediction.confidence;
+            entry.mitreTactics = matchingPrediction.features ? getMitreTacticsForAttack(matchingPrediction.attackType) : undefined;
+            entry.mitreTechniques = matchingPrediction.features ? getMitreTechniquesForAttack(matchingPrediction.attackType) : undefined;
+          } else if (!entry.attackConfidence) {
+            entry.attackConfidence = matchingPrediction.confidence;
+          }
+        }
+      } else {
+        // No attack detected - set normal with confidence
+        for (const entry of enrichedEntries) {
+          if (!entry.attackConfidence) {
+            entry.attackConfidence = avgConfidence;
+          }
+          if (!entry.attackType) {
+            entry.attackType = 'safe';
+          }
+        }
+      }
+    }
+    
     const attackTypes = [...new Set(detectedAttacks.map(a => a.attack.attackType))];
+    const mlAttackTypes = [...new Set(mlPredictions.map(p => p.attackType))];
+    const allAttackTypes = [...new Set([...attackTypes, ...mlAttackTypes])];
     const attackSummary = {
-      totalAttacks: detectedAttacks.length,
-      attackTypes,
+      totalAttacks: detectedAttacks.length + mlPredictions.length,
+      attackTypes: allAttackTypes,
       uniqueSources: new Set(entries.map(e => e.source.ip).filter(Boolean)).size,
-      riskScore: Math.min(detectedAttacks.length * 10, 100),
+      riskScore: Math.min(Math.max(detectedAttacks.length, mlPredictions.length) * 10, 100),
     };
     
     const stats = generateStats(entries);
@@ -1029,6 +1281,7 @@ app.post('/parse/chunked', async (c) => {
       alerts,
       stats,
       mlAttacks: detectedAttacks,
+      mlPredictions,
       attackSummary,
       fileName,
       chunkInfo: {

@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       'import.meta.env.VITE_API_URL': JSON.stringify(
-        env.VITE_API_URL || 'http://127.0.0.1:8787'
+        env.VITE_API_URL || 'http://127.0.0.1:8788'
       ),
     },
   }

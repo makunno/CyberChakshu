@@ -124,10 +124,8 @@ Thumbs.db
 .wrangler/
 
 # Large log files (exclude from git)
-logs/*.log
-logs/access.log
-logs/error.log
-
+logs/
+soc-analyst-llm/
 # Binary files
 *.exe
 *.dll

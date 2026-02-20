@@ -106,7 +106,8 @@ export class EVTXParser {
         severity,
         source: {
           hostname: eventInfo.computer,
-          service: eventInfo.channel || 'Unknown'
+          service: eventInfo.channel || 'Unknown',
+          ip: eventInfo.ipAddress || undefined
         },
         action,
         outcome: eventInfo.status === 'failure' ? 'failure' : 'success',
@@ -119,7 +120,8 @@ export class EVTXParser {
           level: eventInfo.level,
           provider: eventInfo.provider,
           chunk_num: chunkNum,
-          record_num: recordNum
+          record_num: recordNum,
+          ip_address: eventInfo.ipAddress || null
         },
         tags: ['windows', 'evtx', eventInfo.channel?.toLowerCase() || 'event', severity]
       };
@@ -170,6 +172,9 @@ export class EVTXParser {
       const timeMatch = xml.match(/<TimeCreated[^>]*SystemTime="([^"]+)"/);
       const providerMatch = xml.match(/<Provider Name="([^"]+)"[^>]*>/);
       const messageMatch = xml.match(/<Message>([^<]+)<\/Message>/);
+      const ipMatch = xml.match(/<Data[^>]*Name="IpAddress"[^>]*>([^<]+)<\/Data>/i) 
+                   || xml.match(/<IpAddress>([^<]+)<\/IpAddress>/i);
+      const ipAddress = ipMatch ? ipMatch[1] : undefined;
       
       return {
         id: generateId(),
@@ -178,7 +183,8 @@ export class EVTXParser {
         severity: this.getSeverity(levelMatch?.[1] || 'info'),
         source: {
           hostname: computerMatch?.[1],
-          service: channelMatch?.[1] || 'Unknown'
+          service: channelMatch?.[1] || 'Unknown',
+          ip: ipAddress
         },
         action: this.getAction(eventIdMatch ? parseInt(eventIdMatch[1]) : 0, channelMatch?.[1]),
         outcome: 'success',
@@ -188,7 +194,8 @@ export class EVTXParser {
           event_id: eventIdMatch ? parseInt(eventIdMatch[1]) : 0,
           channel: channelMatch?.[1],
           level: levelMatch?.[1],
-          provider: providerMatch?.[1]
+          provider: providerMatch?.[1],
+          ip_address: ipAddress || null
         },
         tags: ['windows', 'xml', channelMatch?.[1]?.toLowerCase() || 'event']
       };
@@ -201,7 +208,7 @@ export class EVTXParser {
     try {
       const ticksPerSecond = BigInt(10000000);
       const epochOffset = BigInt(116444736000000000);
-      const secondsSince1970 = (winTicks - epochOffset * BigInt(10000)) / ticksPerSecond;
+      const secondsSince1970 = (winTicks - epochOffset) / ticksPerSecond;
       return new Date(Number(secondsSince1970) * 1000).toISOString();
     } catch {
       return new Date().toISOString();
@@ -233,7 +240,8 @@ export class EVTXParser {
       provider: '',
       computer: '',
       message: '',
-      status: 'success'
+      status: 'success',
+      ipAddress: ''
     };
     
     try {
@@ -257,6 +265,11 @@ export class EVTXParser {
       
       const timeMatch = xml.match(/<TimeCreated[^>]*SystemTime="([^"]+)"/);
       if (timeMatch) result.timestamp = timeMatch[1];
+      
+      const ipMatch = xml.match(/<Data[^>]*Name="IpAddress"[^>]*>([^<]+)<\/Data>/i) 
+                   || xml.match(/<IpAddress>([^<]+)<\/IpAddress>/i)
+                   || xml.match(/<Data[^>]*>([\d.]+)<\/Data>/);
+      if (ipMatch) result.ipAddress = ipMatch[1];
       
       result.status = this.getEventStatus(result.eventId);
     } catch {}

@@ -435,8 +435,11 @@ function getAttackContext(attackType: AttackType): string[] {
   return contexts[attackType] || [];
 }
 
+// Keyword-based attack detection (synchronous)
 export function detectMLAttacks(entries: ParsedLogEntry[]): MLPrediction[] {
   if (entries.length === 0) return [];
+  
+  // Use TypeScript keyword-based classifier
   const features = extractFeatures(entries);
   return classifyAttack(features);
 }
