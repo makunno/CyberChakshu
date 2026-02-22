@@ -357,7 +357,7 @@ def load_soc_llm():
     
     try:
         print("Loading SOC Analyst LLM model...")
-        model_path = os.path.join(os.path.dirname(__file__), '..', '..', 'soc-analyst-llm', 'models', 'soc-analyst-tinyllama-stable')
+        model_path = os.path.join(os.path.dirname(__file__), '..', '..', 'soc-analyst-llm', 'models', 'soc-analyst-tinyllama-final')
         
         if not os.path.exists(model_path):
             print(f"Model not found at {model_path}")
