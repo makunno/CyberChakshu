@@ -2348,6 +2348,337 @@
   }
 }
 
+/* ============================================================================
+   Forensic Analysis Styles
+   ============================================================================ */
+
+.forensic-section {
+  max-width: 700px !important;
+}
+
+.forensic-input-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.forensic-path-input {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  transition: all 0.2s;
+}
+
+.forensic-path-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.forensic-path-input::placeholder {
+  color: var(--text-muted);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.forensic-btn {
+  white-space: nowrap;
+}
+
+.forensic-progress {
+  margin-top: 24px;
+  width: 100%;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), #60a5fa);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.progress-stage {
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.progress-percent {
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.progress-message {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Forensic Results Page */
+.forensic-results {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.forensic-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.forensic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+  padding: 24px;
+  border-radius: 12px;
+  gap: 24px;
+}
+
+.forensic-title-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  color: white;
+}
+
+.forensic-icon {
+  color: #60a5fa;
+}
+
+.forensic-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.forensic-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.meta-separator {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.risk-badge-container {
+  flex-shrink: 0;
+}
+
+.risk-badge-large {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  border: 2px solid;
+}
+
+.forensic-output-dir {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.output-label {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.output-path {
+  color: var(--accent-blue);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.forensic-summary {
+  background: var(--bg-secondary);
+}
+
+.forensic-summary h3 {
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.forensic-summary p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.forensic-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .forensic-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.forensic-stat-card {
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.forensic-stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.forensic-stat-card .stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.forensic-stat-card.critical .stat-value { color: #ef4444; }
+.forensic-stat-card.high .stat-value { color: #ea580c; }
+.forensic-stat-card.medium .stat-value { color: #ca8a04; }
+.forensic-stat-card.low .stat-value { color: #16a34a; }
+
+.forensic-findings-section {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.forensic-findings-section h3 {
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.no-findings {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.no-findings svg {
+  color: #22c55e;
+  margin-bottom: 16px;
+}
+
+.no-findings h4 {
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.findings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.finding-card {
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  border-left: 4px solid;
+  padding: 16px;
+}
+
+.finding-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.finding-icon {
+  font-size: 20px;
+}
+
+.finding-technique {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.finding-severity {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.finding-confidence {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.finding-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.finding-field strong {
+  color: var(--accent-blue);
+  font-size: 13px;
+}
+
+.finding-field p {
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.forensic-recommendations {
+  background: var(--bg-secondary);
+}
+
+.forensic-recommendations h3 {
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.forensic-recommendations ul {
+  margin-left: 20px;
+  color: var(--text-secondary);
+}
+
+.forensic-recommendations li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
 .load-more-container .table-info {
   margin-top: 8px;
 }

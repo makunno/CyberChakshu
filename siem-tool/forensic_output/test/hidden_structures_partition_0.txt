@@ -1,0 +1,5 @@
+Hidden Structures / ADS for Partition 0
+Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/test.dd
+================================================================================
+
+No hidden structures/ADS found.

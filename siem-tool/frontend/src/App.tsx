@@ -1,17 +1,18 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { 
    Upload, Shield, AlertTriangle, Activity, FileText, 
    Download, RefreshCw, ChevronDown, X, Search, Terminal,
    Layers, Clock, Target, Zap, TrendingUp, Scissors, File, Archive,
-   MessageSquare
+   MessageSquare, HardDrive, FileSearch
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import JSZip from 'jszip';
-import { parseLogsFromFile, parseLogsFromText, parseLogsFromChunkedFile, splitFileClient, correlateMultipleFiles, EVTXUploadError, isEVTXFile, analyzeLogWithAI, type SplitFileResult } from './api';
+import { parseLogsFromFile, parseLogsFromText, parseLogsFromChunkedFile, splitFileClient, correlateMultipleFiles, EVTXUploadError, isEVTXFile, analyzeLogWithAI, type SplitFileResult, startForensicAnalysis, getForensicStatus, getForensicResults, type ForensicResultsResponse } from './api';
 import type { ParseResponse, ParsedLogEntry, CorrelateResponse, AttackChain, TimelineEvent } from './types';
 import { DynamicTable } from './DynamicTable';
 import { EVTXTutorial } from './EVTXTutorial';
 import { SOCAnalystChat } from './components/SOCAnalystChat';
+import { ForensicResults } from './components/ForensicResults';
 import './App.css';
 
 const SEVERITY_COLORS = {
@@ -84,7 +85,7 @@ const ATTACK_TYPE_OPTIONS = [
 ];
 
 function App() {
-  const [mode, setMode] = useState<'single' | 'multi'>('single');
+  const [mode, setMode] = useState<'single' | 'multi' | 'forensics'>('single');
   const [data, setData] = useState<ParseResponse | null>(null);
   const [correlationData, setCorrelationData] = useState<CorrelateResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -104,6 +105,15 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [chatContext] = useState<{logEntry: string; logType: string} | null>(null);
   const [llmReady, setLlmReady] = useState(false);
+  
+  // Forensic analysis state
+  const [forensicImagePath, setForensicImagePath] = useState('');
+  const [forensicTaskId, setForensicTaskId] = useState<string | null>(null);
+  const [forensicProgress, setForensicProgress] = useState(0);
+  const [forensicStage, setForensicStage] = useState('');
+  const [forensicMessage, setForensicMessage] = useState('');
+  const [forensicResults, setForensicResults] = useState<ForensicResultsResponse | null>(null);
+  const forensicPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-feed logs to LLM after parsing completes
   useEffect(() => {
@@ -377,7 +387,80 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
     setShowAttackTypeDropdown(false);
     setSelectedChain(null);
     setError(null);
+    // Reset forensic state
+    setForensicImagePath('');
+    setForensicTaskId(null);
+    setForensicProgress(0);
+    setForensicStage('');
+    setForensicMessage('');
+    setForensicResults(null);
+    if (forensicPollRef.current) {
+      clearInterval(forensicPollRef.current);
+      forensicPollRef.current = null;
+    }
   };
+
+  // Forensic analysis handlers
+  const handleForensicStart = useCallback(async () => {
+    if (!forensicImagePath.trim()) {
+      setError('Please enter an image path');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setForensicProgress(0);
+    setForensicStage('starting');
+    setForensicMessage('Starting forensic analysis...');
+
+    try {
+      const response = await startForensicAnalysis(forensicImagePath.trim());
+      setForensicTaskId(response.task_id);
+      
+      // Start polling for status
+      forensicPollRef.current = setInterval(async () => {
+        try {
+          const status = await getForensicStatus(response.task_id);
+          setForensicProgress(status.progress);
+          setForensicStage(status.stage);
+          setForensicMessage(status.message);
+
+          if (status.status === 'completed') {
+            if (forensicPollRef.current) {
+              clearInterval(forensicPollRef.current);
+              forensicPollRef.current = null;
+            }
+            // Fetch results
+            const results = await getForensicResults(response.task_id);
+            setForensicResults(results);
+            setLoading(false);
+          } else if (status.status === 'failed') {
+            if (forensicPollRef.current) {
+              clearInterval(forensicPollRef.current);
+              forensicPollRef.current = null;
+            }
+            setError(status.error || 'Forensic analysis failed');
+            setLoading(false);
+          }
+        } catch (err) {
+          console.error('Error polling forensic status:', err);
+        }
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start forensic analysis');
+      setLoading(false);
+    }
+  }, [forensicImagePath]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (forensicPollRef.current) {
+        clearInterval(forensicPollRef.current);
+      }
+    };
+  }, []);
+
   const summary = correlationData?.correlation?.summary;
 
   return (
@@ -428,7 +511,7 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
 
       <main className="main container">
         {/* Upload Section */}
-        {!hasData && (
+        {!hasData && !forensicResults && (
           <div className="upload-wrapper fade-in">
             {/* Mode Toggle */}
             <div className="mode-toggle">
@@ -446,8 +529,81 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                 <Layers size={18} />
                 Multi-Log Correlation
               </button>
+              <button 
+                className={`mode-btn ${mode === 'forensics' ? 'active' : ''}`}
+                onClick={() => setMode('forensics')}
+              >
+                <HardDrive size={18} />
+                Disk Forensics
+              </button>
             </div>
 
+            {/* Forensics Mode */}
+            {mode === 'forensics' ? (
+              <div className="upload-section card forensic-section">
+                <div className="upload-icon">
+                  <FileSearch size={48} />
+                </div>
+                <h2>Disk Image Forensic Analysis</h2>
+                <p>
+                  Analyze disk images (.E01, .DD, .RAW, .IMG) for anti-forensic techniques including timestomping, shadow copy deletion, ADS, and more.
+                </p>
+                <p className="supported-types">
+                  Supports: EnCase E01, Raw DD, RAW, IMG formats
+                </p>
+                
+                <div className="forensic-input-group">
+                  <input
+                    type="text"
+                    placeholder="Enter full path to disk image file..."
+                    value={forensicImagePath}
+                    onChange={(e) => setForensicImagePath(e.target.value)}
+                    className="forensic-path-input"
+                    disabled={loading}
+                  />
+                  <button 
+                    className="btn btn-primary forensic-btn"
+                    onClick={handleForensicStart}
+                    disabled={loading || !forensicImagePath.trim()}
+                  >
+                    {loading ? (
+                      <>
+                        <RefreshCw size={18} className="spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <FileSearch size={18} />
+                        Start Analysis
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {loading && forensicTaskId && (
+                  <div className="forensic-progress">
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill" 
+                        style={{ width: `${forensicProgress}%` }}
+                      ></div>
+                    </div>
+                    <div className="progress-info">
+                      <span className="progress-stage">{forensicStage}</span>
+                      <span className="progress-percent">{forensicProgress}%</span>
+                    </div>
+                    <p className="progress-message">{forensicMessage}</p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="error-message">
+                    <AlertTriangle size={18} />
+                    {error}
+                  </div>
+                )}
+              </div>
+            ) : (
             <div 
               className="upload-section card"
               onDragOver={(e) => e.preventDefault()}
@@ -520,7 +676,16 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                 </div>
               )}
             </div>
+            )}
           </div>
+        )}
+
+        {/* Forensic Results */}
+        {forensicResults && (
+          <ForensicResults 
+            results={forensicResults} 
+            onReset={resetAll}
+          />
         )}
 
         {/* Dashboard */}
