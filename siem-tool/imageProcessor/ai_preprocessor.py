@@ -45,10 +45,19 @@ class ForensicPreprocessor:
         result["file_analysis"] = self._analyze_all_files()
 
         # Step 3: Extract evidence features
-        print("[*] Step 3: Extracting evidence...")
+        print("[*] Step 3: Extract evidence...")
         result["evidence"] = self._extract_evidence()
 
-        # Step 4: Build AI context
+        # Step 3.5: Load layered correlation results if they exist
+        layered_file = self.output_dir / "layered_analysis_results.json"
+        if layered_file.exists():
+            print("[*] Step 3.5: Loading layered correlation results...")
+            try:
+                with open(layered_file, "r") as f:
+                    result["layered_findings"] = json.load(f)
+            except Exception as e:
+                print(f"    [!] Error loading layered results: {e}")
+
         print("[*] Step 4: Building AI context...")
         result["context"] = self._build_context()
 
@@ -96,6 +105,19 @@ class ForensicPreprocessor:
             }
 
             self.file_classification[category].append(file_info)
+
+        logs_dir = self.output_dir / "logs"
+        if logs_dir.exists():
+            for file in logs_dir.glob("**/*.json"):
+                if file.suffix == ".json" and ".evtx." in file.name:
+                    file_info = {
+                        "path": str(file),
+                        "name": file.name,
+                        "size_bytes": file.stat().st_size,
+                        "size_mb": round(file.stat().st_size / (1024 * 1024), 2),
+                        "priority": "important",
+                    }
+                    self.file_classification["important"].append(file_info)
 
     def _analyze_all_files(self) -> Dict[str, Any]:
         """Analyze all classified files."""
@@ -449,6 +471,13 @@ class ForensicPreprocessor:
             "logs": {"event_logs": 0, "log_files": []},
         }
 
+        logs_dir = self.output_dir / "logs"
+        if logs_dir.exists():
+            evtx_json_files = list(logs_dir.glob("**/*.evtx.json"))
+            evtx_files = list(logs_dir.glob("**/*.evtx"))
+            evidence["logs"]["event_logs"] = len(evtx_json_files) + len(evtx_files)
+            evidence["logs"]["log_files"] = [f.name for f in evtx_json_files[:10]]
+
         # Process critical files first
         for file_info in self.file_classification["critical"]:
             self._process_critical_file(Path(file_info["path"]), evidence)
@@ -537,7 +566,10 @@ class ForensicPreprocessor:
                 ]
 
             elif "logs" in file_path.name:
-                evidence["logs"]["event_logs"] = content.count(".evtx")
+                pass
+
+            elif file_path.suffix == ".json" and ".evtx." in file_path.name:
+                pass
 
         except Exception as e:
             print(f"    [!] Error processing {file_path.name}: {e}")

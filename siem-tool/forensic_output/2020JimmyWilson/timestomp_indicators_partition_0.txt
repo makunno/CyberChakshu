@@ -1,6 +1,0 @@
-Timestamp Analysis for Partition 0
-Image: /home/utsav/Github/imageProcessor/2020JimmyWilson.E01
-================================================================================
-
-Error: Cannot determine file system type
-

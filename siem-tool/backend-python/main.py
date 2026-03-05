@@ -26,11 +26,21 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 try:
     from parsers import auto_parse, detect_log_type, generate_stats as gen_stats
     from detectors.alerts import run_detections
-    from ml.classifier import detect_ml_attacks, enrich_entries_with_attacks
 
     PARSERS_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    print(f"Import warning: {e}")
     PARSERS_AVAILABLE = False
+
+try:
+    from ml.classifier import detect_ml_attacks, enrich_entries_with_attacks
+
+    ML_AVAILABLE = True
+except ImportError as e:
+    print(f"ML import warning: {e}")
+    ML_AVAILABLE = False
+    detect_ml_attacks = None
+    enrich_entries_with_attacks = None
 
 app = FastAPI(title="FreeKhana SIEM API", version="2.0.0")
 
@@ -338,6 +348,7 @@ class LogAnalysisRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     context: Optional[List[Dict]] = []
+    logData: Optional[Dict] = None
 
 
 class LogAnalysisResponse(BaseModel):
@@ -352,7 +363,7 @@ class ChatResponse(BaseModel):
 
 # SOC Analyst LLM Integration - Using OpenRouter Cloud AI
 _soc_openrouter_client = None
-_soc_model = "meta-llama/llama-3.1-8b-instruct:free"
+_soc_model = "google/gemini-2.0-flash-001"
 
 
 def _get_soc_client():
@@ -626,7 +637,78 @@ Try asking about:
 Note: I'm currently operating in knowledge-based mode. For real-time log analysis, please share the log entry you'd like me to examine."""
 
 
-def chat_with_llm(message: str, context: List[Dict] = []) -> str:
+def build_log_context(logData: Dict) -> str:
+    """Build a context string from parsed log data"""
+    if not logData:
+        return ""
+
+    context_parts = []
+
+    # Summary stats
+    if isinstance(logData, dict):
+        # Parse response
+        stats = logData.get("stats", {})
+        alerts = logData.get("alerts", [])
+        entries = logData.get("entries", [])
+        attackSummary = logData.get("attackSummary", {})
+        detectedType = logData.get("detectedType", "unknown")
+
+        context_parts.append("=== LOG ANALYSIS SUMMARY ===")
+        context_parts.append(f"Detected Log Type: {detectedType}")
+
+        if stats:
+            bySeverity = stats.get("bySeverity", {})
+            if bySeverity:
+                context_parts.append(f"Severity Distribution: {bySeverity}")
+
+            topSources = stats.get("topSources", [])[:5]
+            if topSources:
+                sources = ", ".join(
+                    [f"{s.get('ip')}: {s.get('count')}" for s in topSources]
+                )
+                context_parts.append(f"Top Source IPs: {sources}")
+
+            timeline = stats.get("timeline", [])
+            if timeline:
+                context_parts.append(f"Timeline spans {len(timeline)} time points")
+
+        if attackSummary:
+            totalAttacks = attackSummary.get("totalAttacks", 0)
+            attackTypes = attackSummary.get("attackTypes", [])
+            riskScore = attackSummary.get("riskScore", 0)
+            context_parts.append(f"Attacks Detected: {totalAttacks}")
+            if attackTypes:
+                context_parts.append(f"Attack Types: {', '.join(attackTypes)}")
+            context_parts.append(f"Risk Score: {riskScore}/100")
+
+        # Sample entries with issues
+        entries_with_attacks = [e for e in entries if e.get("attackType")]
+        if entries_with_attacks:
+            context_parts.append(
+                f"\n=== SAMPLE ATTACK LOGS ({len(entries_with_attacks)} total) ==="
+            )
+            for entry in entries_with_attacks[:10]:
+                ts = entry.get("timestamp", "N/A")
+                attack = entry.get("attackType", "unknown")
+                src_ip = entry.get("source", {}).get("ip", "N/A")
+                msg = entry.get("message", "")[:100]
+                context_parts.append(f"[{ts}] {attack} from {src_ip}: {msg}")
+
+        # Alerts
+        if alerts:
+            context_parts.append(f"\n=== ALERTS ({len(alerts)} total) ===")
+            for alert in alerts[:5]:
+                title = alert.get("title", "Unknown")
+                severity = alert.get("severity", "unknown")
+                src = ", ".join(alert.get("sourceIps", [])[:3])
+                context_parts.append(f"- [{severity.upper()}] {title} (Source: {src})")
+
+    return "\n".join(context_parts)
+
+
+def chat_with_llm(
+    message: str, context: List[Dict] = [], logData: Optional[Dict] = None
+) -> str:
     """Chat with OpenRouter Cloud AI with rule-based fallback"""
     client = _get_soc_client()
 
@@ -636,15 +718,19 @@ def chat_with_llm(message: str, context: List[Dict] = []) -> str:
     try:
         system_prompt = """You are an expert SOC (Security Operations Center) analyst AI assistant. You help security analysts understand threats, analyze logs, and respond to incidents.
 
-You can help with:
-- Log analysis and threat detection
-- Attack technique explanations (MITRE ATT&CK)
-- Incident response guidance
-- Security best practices
-- Malware analysis
-- Network forensics
+You have access to parsed log data including:
+- Log statistics (severity distribution, top sources, timeline)
+- Detected attacks and their confidence levels
+- Alert details
+- Risk scores
 
-Be helpful, accurate, and concise. When analyzing logs, look for indicators of compromise (IOCs), attack patterns, and provide actionable recommendations."""
+When answering questions:
+1. Reference the actual log data when applicable
+2. Provide specific details (IPs, timestamps, attack types) from the logs
+3. Explain what the data means in security context
+4. Suggest actionable recommendations
+
+Be helpful, accurate, and concise. Focus on actionable security insights."""
 
         context_str = ""
         if context:
@@ -655,12 +741,17 @@ Be helpful, accurate, and concise. When analyzing logs, look for indicators of c
                 context_str += f"{role.capitalize()}: {content}\n"
             context_str += "\n"
 
+        # Add log data context
+        log_context = build_log_context(logData) if logData else ""
+        if log_context:
+            context_str += f"\n{log_context}\n"
+
         user_prompt = f"{context_str}User question: {message}"
 
         response = client.chat(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            max_tokens=600,
+            max_tokens=800,
             temperature=0.5,
         )
 
@@ -715,7 +806,9 @@ async def soc_analyze_log(request: LogAnalysisRequest):
 async def soc_chat(request: ChatRequest):
     """Chat with SOC Analyst LLM"""
     try:
-        response = chat_with_llm(request.message, request.context or [])
+        response = chat_with_llm(
+            request.message, request.context or [], request.logData
+        )
         return ChatResponse(response=response)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
@@ -856,196 +949,428 @@ async def get_feedback_stats():
 
 
 # ============================================================================
-# Forensic Analysis Endpoints
+# Disk Forensics Endpoints
 # ============================================================================
 
+import tempfile
+import shutil
 import threading
-from forensic_tasks import task_manager, TaskStatus, FORENSIC_PIPELINE_AVAILABLE
+import uuid
+
+FORENSIC_STATE = {
+    "status": "idle",  # idle, running, completed, error
+    "progress": 0,
+    "message": "",
+    "results": None,
+    "error": None,
+}
+forensic_lock = threading.Lock()
 
 
-class ForensicStartRequest(BaseModel):
-    image_path: str
+def run_forensic_analysis_async(image_path: str, output_dir: str, temp_dir: str = None):
+    """Run forensic analysis in background thread"""
+    global FORENSIC_STATE
+
+    try:
+        sys.path.insert(
+            0,
+            os.path.join(
+                os.path.dirname(__file__), "..", "forensic-disk-analyzer", "backend"
+            ),
+        )
+
+        from run_forensic_pipeline import run_pipeline
+
+        with forensic_lock:
+            FORENSIC_STATE["status"] = "running"
+            FORENSIC_STATE["progress"] = 10
+            FORENSIC_STATE["message"] = "Starting forensic analysis pipeline..."
+
+        api_key = os.environ.get("OPENROUTER_API_KEY")
+        ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+        model = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.0-flash-001")
+
+        results = run_pipeline(
+            image_path,
+            output_dir,
+            api_key=api_key,
+            skip_extraction=False,
+            ollama_url=ollama_url,
+            model=model,
+        )
+
+        with forensic_lock:
+            FORENSIC_STATE["progress"] = 100
+            FORENSIC_STATE["status"] = "completed"
+            FORENSIC_STATE["message"] = "Analysis complete"
+            FORENSIC_STATE["results"] = output_dir
+            FORENSIC_STATE["result_data"] = results
+
+    except Exception as e:
+        with forensic_lock:
+            FORENSIC_STATE["status"] = "error"
+            FORENSIC_STATE["error"] = str(e)
+            FORENSIC_STATE["message"] = f"Error: {str(e)}"
 
 
-class ForensicStartResponse(BaseModel):
-    task_id: str
-    status: str
-    message: str
+@app.post("/forensic/analyze")
+async def analyze_disk_image(file: UploadFile = File(...)):
+    """Upload and analyze a disk image"""
+    global FORENSIC_STATE
 
+    if FORENSIC_STATE.get("status") == "running":
+        raise HTTPException(status_code=409, detail="Analysis already in progress")
 
-class ForensicStatusResponse(BaseModel):
-    task_id: str
-    status: str
-    progress: int
-    stage: str
-    message: str
-    output_dir: Optional[str] = None
-    error: Optional[str] = None
+    # Create project folder for forensic results
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    forensic_base = os.path.join(project_root, "forensic_results")
+    os.makedirs(forensic_base, exist_ok=True)
 
+    analysis_id = str(uuid.uuid4())
+    forensic_dir = os.path.join(forensic_base, f"analysis_{analysis_id}")
+    os.makedirs(forensic_dir, exist_ok=True)
 
-class ForensicFinding(BaseModel):
-    technique: str
-    severity: str
-    evidence: str
-    explanation: str
-    recommendation: str
-    confidence: float
+    temp_dir = forensic_dir
 
+    with forensic_lock:
+        FORENSIC_STATE["status"] = "running"
+        FORENSIC_STATE["progress"] = 0
+        FORENSIC_STATE["message"] = "Uploading disk image..."
+        FORENSIC_STATE["results"] = forensic_dir
+        FORENSIC_STATE["error"] = None
+        FORENSIC_STATE["temp_dir"] = temp_dir
 
-class ForensicResultsResponse(BaseModel):
-    task_id: str
-    status: str
-    output_dir: str
-    findings: List[ForensicFinding]
-    summary: str
-    risk_level: str
-    recommendations: List[str]
-    timestamp: str
-    model: str
-    analysis_time_seconds: float
+    # Save uploaded file
+    filename = file.filename or "disk.dd"
+    # Handle E01 format
+    if filename.lower().endswith(".e01"):
+        image_path = os.path.join(temp_dir, "disk.E01")
+    else:
+        image_path = os.path.join(temp_dir, filename)
 
+    with open(image_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
 
-@app.get("/forensics/health")
-async def forensics_health():
+    output_dir = os.path.join(temp_dir, "forensic_output")
+    os.makedirs(output_dir, exist_ok=True)
+
+    with forensic_lock:
+        FORENSIC_STATE["results"] = output_dir
+
+    thread = threading.Thread(
+        target=run_forensic_analysis_async, args=(image_path, output_dir, temp_dir)
+    )
+    thread.start()
+
     return {
-        "status": "ok",
-        "pipeline_available": FORENSIC_PIPELINE_AVAILABLE,
-        "api_key_configured": bool(os.environ.get("OPENROUTER_API_KEY")),
+        "analysisId": analysis_id,
+        "status": "started",
+        "message": "Disk image uploaded, analysis started",
     }
 
 
-@app.post("/forensics/start", response_model=ForensicStartResponse)
-async def start_forensic_analysis(request: ForensicStartRequest):
-    if not FORENSIC_PIPELINE_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="Forensic pipeline not available. Check server configuration.",
-        )
+@app.get("/forensic/status")
+async def get_forensic_status():
+    """Get forensic analysis status"""
+    with forensic_lock:
+        current_status = FORENSIC_STATE.get("status", "idle")
 
-    if not os.environ.get("OPENROUTER_API_KEY"):
-        raise HTTPException(
-            status_code=503,
-            detail="OPENROUTER_API_KEY not configured on server. Please set the environment variable.",
-        )
+        # Auto-detect if results exist on disk
+        if current_status == "idle":
+            project_root = os.path.dirname(os.path.abspath(__file__))
+            forensic_base = os.path.join(project_root, "forensic_results")
+            if os.path.exists(forensic_base):
+                analyses = [
+                    d for d in os.listdir(forensic_base) if d.startswith("analysis_")
+                ]
+                if analyses:
+                    analyses.sort(
+                        key=lambda x: os.path.getmtime(os.path.join(forensic_base, x)),
+                        reverse=True,
+                    )
+                    output_dir = os.path.join(
+                        forensic_base, analyses[0], "forensic_output"
+                    )
+                    if os.path.exists(output_dir):
+                        # Check if results exist
+                        if any(
+                            f.endswith(".json")
+                            for f in os.listdir(output_dir)
+                            if "analysis" in f or "report" in f
+                        ):
+                            current_status = "completed"
 
-    image_path = request.image_path.strip()
-    if not image_path:
-        raise HTTPException(status_code=400, detail="Image path is required")
+        return {
+            "status": current_status,
+            "progress": 100
+            if current_status == "completed"
+            else FORENSIC_STATE.get("progress", 0),
+            "message": "Analysis complete"
+            if current_status == "completed"
+            else FORENSIC_STATE.get("message", ""),
+        }
 
-    if not os.path.exists(image_path):
-        raise HTTPException(
-            status_code=400, detail=f"Image file not found: {image_path}"
-        )
 
-    ext = os.path.splitext(image_path)[1].lower()
-    if ext not in [".e01", ".dd", ".raw", ".img"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported image format: {ext}. Supported formats: .e01, .dd, .raw, .img",
-        )
+@app.get("/forensic/results")
+async def get_forensic_results():
+    """Get forensic analysis results"""
+    with forensic_lock:
+        # Prioritize in-memory result_data if available
+        if (
+            FORENSIC_STATE.get("result_data")
+            and FORENSIC_STATE.get("status") == "completed"
+        ):
+            results = FORENSIC_STATE["result_data"]
 
-    task = task_manager.create_task(image_path)
+            # Load AI HTML report if it exists
+            output_dir = FORENSIC_STATE.get("results")
+            if output_dir:
+                report_path = os.path.join(output_dir, "live_tampering_report.html")
+                if os.path.exists(report_path):
+                    with open(report_path, "r") as f:
+                        results["ai_report_html"] = f.read()
 
-    thread = threading.Thread(
-        target=task_manager.run_forensic_analysis, args=(task.task_id, image_path)
+            return {"status": "completed", "results": results, "output_dir": output_dir}
+
+        output_dir = FORENSIC_STATE.get("results")
+
+        # Auto-discover existing results if in-memory state is lost
+        if not output_dir or not os.path.exists(output_dir):
+            project_root = os.path.dirname(os.path.abspath(__file__))
+            forensic_base = os.path.join(project_root, "forensic_results")
+            if os.path.exists(forensic_base):
+                # Find most recent analysis
+                analyses = [
+                    d for d in os.listdir(forensic_base) if d.startswith("analysis_")
+                ]
+                if analyses:
+                    # Sort by modification time, get most recent
+                    analyses.sort(
+                        key=lambda x: os.path.getmtime(os.path.join(forensic_base, x)),
+                        reverse=True,
+                    )
+                    output_dir = os.path.join(
+                        forensic_base, analyses[0], "forensic_output"
+                    )
+
+        if not output_dir or not os.path.exists(output_dir):
+            return {
+                "status": "idle",
+                "results": None,
+                "message": "No analysis results found",
+            }
+
+        results_dir = output_dir
+        results = {}
+
+        layered_file = os.path.join(results_dir, "layered_analysis_results.json")
+        if os.path.exists(layered_file):
+            with open(layered_file) as f:
+                results["layered_analysis"] = json.load(f)
+
+        timestomp_file = os.path.join(results_dir, "timestomp_report.json")
+        if os.path.exists(timestomp_file):
+            with open(timestomp_file) as f:
+                results["timestomping"] = json.load(f)
+
+        advanced_file = os.path.join(results_dir, "advanced_antiforensic_results.json")
+        if os.path.exists(advanced_file):
+            with open(advanced_file) as f:
+                results["advanced_analysis"] = json.load(f)
+
+        ai_file = os.path.join(results_dir, "ai_analysis_results.json")
+        if os.path.exists(ai_file):
+            with open(ai_file) as f:
+                results["ai_analysis"] = json.load(f)
+
+        # Copied files detection logic (standalone load)
+        copied_files = []
+        # Try to find possiblyCopied.txt
+        for f in os.listdir(results_dir):
+            if f.startswith("possiblyCopied") and f.endswith(".txt"):
+                with open(os.path.join(results_dir, f), "r", errors="ignore") as file:
+                    content = f.read()
+                    for line in content.split("\n"):
+                        if (
+                            any(line.startswith(x) for x in ["=", "Total", "Filename"])
+                            or not line.strip()
+                        ):
+                            continue
+                        dates = re.findall(
+                            r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}", line
+                        )
+                        if len(dates) >= 2:
+                            idx = line.find(dates[0])
+                            if idx >= 0:
+                                filename = line[:idx].strip()
+                                if filename and len(filename) > 1:
+                                    copied_files.append(
+                                        {
+                                            "filename": filename,
+                                            "created": dates[0],
+                                            "modified": dates[1],
+                                            "reason": "Modified < Created",
+                                        }
+                                    )
+                break
+
+        if copied_files:
+            results["copied_files"] = {
+                "files": copied_files,
+                "count": len(copied_files),
+            }
+
+        # Load AI HTML Report
+        report_path = os.path.join(results_dir, "live_tampering_report.html")
+        if os.path.exists(report_path):
+            with open(report_path, "r") as f:
+                results["ai_report_html"] = f.read()
+
+        # Check for alternative result files from forensic_tasks
+        layered_alt = os.path.join(results_dir, "layered_timestomp_analysis.json")
+        if os.path.exists(layered_alt):
+            with open(layered_alt) as f:
+                results["layered_timestomp_analysis"] = json.load(f)
+
+        antiforensic_file = os.path.join(results_dir, "antiforensic_analysis.json")
+        if os.path.exists(antiforensic_file):
+            with open(antiforensic_file) as f:
+                results["antiforensic_analysis"] = json.load(f)
+
+        # Auto-complete status if we found results
+        status = "completed" if results else FORENSIC_STATE.get("status", "idle")
+
+        return {"status": status, "results": results, "output_dir": output_dir}
+
+
+from fastapi.responses import Response
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+
+@app.post("/api/export-pdf")
+async def export_forensic_pdf(data: Dict[str, Any]):
+    """Generate a forensic PDF report from results"""
+    results = data.get("results")
+    if not results:
+        raise HTTPException(status_code=400, detail="No results provided")
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # Title
+    elements.append(Paragraph("Forensic Analysis Report", styles["Title"]))
+    elements.append(Spacer(1, 12))
+
+    # Meta Info
+    elements.append(
+        Paragraph(f"Analyzed At: {results.get('analyzed_at', 'N/A')}", styles["Normal"])
     )
-    thread.daemon = True
-    thread.start()
-
-    return ForensicStartResponse(
-        task_id=task.task_id,
-        status=task.status.value,
-        message="Forensic analysis started",
-    )
-
-
-@app.get("/forensics/status/{task_id}", response_model=ForensicStatusResponse)
-async def get_forensic_status(task_id: str):
-    task = task_manager.get_task(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    return ForensicStatusResponse(
-        task_id=task.task_id,
-        status=task.status.value,
-        progress=task.progress,
-        stage=task.stage,
-        message=task.message,
-        output_dir=task.output_dir,
-        error=task.error,
-    )
-
-
-@app.get("/forensics/results/{task_id}", response_model=ForensicResultsResponse)
-async def get_forensic_results(task_id: str):
-    task = task_manager.get_task(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if task.status != TaskStatus.COMPLETED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Task not completed. Current status: {task.status.value}",
+    elements.append(
+        Paragraph(
+            f"Output Directory: {results.get('output_directory', 'N/A')}",
+            styles["Normal"],
         )
+    )
+    elements.append(Spacer(1, 24))
 
-    if not task.results:
-        raise HTTPException(status_code=500, detail="Results not available")
+    # Summary Stats
+    elements.append(Paragraph("Analysis Summary", styles["Heading2"]))
+    summary_data = results.get("layered_analysis", {}).get("analysis_summary", {})
+    stats = [
+        ["Metric", "Value"],
+        ["Total Files Analyzed", summary_data.get("total_files_analyzed", 0)],
+        ["Suspicious Files Detected", summary_data.get("suspicious_files", 0)],
+        [
+            "Advanced Anti-Forensic Hits",
+            results.get("advanced_analysis", {})
+            .get("summary", {})
+            .get("timestomped_files", 0),
+        ],
+    ]
+    t = Table(stats, colWidths=[200, 100])
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
+    elements.append(t)
+    elements.append(Spacer(1, 24))
 
-    results = task.results
-    findings = []
-    for f in results.get("findings", []):
-        findings.append(
-            ForensicFinding(
-                technique=f.get("technique", "unknown"),
-                severity=f.get("severity", "UNKNOWN"),
-                evidence=f.get("evidence", "N/A"),
-                explanation=f.get("explanation", "N/A"),
-                recommendation=f.get("recommendation", "N/A"),
-                confidence=f.get("confidence", 0.0),
+    # AI Summary
+    ai_data = results.get("ai_analysis")
+    if ai_data and "summary" in ai_data:
+        elements.append(Paragraph("AI Forensic Insights", styles["Heading2"]))
+        elements.append(Paragraph(ai_data["summary"], styles["Normal"]))
+        elements.append(Spacer(1, 12))
+
+        if "findings" in ai_data:
+            for f in ai_data["findings"]:
+                elements.append(
+                    Paragraph(
+                        f"• {f.get('technique', 'Detection')}: {f.get('explanation', '')}",
+                        styles["Normal"],
+                    )
+                )
+                elements.append(Spacer(1, 6))
+        elements.append(Spacer(1, 12))
+
+    # Findings Table
+    elements.append(Paragraph("Top Suspicious Findings", styles["Heading2"]))
+    findings = results.get("layered_analysis", {}).get("suspicious_files", [])[:30]
+    if findings:
+        f_data = [["Filename", "Reason"]]
+        for f in findings:
+            f_data.append([f.get("filename", "Unknown"), f.get("explanation", "N/A")])
+
+        ft = Table(f_data, colWidths=[200, 300])
+        ft.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.darkblue),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ]
             )
         )
+        elements.append(ft)
 
-    return ForensicResultsResponse(
-        task_id=task.task_id,
-        status=task.status.value,
-        output_dir=task.output_dir or "",
-        findings=findings,
-        summary=results.get("summary", "No summary available"),
-        risk_level=results.get("risk_level", "UNKNOWN"),
-        recommendations=results.get("recommendations", []),
-        timestamp=results.get("timestamp", ""),
-        model=results.get("model", ""),
-        analysis_time_seconds=results.get("analysis_time_seconds", 0),
-    )
+    doc.build(elements)
 
-
-@app.get("/forensics/pdf/{task_id}")
-async def download_forensic_pdf(task_id: str):
-    task = task_manager.get_task(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if task.status != TaskStatus.COMPLETED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Task not completed. Current status: {task.status.value}",
-        )
-
-    if not task.pdf_path:
-        raise HTTPException(
-            status_code=404,
-            detail="PDF report not available. The analysis may have completed before PDF generation was implemented.",
-        )
-
-    if not os.path.exists(task.pdf_path):
-        raise HTTPException(status_code=404, detail="PDF file not found on server")
-
-    filename = os.path.basename(task.pdf_path)
-    return FileResponse(
-        path=task.pdf_path,
+    return Response(
+        content=buffer.getvalue(),
         media_type="application/pdf",
-        filename=filename,
+        headers={"Content-Disposition": "attachment; filename=Forensic_Report.pdf"},
     )
+
+
+@app.get("/forensic/clear")
+async def clear_forensic_state():
+    """Clear forensic analysis state"""
+    global FORENSIC_STATE
+    with forensic_lock:
+        FORENSIC_STATE = {
+            "status": "idle",
+            "progress": 0,
+            "message": "",
+            "results": None,
+            "error": None,
+        }
+    return {"status": "cleared"}
 
 
 if __name__ == "__main__":

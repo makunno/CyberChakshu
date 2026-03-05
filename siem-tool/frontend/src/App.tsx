@@ -1,18 +1,17 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
    Upload, Shield, AlertTriangle, Activity, FileText, 
    Download, RefreshCw, ChevronDown, X, Search, Terminal,
    Layers, Clock, Target, Zap, TrendingUp, Scissors, File, Archive,
-   MessageSquare, HardDrive, FileSearch
+   MessageSquare, HardDrive
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import JSZip from 'jszip';
-import { parseLogsFromFile, parseLogsFromText, parseLogsFromChunkedFile, splitFileClient, correlateMultipleFiles, EVTXUploadError, isEVTXFile, analyzeLogWithAI, type SplitFileResult, startForensicAnalysis, getForensicStatus, getForensicResults, type ForensicResultsResponse } from './api';
+import * as JSZip from 'jszip';
+import { parseLogsFromFile, parseLogsFromText, parseLogsFromChunkedFile, splitFileClient, correlateMultipleFiles, EVTXUploadError, isEVTXFile, analyzeLogWithAI, type SplitFileResult, analyzeDiskImage, getForensicStatus, getForensicResults, clearForensicState, type ForensicResults, type ForensicStatus } from './api';
 import type { ParseResponse, ParsedLogEntry, CorrelateResponse, AttackChain, TimelineEvent } from './types';
 import { DynamicTable } from './DynamicTable';
 import { EVTXTutorial } from './EVTXTutorial';
 import { SOCAnalystChat } from './components/SOCAnalystChat';
-import { ForensicResults } from './components/ForensicResults';
 import './App.css';
 
 const SEVERITY_COLORS = {
@@ -85,14 +84,16 @@ const ATTACK_TYPE_OPTIONS = [
 ];
 
 function App() {
-  const [mode, setMode] = useState<'single' | 'multi' | 'forensics'>('single');
+  const [mode, setMode] = useState<'single' | 'multi' | 'disk'>('single');
   const [data, setData] = useState<ParseResponse | null>(null);
   const [correlationData, setCorrelationData] = useState<CorrelateResponse | null>(null);
+  const [forensicData, setForensicData] = useState<ForensicResults | null>(null);
+  const [forensicStatus, setForensicStatus] = useState<ForensicStatus>({ status: 'idle', progress: 0, message: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [evtxTutorialFile, setEvtxTutorialFile] = useState<string | null>(null);
   const [splitFileResult, setSplitFileResult] = useState<SplitFileResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'logs' | 'alerts' | 'attacks' | 'timeline' | 'stats'>('logs');
+  const [activeTab, setActiveTab] = useState<'logs' | 'alerts' | 'attacks' | 'timeline' | 'stats' | 'forensic'>('logs');
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
@@ -105,15 +106,6 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [chatContext] = useState<{logEntry: string; logType: string} | null>(null);
   const [llmReady, setLlmReady] = useState(false);
-  
-  // Forensic analysis state
-  const [forensicImagePath, setForensicImagePath] = useState('');
-  const [forensicTaskId, setForensicTaskId] = useState<string | null>(null);
-  const [forensicProgress, setForensicProgress] = useState(0);
-  const [forensicStage, setForensicStage] = useState('');
-  const [forensicMessage, setForensicMessage] = useState('');
-  const [forensicResults, setForensicResults] = useState<ForensicResultsResponse | null>(null);
-  const forensicPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-feed logs to LLM after parsing completes
   useEffect(() => {
@@ -188,7 +180,7 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
     a.click();
   }, [data, correlationData]);
 
-  const hasData = data || correlationData;
+  const hasData = !!(data || correlationData || forensicData || (mode === 'disk' && forensicStatus.status !== 'idle'));
   const attackChains = correlationData?.correlation?.attackChains || [];
   const timeline = correlationData?.correlation?.timeline || [];
 
@@ -268,6 +260,49 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
       setLoading(false);
     }
   }, [uploadedFiles]);
+
+  const handleDiskUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const file = files[0];
+    setError(null);
+    setForensicData(null);
+    setForensicStatus({ status: 'running', progress: 0, message: 'Uploading disk image...' });
+    setActiveTab('forensic');
+
+    try {
+      setLoading(true);
+      await analyzeDiskImage(file);
+      
+      const pollStatus = async () => {
+        const status = await getForensicStatus();
+        setForensicStatus(status);
+        
+        if (status.status === 'completed') {
+          const results = await getForensicResults();
+          setForensicData(results);
+          setLoading(false);
+        } else if (status.status === 'error') {
+          setError(status.message);
+          setLoading(false);
+        } else {
+          setTimeout(pollStatus, 2000);
+        }
+      };
+      
+      setTimeout(pollStatus, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start analysis');
+      setLoading(false);
+    }
+  }, []);
+
+  const handleNewForensicAnalysis = useCallback(async () => {
+    await clearForensicState();
+    setForensicData(null);
+    setForensicStatus({ status: 'idle', progress: 0, message: '' });
+  }, []);
 
   const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -380,6 +415,8 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
   const resetAll = () => {
     setData(null);
     setCorrelationData(null);
+    setForensicData(null);
+    setForensicStatus({ status: 'idle', progress: 0, message: '' });
     setUploadedFiles([]);
     setSelectedEntry(null);
     setSelectedEntryFeedback({});
@@ -387,79 +424,7 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
     setShowAttackTypeDropdown(false);
     setSelectedChain(null);
     setError(null);
-    // Reset forensic state
-    setForensicImagePath('');
-    setForensicTaskId(null);
-    setForensicProgress(0);
-    setForensicStage('');
-    setForensicMessage('');
-    setForensicResults(null);
-    if (forensicPollRef.current) {
-      clearInterval(forensicPollRef.current);
-      forensicPollRef.current = null;
-    }
   };
-
-  // Forensic analysis handlers
-  const handleForensicStart = useCallback(async () => {
-    if (!forensicImagePath.trim()) {
-      setError('Please enter an image path');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setForensicProgress(0);
-    setForensicStage('starting');
-    setForensicMessage('Starting forensic analysis...');
-
-    try {
-      const response = await startForensicAnalysis(forensicImagePath.trim());
-      setForensicTaskId(response.task_id);
-      
-      // Start polling for status
-      forensicPollRef.current = setInterval(async () => {
-        try {
-          const status = await getForensicStatus(response.task_id);
-          setForensicProgress(status.progress);
-          setForensicStage(status.stage);
-          setForensicMessage(status.message);
-
-          if (status.status === 'completed') {
-            if (forensicPollRef.current) {
-              clearInterval(forensicPollRef.current);
-              forensicPollRef.current = null;
-            }
-            // Fetch results
-            const results = await getForensicResults(response.task_id);
-            setForensicResults(results);
-            setLoading(false);
-          } else if (status.status === 'failed') {
-            if (forensicPollRef.current) {
-              clearInterval(forensicPollRef.current);
-              forensicPollRef.current = null;
-            }
-            setError(status.error || 'Forensic analysis failed');
-            setLoading(false);
-          }
-        } catch (err) {
-          console.error('Error polling forensic status:', err);
-        }
-      }, 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start forensic analysis');
-      setLoading(false);
-    }
-  }, [forensicImagePath]);
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (forensicPollRef.current) {
-        clearInterval(forensicPollRef.current);
-      }
-    };
-  }, []);
 
   const summary = correlationData?.correlation?.summary;
 
@@ -511,7 +476,7 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
 
       <main className="main container">
         {/* Upload Section */}
-        {!hasData && !forensicResults && (
+        {!hasData && (
           <div className="upload-wrapper fade-in">
             {/* Mode Toggle */}
             <div className="mode-toggle">
@@ -530,72 +495,51 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                 Multi-Log Correlation
               </button>
               <button 
-                className={`mode-btn ${mode === 'forensics' ? 'active' : ''}`}
-                onClick={() => setMode('forensics')}
+                className={`mode-btn ${mode === 'disk' ? 'active' : ''}`}
+                onClick={() => setMode('disk')}
               >
                 <HardDrive size={18} />
                 Disk Forensics
               </button>
             </div>
 
-            {/* Forensics Mode */}
-            {mode === 'forensics' ? (
-              <div className="upload-section card forensic-section">
+            {mode === 'disk' ? (
+              <div className="upload-section card">
                 <div className="upload-icon">
-                  <FileSearch size={48} />
+                  <HardDrive size={48} />
                 </div>
-                <h2>Disk Image Forensic Analysis</h2>
+                <h2>Disk Forensics Analysis</h2>
                 <p>
-                  Analyze disk images (.E01, .DD, .RAW, .IMG) for anti-forensic techniques including timestomping, shadow copy deletion, ADS, and more.
+                  Upload a disk image (.dd, .img, .raw) to analyze for:
                 </p>
-                <p className="supported-types">
-                  Supports: EnCase E01, Raw DD, RAW, IMG formats
-                </p>
+                <ul className="supported-types" style={{ textAlign: 'left', listStyle: 'none', padding: 0 }}>
+                  <li>🔍 Timestomping detection</li>
+                  <li>🚨 Anti-forensic activity</li>
+                  <li>📁 Hidden files & structures</li>
+                  <li>🤖 AI-powered analysis</li>
+                </ul>
                 
-                <div className="forensic-input-group">
-                  <input
-                    type="text"
-                    placeholder="Enter full path to disk image file..."
-                    value={forensicImagePath}
-                    onChange={(e) => setForensicImagePath(e.target.value)}
-                    className="forensic-path-input"
-                    disabled={loading}
-                  />
-                  <button 
-                    className="btn btn-primary forensic-btn"
-                    onClick={handleForensicStart}
-                    disabled={loading || !forensicImagePath.trim()}
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw size={18} className="spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <FileSearch size={18} />
-                        Start Analysis
-                      </>
-                    )}
-                  </button>
-                </div>
+                <input
+                  type="file"
+                  id="disk-upload"
+                  onChange={handleDiskUpload}
+                  accept=".dd,.img,.raw,.bin,.e01"
+                  hidden
+                />
+                <label htmlFor="disk-upload" className="btn btn-primary">
+                  <HardDrive size={18} />
+                  Choose Disk Image
+                </label>
+                <p className="supported-types">
+                  Supported formats: .dd, .img, .raw, .bin, .E01 (max 5GB)
+                </p>
 
-                {loading && forensicTaskId && (
-                  <div className="forensic-progress">
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ width: `${forensicProgress}%` }}
-                      ></div>
-                    </div>
-                    <div className="progress-info">
-                      <span className="progress-stage">{forensicStage}</span>
-                      <span className="progress-percent">{forensicProgress}%</span>
-                    </div>
-                    <p className="progress-message">{forensicMessage}</p>
+                {loading && (
+                  <div className="loading">
+                    <RefreshCw size={24} className="spin" />
+                    <span>{forensicStatus.message || 'Analyzing...'}</span>
                   </div>
                 )}
-
                 {error && (
                   <div className="error-message">
                     <AlertTriangle size={18} />
@@ -604,37 +548,37 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                 )}
               </div>
             ) : (
-            <div 
-              className="upload-section card"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-            >
-              <div className="upload-icon">
-                {mode === 'single' ? <Upload size={48} /> : <Layers size={48} />}
-              </div>
-              <h2>{mode === 'single' ? 'Upload Log File' : 'Upload Multiple Log Files'}</h2>
-              <p>
-                {mode === 'single' 
-                  ? 'Drag & drop your log file here, paste log content, or click to browse'
-                  : 'Upload auth, web, database, firewall, and system logs for cross-correlation analysis'
-                }
-              </p>
-              <p className="supported-types">
-                Supports: Database, Webserver, System, SSH, Firewall, Network, Mail logs (56+ formats)
-              </p>
-              
-              <input
-                type="file"
-                id="file-upload"
-                onChange={handleFileUpload}
-                accept=".log,.txt,.json,.jsonl,.csv,.xml,.evtx,.evt,.raw,.gz,.zip"
-                multiple={mode === 'multi'}
-                hidden
-              />
-              <label htmlFor="file-upload" className="btn btn-primary">
-                <FileText size={18} />
-                {mode === 'single' ? 'Choose File' : 'Add Files'}
-              </label>
+              <div 
+                className="upload-section card"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={mode !== 'multi' ? handleDrop : undefined}
+              >
+                <div className="upload-icon">
+                  {mode === 'single' ? <Upload size={48} /> : <Layers size={48} />}
+                </div>
+                <h2>{mode === 'single' ? 'Upload Log File' : 'Upload Multiple Log Files'}</h2>
+                <p>
+                  {mode === 'single' 
+                    ? 'Drag & drop your log file here, paste log content, or click to browse'
+                    : 'Upload auth, web, database, firewall, and system logs for cross-correlation analysis'
+                  }
+                </p>
+                <p className="supported-types">
+                  Supports: Database, Webserver, System, SSH, Firewall, Network, Mail logs (56+ formats)
+                </p>
+                
+                <input
+                  type="file"
+                  id="file-upload"
+                  onChange={handleFileUpload}
+                  accept=".log,.txt,.json,.jsonl,.csv,.xml,.evtx,.evt,.raw,.gz,.zip"
+                  multiple={mode === 'multi'}
+                  hidden
+                />
+                <label htmlFor="file-upload" className="btn btn-primary">
+                  <FileText size={18} />
+                  {mode === 'single' ? 'Choose File' : 'Add Files'}
+                </label>
 
               {/* Multi-file list */}
               {mode === 'multi' && uploadedFiles.length > 0 && (
@@ -663,7 +607,7 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                 </div>
               )}
 
-              {loading && (
+              {loading && (mode === 'single' || mode === 'multi') && (
                 <div className="loading">
                   <RefreshCw size={24} className="spin" />
                   <span>{mode === 'multi' ? 'Running ML correlation analysis...' : 'Parsing logs...'}</span>
@@ -676,17 +620,9 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                 </div>
               )}
             </div>
-            )}
-          </div>
-        )}
-
-        {/* Forensic Results */}
-        {forensicResults && (
-          <ForensicResults 
-            results={forensicResults} 
-            onReset={resetAll}
-          />
-        )}
+          )}
+        </div>
+      )}
 
         {/* Dashboard */}
         {hasData && (
@@ -737,6 +673,15 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                   <Activity size={16} />
                   Analytics
                 </button>
+                {mode === 'disk' && (
+                  <button 
+                    className={`tab ${activeTab === 'forensic' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('forensic')}
+                  >
+                    <HardDrive size={16} />
+                    Forensics Results
+                  </button>
+                )}
               </div>
               <div className="toolbar-actions">
                 <button className="btn btn-secondary" onClick={resetAll}>
@@ -800,6 +745,261 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                     <div className="kpi-label">Total Events</div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Forensic Results Tab */}
+            {activeTab === 'forensic' && mode === 'disk' && (
+              <div className="forensic-section fade-in">
+                <div className="forensic-header">
+                  <h2><HardDrive size={24} /> Disk Forensics Analysis Results</h2>
+                  <div className="forensic-header-actions" style={{ display: 'flex', gap: '12px' }}>
+                    {forensicData?.results && (
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/export-pdf`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ results: forensicData.results }),
+                            });
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'Forensic_Report.pdf';
+                            a.click();
+                          } catch (err) {
+                            console.error('PDF Export failed:', err);
+                          }
+                        }}
+                      >
+                        <Download size={16} />
+                        Download PDF Report
+                      </button>
+                    )}
+                    <button className="btn btn-secondary" onClick={handleNewForensicAnalysis}>
+                      <Upload size={16} />
+                      New Analysis
+                    </button>
+                  </div>
+                </div>
+
+                {forensicStatus.status === 'running' && (
+                  <div className="progress-section card">
+                    <h3>Analysis Progress</h3>
+                    <div className="progress-bar-container">
+                      <div 
+                        className="progress-bar" 
+                        style={{ width: `${forensicStatus.progress}%` }}
+                      />
+                    </div>
+                    <p>{forensicStatus.message}</p>
+                  </div>
+                )}
+
+                {forensicData?.results ? (
+                  <div className="forensic-results">
+                    {/* Layered Analysis Summary */}
+                    {forensicData.results.layered_analysis && (
+                      <div className="forensic-card card">
+                        <h3>Layered Correlation Analysis</h3>
+                        {forensicData.results.layered_analysis.analysis_summary && (
+                          <div className="kpi-grid">
+                            <div className="kpi-card">
+                              <div className="kpi-value">
+                                {forensicData.results.layered_analysis.analysis_summary.total_files_analyzed || 0}
+                              </div>
+                              <div className="kpi-label">Files Analyzed</div>
+                            </div>
+                            <div className="kpi-card warning">
+                              <div className="kpi-value">
+                                {forensicData.results.layered_analysis.analysis_summary.suspicious_files || 0}
+                              </div>
+                              <div className="kpi-label">Suspicious Files</div>
+                            </div>
+                            <div className="kpi-card info">
+                              <div className="kpi-value">
+                                {forensicData.results.layered_analysis.analysis_summary.partitions_analyzed || 0}
+                              </div>
+                              <div className="kpi-label">Partitions</div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Suspicious Files Table */}
+                        {forensicData.results.layered_analysis.partition_results?.[0]?.result?.suspicious_files?.length > 0 && (
+                          <div className="forensic-details-table" style={{ marginTop: '24px' }}>
+                            <h4 style={{ marginBottom: '12px', fontSize: '16px' }}>Suspicious Files (Top Findings)</h4>
+                            <div className="table-container" style={{ minWidth: '100%', overflowX: 'auto' }}>
+                              <table style={{ fontSize: '12px' }}>
+                                <thead>
+                                  <tr>
+                                    <th>Filename</th>
+                                    <th>Ref</th>
+                                    <th>Severity</th>
+                                    <th>Score</th>
+                                    <th>Explanation</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {forensicData.results.layered_analysis.partition_results[0].result.suspicious_files.slice(0, 50).map((file: any, i: number) => (
+                                    <tr key={i}>
+                                      <td className="mono" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.filename}</td>
+                                      <td>{file.file_reference}</td>
+                                      <td>
+                                        <span className={`badge badge-${file.severity?.toLowerCase() === 'critical' || file.severity?.toLowerCase() === 'high' ? 'error' : file.severity?.toLowerCase() === 'medium' ? 'warning' : 'info'}`}>
+                                          {file.severity}
+                                        </span>
+                                      </td>
+                                      <td>{file.score}</td>
+                                      <td className="message-cell" style={{ maxWidth: '300px' }}>{file.explanation}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            {forensicData.results.layered_analysis.partition_results[0].result.suspicious_files.length > 50 && (
+                              <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                Showing top 50 of {forensicData.results.layered_analysis.partition_results[0].result.suspicious_files.length} suspicious files. 
+                                See raw JSON for complete list.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Timestomping Detection */}
+                    {forensicData.results.timestomping && (
+                      <div className="forensic-card card">
+                        <h3>Timestomping Detection</h3>
+                        {forensicData.results.timestomping.summary && (
+                          <div className="kpi-grid">
+                            <div className="kpi-card danger">
+                              <div className="kpi-value">
+                                {forensicData.results.timestomping.summary.critical || 0}
+                              </div>
+                              <div className="kpi-label">Critical</div>
+                            </div>
+                            <div className="kpi-card warning">
+                              <div className="kpi-value">
+                                {forensicData.results.timestomping.summary.high || 0}
+                              </div>
+                              <div className="kpi-label">High</div>
+                            </div>
+                            <div className="kpi-card info">
+                              <div className="kpi-value">
+                                {forensicData.results.timestomping.summary.medium || 0}
+                              </div>
+                              <div className="kpi-label">Medium</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Advanced Anti-Forensic Analysis */}
+                    {forensicData.results.advanced_analysis && (
+                      <div className="forensic-card card">
+                        <h3>Advanced Anti-Forensic Detection (11 Checks)</h3>
+                        {forensicData.results.advanced_analysis.summary && (
+                          <div className="kpi-grid">
+                            <div className="kpi-card danger">
+                              <div className="kpi-value">
+                                {forensicData.results.advanced_analysis.summary.timestomped_files || 0}
+                              </div>
+                              <div className="kpi-label">Timestomped Files</div>
+                            </div>
+                            <div className="kpi-card warning">
+                              <div className="kpi-value">
+                                {forensicData.results.advanced_analysis.summary.high_severity_count || 0}
+                              </div>
+                              <div className="kpi-label">High Severity</div>
+                            </div>
+                            <div className="kpi-card danger">
+                              <div className="kpi-value">
+                                {forensicData.results.advanced_analysis.summary.critical_severity_count || 0}
+                              </div>
+                              <div className="kpi-label">Critical Severity</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* AI Analysis */}
+                    {forensicData.results.ai_analysis && (
+                      <div className="forensic-card card">
+                        <h3>AI Forensic Analysis</h3>
+                        <div className="ai-results">
+                          <pre className="json-view">
+                            {JSON.stringify(forensicData.results.ai_analysis, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Summary Report (HTML) */}
+                    {forensicData.results.ai_report_html && (
+                      <div className="forensic-card card">
+                        <h3>AI Forensic Summary Report</h3>
+                        <div 
+                          className="ai-report-html" 
+                          dangerouslySetInnerHTML={{ __html: forensicData.results.ai_report_html }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Possibly Copied Files */}
+                    {forensicData.results.copied_files && 
+                     forensicData.results.copied_files.files && 
+                     forensicData.results.copied_files.files.length > 0 && (
+                      <div className="forensic-card card">
+                        <h3>Possibly Copied Files (External Sources)</h3>
+                        <div className="table-container">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Filename</th>
+                                <th>Created</th>
+                                <th>Modified</th>
+                                <th>Reason</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {forensicData.results.copied_files.files.map((file: any, i: number) => (
+                                <tr key={i}>
+                                  <td className="mono">{file.filename}</td>
+                                  <td>{file.created}</td>
+                                  <td>{file.modified}</td>
+                                  <td>
+                                    <span className="badge badge-warning">{file.reason}</span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Raw Results JSON */}
+                    <details className="forensic-card card">
+                      <summary>View Raw JSON Results</summary>
+                      <pre className="json-view">
+                        {JSON.stringify(forensicData.results, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                ) : forensicStatus.status === 'idle' ? (
+                  <div className="empty-state">
+                    <HardDrive size={48} />
+                    <h3>No Analysis Results</h3>
+                    <p>Upload a disk image to start forensic analysis</p>
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -1262,156 +1462,255 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
             {/* Stats Tab */}
             {activeTab === 'stats' && (
               <div className="stats-section">
-                {/* Quick Stats Row */}
-                <div className="quick-stats-row">
-                  <div className="quick-stat-card">
-                    <span className="quick-stat-value">{data?.totalLines || 0}</span>
-                    <span className="quick-stat-label">Total Lines</span>
-                  </div>
-                  <div className="quick-stat-card">
-                    <span className="quick-stat-value">{data?.parsedLines || 0}</span>
-                    <span className="quick-stat-label">Parsed</span>
-                  </div>
-                  <div className="quick-stat-card">
-                    <span className="quick-stat-value">{data?.entries?.filter(e => e.attackType).length || 0}</span>
-                    <span className="quick-stat-label">Attacks</span>
-                  </div>
-                  <div className="quick-stat-card">
-                    <span className="quick-stat-value">{data?.alerts?.length || 0}</span>
-                    <span className="quick-stat-label">Alerts</span>
-                  </div>
-                  <div className="quick-stat-card">
-                    <span className="quick-stat-value">{data?.attackSummary?.riskScore || 0}</span>
-                    <span className="quick-stat-label">Risk Score</span>
-                  </div>
-                </div>
-
-                {/* Attack Types Overview */}
-                {data?.attackSummary?.attackTypes && data.attackSummary.attackTypes.length > 0 && (
-                  <div className="analytics-section">
-                    <h3 className="analytics-section-title">Attack Types Overview</h3>
-                    <div className="attack-types-overview">
-                      {(data?.attackSummary?.attackTypes || []).map((type) => {
-                        const count = (data?.entries || []).filter(e => e.attackType === type).length;
-                        const totalEntries = data?.entries?.length || 1;
-                        const percent = Math.round((count / totalEntries) * 100);
-                        return (
-                          <div key={type} className="attack-type-overview-item">
-                            <div className="attack-type-overview-header">
-                              <span className="attack-type-icon">{ATTACK_TYPE_ICONS[type] || '⚠️'}</span>
-                              <span className="attack-type-name">{type.replace(/_/g, ' ')}</span>
-                              <span className="attack-type-count">{count}</span>
-                            </div>
-                            <div className="attack-type-overview-bar">
-                              <div
-                                className="attack-type-overview-fill"
-                                style={{
-                                  width: `${percent}%`,
-                                  background: percent > 50 ? '#ef4444' : percent > 25 ? '#f59e0b' : '#22c55e'
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Timeline and Severity Row */}
-                <div className="analytics-row">
-                  {/* Timeline Chart */}
-                  {(data?.stats.timeline || []).length > 0 && (
-                    <div className="chart-card">
-                      <h3>Event Timeline</h3>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={data?.stats.timeline}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                          <XAxis dataKey="time" stroke="#94a3b8" tick={{ fontSize: 10 }} />
-                          <YAxis stroke="#94a3b8" tick={{ fontSize: 10 }} />
-                          <Tooltip
-                            contentStyle={{ background: '#1e293b', border: '1px solid #334155' }}
-                            labelStyle={{ color: '#f1f5f9' }}
-                          />
-                          <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* Severity Distribution */}
-                  {Object.keys(data?.stats.bySeverity || {}).length > 0 && (
-                    <div className="chart-card">
-                      <h3>Severity Distribution</h3>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <PieChart>
-                          <Pie
-                            data={Object.entries(data?.stats.bySeverity || {}).map(([name, value]) => ({ name, value }))}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={40}
-                            outerRadius={70}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {Object.entries(data?.stats.bySeverity || {}).map(([severity]) => (
-                              <Cell key={severity} fill={SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] || '#94a3b8'} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="legend compact">
-                        {Object.entries(data?.stats.bySeverity || {}).map(([severity, count]) => (
-                          <div key={severity} className="legend-item">
-                            <span className="legend-color" style={{ background: SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] }}></span>
-                            <span>{severity}: {count}</span>
-                          </div>
-                        ))}
+                {mode === 'disk' && forensicData?.results ? (
+                  <>
+                    {/* Disk Forensics Stats */}
+                    <div className="quick-stats-row">
+                      <div className="quick-stat-card">
+                        <span className="quick-stat-value">
+                          {forensicData.results.layered_analysis?.analysis_summary?.total_files_analyzed || 0}
+                        </span>
+                        <span className="quick-stat-label">Files Analyzed</span>
+                      </div>
+                      <div className="quick-stat-card danger">
+                        <span className="quick-stat-value">
+                          {forensicData.results.layered_analysis?.analysis_summary?.suspicious_files || 0}
+                        </span>
+                        <span className="quick-stat-label">Suspicious Files</span>
+                      </div>
+                      <div className="quick-stat-card warning">
+                        <span className="quick-stat-value">
+                          {(forensicData.results.timestomping?.summary?.critical || 0) + 
+                           (forensicData.results.timestomping?.summary?.high || 0)}
+                        </span>
+                        <span className="quick-stat-label">High/Crit Timestomps</span>
+                      </div>
+                      <div className="quick-stat-card info">
+                        <span className="quick-stat-value">
+                          {forensicData.results.advanced_analysis?.summary?.total_files_analyzed || 0}
+                        </span>
+                        <span className="quick-stat-label">Adv. Analysis Files</span>
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Top Sources and Users Row */}
-                <div className="analytics-row">
-                  {/* Top Source IPs */}
-                  <div className="chart-card">
-                    <h3>Top Source IPs</h3>
-                    <div className="top-list compact">
-                      {(data?.stats.topSources || []).slice(0, 8).map((item, i) => {
-                        const ip = item.ip || '';
-                        return (
-                          <div key={ip || i} className="top-item">
-                            <span className="rank">{i + 1}</span>
-                            <span className="mono">{ip || '-'}</span>
-                            <span className="count">{item.count}</span>
+                    <div className="analytics-row">
+                      {/* Timestomping Severity Distribution */}
+                      {forensicData.results.timestomping?.summary && (
+                        <div className="chart-card">
+                          <h3>Timestomping Severity</h3>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <PieChart>
+                              <Pie
+                                data={[
+                                  { name: 'Critical', value: forensicData.results.timestomping.summary.critical || 0 },
+                                  { name: 'High', value: forensicData.results.timestomping.summary.high || 0 },
+                                  { name: 'Medium', value: forensicData.results.timestomping.summary.medium || 0 },
+                                  { name: 'Low', value: forensicData.results.timestomping.summary.low || 0 },
+                                ]}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={70}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                <Cell fill="#ef4444" />
+                                <Cell fill="#f97316" />
+                                <Cell fill="#eab308" />
+                                <Cell fill="#3b82f6" />
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="legend compact">
+                            <div className="legend-item"><span className="legend-color" style={{ background: '#ef4444' }}></span><span>Critical: {forensicData.results.timestomping.summary.critical || 0}</span></div>
+                            <div className="legend-item"><span className="legend-color" style={{ background: '#f97316' }}></span><span>High: {forensicData.results.timestomping.summary.high || 0}</span></div>
+                            <div className="legend-item"><span className="legend-color" style={{ background: '#eab308' }}></span><span>Medium: {forensicData.results.timestomping.summary.medium || 0}</span></div>
+                            <div className="legend-item"><span className="legend-color" style={{ background: '#3b82f6' }}></span><span>Low: {forensicData.results.timestomping.summary.low || 0}</span></div>
                           </div>
-                        );
-                      })}
-                      {(data?.stats.topSources || []).length === 0 && (
-                        <div className="empty-list">No IP addresses found</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Top Users */}
-                  <div className="chart-card">
-                    <h3>Top Target Users</h3>
-                    <div className="top-list compact">
-                      {(data?.stats.topUsers || []).slice(0, 8).map((item, i) => (
-                        <div key={item.user} className="top-item">
-                          <span className="rank">{i + 1}</span>
-                          <span>{item.user || '-'}</span>
-                          <span className="count">{item.count}</span>
                         </div>
-                      ))}
-                      {(data?.stats.topUsers || []).length === 0 && (
-                        <div className="empty-list">No users found</div>
+                      )}
+
+                      {/* Advanced Analysis Summary */}
+                      {forensicData.results.advanced_analysis?.summary && (
+                        <div className="chart-card">
+                          <h3>Advanced Anti-Forensic Summary</h3>
+                          <div className="top-list compact">
+                            <div className="top-item">
+                              <span>Timestomped Files</span>
+                              <span className="count danger">{forensicData.results.advanced_analysis.summary.timestomped_files || 0}</span>
+                            </div>
+                            <div className="top-item">
+                              <span>Critical Findings</span>
+                              <span className="count danger">{forensicData.results.advanced_analysis.summary.critical_severity_count || 0}</span>
+                            </div>
+                            <div className="top-item">
+                              <span>High Findings</span>
+                              <span className="count warning">{forensicData.results.advanced_analysis.summary.high_severity_count || 0}</span>
+                            </div>
+                            <div className="top-item">
+                              <span>Medium Findings</span>
+                              <span className="count info">{forensicData.results.advanced_analysis.summary.medium_severity_count || 0}</span>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Quick Stats Row */}
+                    <div className="quick-stats-row">
+                      <div className="quick-stat-card">
+                        <span className="quick-stat-value">{data?.totalLines || 0}</span>
+                        <span className="quick-stat-label">Total Lines</span>
+                      </div>
+                      <div className="quick-stat-card">
+                        <span className="quick-stat-value">{data?.parsedLines || 0}</span>
+                        <span className="quick-stat-label">Parsed</span>
+                      </div>
+                      <div className="quick-stat-card">
+                        <span className="quick-stat-value">{data?.entries?.filter(e => e.attackType).length || 0}</span>
+                        <span className="quick-stat-label">Attacks</span>
+                      </div>
+                      <div className="quick-stat-card">
+                        <span className="quick-stat-value">{data?.alerts?.length || 0}</span>
+                        <span className="quick-stat-label">Alerts</span>
+                      </div>
+                      <div className="quick-stat-card">
+                        <span className="quick-stat-value">{data?.attackSummary?.riskScore || 0}</span>
+                        <span className="quick-stat-label">Risk Score</span>
+                      </div>
+                    </div>
+
+                    {/* Attack Types Overview */}
+                    {data?.attackSummary?.attackTypes && data.attackSummary.attackTypes.length > 0 && (
+                      <div className="analytics-section">
+                        <h3 className="analytics-section-title">Attack Types Overview</h3>
+                        <div className="attack-types-overview">
+                          {(data?.attackSummary?.attackTypes || []).map((type) => {
+                            const count = (data?.entries || []).filter(e => e.attackType === type).length;
+                            const totalEntries = data?.entries?.length || 1;
+                            const percent = Math.round((count / totalEntries) * 100);
+                            return (
+                              <div key={type} className="attack-type-overview-item">
+                                <div className="attack-type-overview-header">
+                                  <span className="attack-type-icon">{ATTACK_TYPE_ICONS[type] || '⚠️'}</span>
+                                  <span className="attack-type-name">{type.replace(/_/g, ' ')}</span>
+                                  <span className="attack-type-count">{count}</span>
+                                </div>
+                                <div className="attack-type-overview-bar">
+                                  <div
+                                    className="attack-type-overview-fill"
+                                    style={{
+                                      width: `${percent}%`,
+                                      background: percent > 50 ? '#ef4444' : percent > 25 ? '#f59e0b' : '#22c55e'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Timeline and Severity Row */}
+                    <div className="analytics-row">
+                      {/* Timeline Chart */}
+                      {(data?.stats.timeline || []).length > 0 && (
+                        <div className="chart-card">
+                          <h3>Event Timeline</h3>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <LineChart data={data?.stats.timeline}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                              <XAxis dataKey="time" stroke="#94a3b8" tick={{ fontSize: 10 }} />
+                              <YAxis stroke="#94a3b8" tick={{ fontSize: 10 }} />
+                              <Tooltip
+                                contentStyle={{ background: '#1e293b', border: '1px solid #334155' }}
+                                labelStyle={{ color: '#f1f5f9' }}
+                              />
+                              <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+
+                      {/* Severity Distribution */}
+                      {Object.keys(data?.stats.bySeverity || {}).length > 0 && (
+                        <div className="chart-card">
+                          <h3>Severity Distribution</h3>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <PieChart>
+                              <Pie
+                                data={Object.entries(data?.stats.bySeverity || {}).map(([name, value]) => ({ name, value }))}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={70}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {Object.entries(data?.stats.bySeverity || {}).map(([severity]) => (
+                                  <Cell key={severity} fill={SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] || '#94a3b8'} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="legend compact">
+                            {Object.entries(data?.stats.bySeverity || {}).map(([severity, count]) => (
+                              <div key={severity} className="legend-item">
+                                <span className="legend-color" style={{ background: SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] }}></span>
+                                <span>{severity}: {count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Top Sources and Users Row */}
+                    <div className="analytics-row">
+                      {/* Top Source IPs */}
+                      <div className="chart-card">
+                        <h3>Top Source IPs</h3>
+                        <div className="top-list compact">
+                          {(data?.stats.topSources || []).slice(0, 8).map((item, i) => {
+                            const ip = item.ip || '';
+                            return (
+                              <div key={ip || i} className="top-item">
+                                <span className="rank">{i + 1}</span>
+                                <span className="mono">{ip || '-'}</span>
+                                <span className="count">{item.count}</span>
+                              </div>
+                            );
+                          })}
+                          {(data?.stats.topSources || []).length === 0 && (
+                            <div className="empty-list">No IP addresses found</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Top Users */}
+                      <div className="chart-card">
+                        <h3>Top Target Users</h3>
+                        <div className="top-list compact">
+                          {(data?.stats.topUsers || []).slice(0, 8).map((item, i) => (
+                            <div key={item.user} className="top-item">
+                              <span className="rank">{i + 1}</span>
+                              <span>{item.user || '-'}</span>
+                              <span className="count">{item.count}</span>
+                            </div>
+                          ))}
+                          {(data?.stats.topUsers || []).length === 0 && (
+                            <div className="empty-list">No users found</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1899,6 +2198,7 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
       {showChat && (
         <SOCAnalystChat
           logContext={chatContext}
+          logData={correlationData || data}
           onClose={() => setShowChat(false)}
         />
       )}

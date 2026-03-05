@@ -329,11 +329,11 @@ export async function analyzeLogWithAI(logEntry: string, logType: string): Promi
   return response.json();
 }
 
-export async function getSocAnalystChat(message: string, context: Array<{role: string, content: string}> = []): Promise<string> {
+export async function getSocAnalystChat(message: string, context: Array<{role: string, content: string}> = [], logData?: ParseResponse | CorrelateResponse): Promise<string> {
   const response = await fetch(getApiUrl('/soc-chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, context }),
+    body: JSON.stringify({ message, context, logData }),
   });
 
   if (!response.ok) {
@@ -417,78 +417,53 @@ export async function checkSocAnalystHealth(): Promise<{status: string; llm_load
   }
 }
 
-// Forensic Analysis API
-export interface ForensicStartResponse {
-  task_id: string;
-  status: string;
-  message: string;
-}
+// ============================================================================
+// Disk Forensics API
+// ============================================================================
 
-export interface ForensicStatusResponse {
-  task_id: string;
-  status: string;
+export interface ForensicStatus {
+  status: 'idle' | 'running' | 'completed' | 'error';
   progress: number;
-  stage: string;
   message: string;
-  output_dir: string | null;
-  error: string | null;
 }
 
-export interface ForensicFinding {
-  technique: string;
-  severity: string;
-  evidence: string;
-  explanation: string;
-  recommendation: string;
-  confidence: number;
-}
-
-export interface ForensicResultsResponse {
-  task_id: string;
+export interface ForensicResults {
   status: string;
-  output_dir: string;
-  findings: ForensicFinding[];
-  summary: string;
-  risk_level: string;
-  recommendations: string[];
-  timestamp: string;
-  model: string;
-  analysis_time_seconds: number;
+  results?: {
+    layered_analysis?: any;
+    timestomping?: any;
+    advanced_analysis?: any;
+    ai_analysis?: any;
+    ai_report_html?: string;
+    copied_files?: {
+      files: any[];
+      count: number;
+    };
+  };
+  error?: string;
 }
 
-export async function checkForensicHealth(): Promise<{
-  status: string;
-  pipeline_available: boolean;
-  api_key_configured: boolean;
-}> {
-  try {
-    const response = await fetch(getApiUrl('/forensics/health'));
-    if (response.ok) {
-      return await response.json();
-    }
-    return { status: 'unavailable', pipeline_available: false, api_key_configured: false };
-  } catch {
-    return { status: 'unavailable', pipeline_available: false, api_key_configured: false };
-  }
-}
+export async function analyzeDiskImage(file: File): Promise<{analysisId: string; status: string; message: string}> {
+  const formData = new FormData();
+  formData.append('file', file);
 
-export async function startForensicAnalysis(imagePath: string): Promise<ForensicStartResponse> {
-  const response = await fetch(getApiUrl('/forensics/start'), {
+  const response = await fetch(getApiUrl('/forensic/analyze'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image_path: imagePath }),
+    body: formData,
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || `Failed to start analysis: ${response.statusText}`);
+    if (response.status === 409) {
+      throw new Error('Analysis already in progress. Please wait for it to complete.');
+    }
+    throw new Error(`Failed to start analysis: ${response.statusText}`);
   }
 
   return response.json();
 }
 
-export async function getForensicStatus(taskId: string): Promise<ForensicStatusResponse> {
-  const response = await fetch(getApiUrl(`/forensics/status/${taskId}`));
+export async function getForensicStatus(): Promise<ForensicStatus> {
+  const response = await fetch(getApiUrl('/forensic/status'));
 
   if (!response.ok) {
     throw new Error(`Failed to get status: ${response.statusText}`);
@@ -497,32 +472,22 @@ export async function getForensicStatus(taskId: string): Promise<ForensicStatusR
   return response.json();
 }
 
-export async function getForensicResults(taskId: string): Promise<ForensicResultsResponse> {
-  const response = await fetch(getApiUrl(`/forensics/results/${taskId}`));
+export async function getForensicResults(): Promise<ForensicResults> {
+  const response = await fetch(getApiUrl('/forensic/results'));
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || `Failed to get results: ${response.statusText}`);
+    throw new Error(`Failed to get results: ${response.statusText}`);
   }
 
   return response.json();
 }
 
-export async function downloadForensicPdf(taskId: string): Promise<void> {
-  const response = await fetch(getApiUrl(`/forensics/pdf/${taskId}`));
+export async function clearForensicState(): Promise<{status: string}> {
+  const response = await fetch(getApiUrl('/forensic/clear'));
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || `Failed to download PDF: ${response.statusText}`);
+    throw new Error(`Failed to clear state: ${response.statusText}`);
   }
 
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `forensic_report_${taskId}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  return response.json();
 }

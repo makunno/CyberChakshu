@@ -255,8 +255,18 @@ class AntiForensicAnalyzer:
                 if ads_matches:
                     for match in ads_matches[:20]:
                         if "$" not in match and len(match.split(":")) == 2:
+                            parts = match.split(":")
                             self.results["hidden_streams"].append(
-                                f"Partition {partition}: ADS detected: {match}"
+                                {
+                                    "message": f"ADS detected: {match}",
+                                    "stream_name": parts[1]
+                                    if len(parts) > 1
+                                    else "unknown",
+                                    "source_file": parts[0]
+                                    if len(parts) > 0
+                                    else "unknown",
+                                    "partition": partition,
+                                }
                             )
 
                 # Count potential ADS
@@ -282,17 +292,11 @@ class AntiForensicAnalyzer:
                 with open(lf, "r", errors="ignore") as f:
                     content = f.read()
 
-                # Check for missing or few logs
-                if "No explicit" in content or "No log" in content:
-                    self.results["log_clearing"].append(
-                        f"Partition {partition}: Few or no log files found - possible clearing"
-                    )
-
                 # Look for .evtx files (Windows Event Logs)
                 evtx_count = len(re.findall(r"\.evtx", content, re.IGNORECASE))
                 if evtx_count == 0:
                     self.results["log_clearing"].append(
-                        f"Partition {partition}: No Windows event log files (.evtx) found"
+                        f"Partition {partition}: No Windows event log files (.evtx) found in listing"
                     )
 
                 # Check timeline for log-related deletion commands
@@ -311,6 +315,21 @@ class AntiForensicAnalyzer:
 
             except Exception as e:
                 print(f"    [!] Error analyzing {lf}: {e}")
+
+        logs_dir = self.output_dir / "logs"
+        if logs_dir.exists():
+            evtx_json_files = list(logs_dir.glob("**/*.evtx.json"))
+            evtx_files = list(logs_dir.glob("**/*.evtx"))
+            total_evtx = len(evtx_json_files) + len(evtx_files)
+
+            if total_evtx > 0:
+                self.results["log_clearing"].append(
+                    f"Found {total_evtx} Windows Event Log files (.evtx) extracted"
+                )
+            else:
+                self.results["log_clearing"].append(
+                    "No Windows Event Logs (.evtx) found in extracted logs directory"
+                )
 
     def _analyze_registry_tampering(self):
         """Detect registry tampering - account deletion, tool installation."""
@@ -369,8 +388,16 @@ class AntiForensicAnalyzer:
                 # Look for $OrphanFiles (deleted files with recoverable data)
                 if "$OrphanFiles" in content:
                     orphan_count = content.count("$OrphanFiles")
+                    orphan_files = re.findall(r"\$OrphanFiles[^\n]*", content)[:5]
+                    file_names = [f.strip() for f in orphan_files]
+
                     self.results["file_deletion"].append(
-                        f"Partition {partition}: Orphaned files found (deleted but recoverable): {orphan_count} entries"
+                        {
+                            "message": f"Orphaned files found: {orphan_count} entries",
+                            "partition": partition,
+                            "orphan_file_names": file_names,
+                            "evidence": f"Sample: {file_names[0] if file_names else 'N/A'}",
+                        }
                     )
 
                 # Check for deleted entries (prefixed with *)
@@ -410,25 +437,33 @@ class AntiForensicAnalyzer:
                 with open(mf, "r", errors="ignore") as f:
                     lines = f.readlines()
 
-                # Check for suspicious MFT entries
-                entry_count = 0
                 system_file_count = 0
-
+                specific_anomalies = []
                 for line in lines:
-                    if "$" in line:  # System files
+                    if "$" in line:
                         system_file_count += 1
 
-                    # Look for suspicious paths
                     for spath in suspicious_paths:
                         if spath.lower() in line.lower():
-                            self.results["mft_anomalies"].append(
-                                f"Partition {partition}: Suspicious path: {line.strip()[:70]}"
-                            )
+                            specific_anomalies.append(line.strip()[:80])
 
-                # Report MFT size
-                if system_file_count > 0:
+                if specific_anomalies:
                     self.results["mft_anomalies"].append(
-                        f"Partition {partition}: MFT contains {system_file_count} system file entries"
+                        {
+                            "message": f"MFT contains {system_file_count} system files with suspicious paths",
+                            "partition": partition,
+                            "specific_paths": specific_anomalies[:10],
+                            "evidence": "; ".join(specific_anomalies[:3]),
+                        }
+                    )
+                elif system_file_count > 0:
+                    self.results["mft_anomalies"].append(
+                        {
+                            "message": f"MFT contains {system_file_count} system file entries",
+                            "partition": partition,
+                            "specific_paths": [],
+                            "evidence": "System files present but no suspicious paths",
+                        }
                     )
 
             except Exception as e:

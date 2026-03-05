@@ -1,7 +1,0 @@
-Registry Hives for Partition 0
-Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/test.dd
-Offset: 34 bytes
-Filesystem: ntfs
-================================================================================
-
-No registry hives found in standard locations.
