@@ -1,0 +1,5 @@
+Shadow Copy / VSS Indicators for Partition 0
+Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/test.dd
+================================================================================
+
+No shadow copy indicators found.

@@ -1,0 +1,2629 @@
+{
+  "timestamp": "2026-02-28T10:10:15.912697",
+  "output_dir": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson",
+  "file_analysis": {
+    "files_by_priority": {
+      "critical": [
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/registry_partition_0.txt",
+          "name": "registry_partition_0.txt",
+          "size_bytes": 275,
+          "size_mb": 0.0,
+          "priority": "critical"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/shadow_copies_partition_1.txt",
+          "name": "shadow_copies_partition_1.txt",
+          "size_bytes": 1179,
+          "size_mb": 0.0,
+          "priority": "critical"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/shadow_copies_partition_0.txt",
+          "name": "shadow_copies_partition_0.txt",
+          "size_bytes": 241,
+          "size_mb": 0.0,
+          "priority": "critical"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/usn_journal_partition_0.txt",
+          "name": "usn_journal_partition_0.txt",
+          "size_bytes": 290,
+          "size_mb": 0.0,
+          "priority": "critical"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/usn_journal_partition_1.txt",
+          "name": "usn_journal_partition_1.txt",
+          "size_bytes": 50293,
+          "size_mb": 0.05,
+          "priority": "critical"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/registry_partition_1.txt",
+          "name": "registry_partition_1.txt",
+          "size_bytes": 1084,
+          "size_mb": 0.0,
+          "priority": "critical"
+        }
+      ],
+      "important": [
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/mft_partition_1.txt",
+          "name": "mft_partition_1.txt",
+          "size_bytes": 681,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/timestomp_indicators_partition_1.txt",
+          "name": "timestomp_indicators_partition_1.txt",
+          "size_bytes": 918844,
+          "size_mb": 0.88,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/timeline_partition_1.txt",
+          "name": "timeline_partition_1.txt",
+          "size_bytes": 918782,
+          "size_mb": 0.88,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/timeline_partition_0.txt",
+          "name": "timeline_partition_0.txt",
+          "size_bytes": 252,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/timestomp_indicators_partition_0.txt",
+          "name": "timestomp_indicators_partition_0.txt",
+          "size_bytes": 240,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/hidden_structures_partition_0.txt",
+          "name": "hidden_structures_partition_0.txt",
+          "size_bytes": 235,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/mft_partition_0.txt",
+          "name": "mft_partition_0.txt",
+          "size_bytes": 89,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/hidden_structures_partition_1.txt",
+          "name": "hidden_structures_partition_1.txt",
+          "size_bytes": 588,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-WindowsUpdateClient%4Operational.evtx.json",
+          "name": "Microsoft-Windows-WindowsUpdateClient%4Operational.evtx.json",
+          "size_bytes": 1146395,
+          "size_mb": 1.09,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Dhcpv6-Client%4Admin.evtx.json",
+          "name": "Microsoft-Windows-Dhcpv6-Client%4Admin.evtx.json",
+          "size_bytes": 5986,
+          "size_mb": 0.01,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Application.evtx.json",
+          "name": "Application.evtx.json",
+          "size_bytes": 2047178,
+          "size_mb": 1.95,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-DriverFrameworks-UserMode%4Operational.evtx.json",
+          "name": "Microsoft-Windows-DriverFrameworks-UserMode%4Operational.evtx.json",
+          "size_bytes": 905677,
+          "size_mb": 0.86,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-ReliabilityAnalysisComponent%4Operational.evtx.json",
+          "name": "Microsoft-Windows-ReliabilityAnalysisComponent%4Operational.evtx.json",
+          "size_bytes": 34230,
+          "size_mb": 0.03,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Kernel-WHEA%4Errors.evtx.json",
+          "name": "Microsoft-Windows-Kernel-WHEA%4Errors.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Kernel-EventTracing%4Admin.evtx.json",
+          "name": "Microsoft-Windows-Kernel-EventTracing%4Admin.evtx.json",
+          "size_bytes": 83766,
+          "size_mb": 0.08,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-WindowsSystemAssessmentTool%4Operational.evtx.json",
+          "name": "Microsoft-Windows-WindowsSystemAssessmentTool%4Operational.evtx.json",
+          "size_bytes": 164972,
+          "size_mb": 0.16,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Internet Explorer.evtx.json",
+          "name": "Internet Explorer.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-DiskDiagnosticDataCollector%4Operational.evtx.json",
+          "name": "Microsoft-Windows-DiskDiagnosticDataCollector%4Operational.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-PrintService%4Admin.evtx.json",
+          "name": "Microsoft-Windows-PrintService%4Admin.evtx.json",
+          "size_bytes": 9774,
+          "size_mb": 0.01,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Bits-Client%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Bits-Client%4Operational.evtx.json",
+          "size_bytes": 2775141,
+          "size_mb": 2.65,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Windows Firewall With Advanced Security%4Firewall.evtx.json",
+          "name": "Microsoft-Windows-Windows Firewall With Advanced Security%4Firewall.evtx.json",
+          "size_bytes": 856539,
+          "size_mb": 0.82,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-Scheduled%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Diagnosis-Scheduled%4Operational.evtx.json",
+          "size_bytes": 39215,
+          "size_mb": 0.04,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Security.evtx.json",
+          "name": "Security.evtx.json",
+          "size_bytes": 6717393,
+          "size_mb": 6.41,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Program-Compatibility-Assistant.evtx.json",
+          "name": "Microsoft-Windows-Application-Experience%4Program-Compatibility-Assistant.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-HomeGroup Provider Service%4Operational.evtx.json",
+          "name": "Microsoft-Windows-HomeGroup Provider Service%4Operational.evtx.json",
+          "size_bytes": 101016,
+          "size_mb": 0.1,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-BranchCacheSMB%4Operational.evtx.json",
+          "name": "Microsoft-Windows-BranchCacheSMB%4Operational.evtx.json",
+          "size_bytes": 185461,
+          "size_mb": 0.18,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NetworkLocationWizard%4Operational.evtx.json",
+          "name": "Microsoft-Windows-NetworkLocationWizard%4Operational.evtx.json",
+          "size_bytes": 1218,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Resource-Exhaustion-Detector%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Resource-Exhaustion-Detector%4Operational.evtx.json",
+          "size_bytes": 96703,
+          "size_mb": 0.09,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-CodeIntegrity%4Operational.evtx.json",
+          "name": "Microsoft-Windows-CodeIntegrity%4Operational.evtx.json",
+          "size_bytes": 1096,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-Scripted%4Admin.evtx.json",
+          "name": "Microsoft-Windows-Diagnosis-Scripted%4Admin.evtx.json",
+          "size_bytes": 5279,
+          "size_mb": 0.01,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-User Profile Service%4Operational.evtx.json",
+          "name": "Microsoft-Windows-User Profile Service%4Operational.evtx.json",
+          "size_bytes": 234538,
+          "size_mb": 0.22,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-OfflineFiles%4Operational.evtx.json",
+          "name": "Microsoft-Windows-OfflineFiles%4Operational.evtx.json",
+          "size_bytes": 95565,
+          "size_mb": 0.09,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Resource-Exhaustion-Resolver%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Resource-Exhaustion-Resolver%4Operational.evtx.json",
+          "size_bytes": 96908,
+          "size_mb": 0.09,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Program-Inventory.evtx.json",
+          "name": "Microsoft-Windows-Application-Experience%4Program-Inventory.evtx.json",
+          "size_bytes": 133030,
+          "size_mb": 0.13,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-WindowsBackup%4ActionCenter.evtx.json",
+          "name": "Microsoft-Windows-WindowsBackup%4ActionCenter.evtx.json",
+          "size_bytes": 19639,
+          "size_mb": 0.02,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Kernel-StoreMgr%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Kernel-StoreMgr%4Operational.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Kernel-WHEA%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Kernel-WHEA%4Operational.evtx.json",
+          "size_bytes": 329567,
+          "size_mb": 0.31,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-DPS%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Diagnosis-DPS%4Operational.evtx.json",
+          "size_bytes": 558575,
+          "size_mb": 0.53,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-PLA%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Diagnosis-PLA%4Operational.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-WLAN-AutoConfig%4Operational.evtx.json",
+          "name": "Microsoft-Windows-WLAN-AutoConfig%4Operational.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Known Folders API Service.evtx.json",
+          "name": "Microsoft-Windows-Known Folders API Service.evtx.json",
+          "size_bytes": 162789,
+          "size_mb": 0.16,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-Scripted%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Diagnosis-Scripted%4Operational.evtx.json",
+          "size_bytes": 26955,
+          "size_mb": 0.03,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-MUI%4Operational.evtx.json",
+          "name": "Microsoft-Windows-MUI%4Operational.evtx.json",
+          "size_bytes": 17493,
+          "size_mb": 0.02,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-ReadyBoost%4Operational.evtx.json",
+          "name": "Microsoft-Windows-ReadyBoost%4Operational.evtx.json",
+          "size_bytes": 129199,
+          "size_mb": 0.12,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-VHDMP%4Operational.evtx.json",
+          "name": "Microsoft-Windows-VHDMP%4Operational.evtx.json",
+          "size_bytes": 21726,
+          "size_mb": 0.02,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NCSI%4Operational.evtx.json",
+          "name": "Microsoft-Windows-NCSI%4Operational.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Dhcp-Client%4Admin.evtx.json",
+          "name": "Microsoft-Windows-Dhcp-Client%4Admin.evtx.json",
+          "size_bytes": 2469,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Windows Defender%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Windows Defender%4Operational.evtx.json",
+          "size_bytes": 5542,
+          "size_mb": 0.01,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-UAC-FileVirtualization%4Operational.evtx.json",
+          "name": "Microsoft-Windows-UAC-FileVirtualization%4Operational.evtx.json",
+          "size_bytes": 2168,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NetworkAccessProtection%4Operational.evtx.json",
+          "name": "Microsoft-Windows-NetworkAccessProtection%4Operational.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-MUI%4Admin.evtx.json",
+          "name": "Microsoft-Windows-MUI%4Admin.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NetworkProfile%4Operational.evtx.json",
+          "name": "Microsoft-Windows-NetworkProfile%4Operational.evtx.json",
+          "size_bytes": 225539,
+          "size_mb": 0.22,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Program-Compatibility-Troubleshooter.evtx.json",
+          "name": "Microsoft-Windows-Application-Experience%4Program-Compatibility-Troubleshooter.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Windows PowerShell.evtx.json",
+          "name": "Windows PowerShell.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/HardwareEvents.evtx.json",
+          "name": "HardwareEvents.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Problem-Steps-Recorder.evtx.json",
+          "name": "Microsoft-Windows-Application-Experience%4Problem-Steps-Recorder.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-LanguagePackSetup%4Operational.evtx.json",
+          "name": "Microsoft-Windows-LanguagePackSetup%4Operational.evtx.json",
+          "size_bytes": 26995,
+          "size_mb": 0.03,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Setup.evtx.json",
+          "name": "Setup.evtx.json",
+          "size_bytes": 723838,
+          "size_mb": 0.69,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Windows Firewall With Advanced Security%4ConnectionSecurity.evtx.json",
+          "name": "Microsoft-Windows-Windows Firewall With Advanced Security%4ConnectionSecurity.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NetworkAccessProtection%4WHC.evtx.json",
+          "name": "Microsoft-Windows-NetworkAccessProtection%4WHC.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Key Management Service.evtx.json",
+          "name": "Key Management Service.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-VDRVROOT%4Operational.evtx.json",
+          "name": "Microsoft-Windows-VDRVROOT%4Operational.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/System.evtx.json",
+          "name": "System.evtx.json",
+          "size_bytes": 7142076,
+          "size_mb": 6.81,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-RestartManager%4Operational.evtx.json",
+          "name": "Microsoft-Windows-RestartManager%4Operational.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Windows Defender%4WHC.evtx.json",
+          "name": "Microsoft-Windows-Windows Defender%4WHC.evtx.json",
+          "size_bytes": 11884,
+          "size_mb": 0.01,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-TerminalServices-LocalSessionManager%4Admin.evtx.json",
+          "name": "Microsoft-Windows-TerminalServices-LocalSessionManager%4Admin.evtx.json",
+          "size_bytes": 2,
+          "size_mb": 0.0,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-TerminalServices-LocalSessionManager%4Operational.evtx.json",
+          "name": "Microsoft-Windows-TerminalServices-LocalSessionManager%4Operational.evtx.json",
+          "size_bytes": 123461,
+          "size_mb": 0.12,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Program-Telemetry.evtx.json",
+          "name": "Microsoft-Windows-Application-Experience%4Program-Telemetry.evtx.json",
+          "size_bytes": 15920,
+          "size_mb": 0.02,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnostics-Performance%4Operational.evtx.json",
+          "name": "Microsoft-Windows-Diagnostics-Performance%4Operational.evtx.json",
+          "size_bytes": 221355,
+          "size_mb": 0.21,
+          "priority": "important"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-GroupPolicy%4Operational.evtx.json",
+          "name": "Microsoft-Windows-GroupPolicy%4Operational.evtx.json",
+          "size_bytes": 1444450,
+          "size_mb": 1.38,
+          "priority": "important"
+        }
+      ],
+      "standard": [
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs_partition_0.txt",
+          "name": "logs_partition_0.txt",
+          "size_bytes": 252,
+          "size_mb": 0.0,
+          "priority": "standard"
+        },
+        {
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs_partition_1.txt",
+          "name": "logs_partition_1.txt",
+          "size_bytes": 7163,
+          "size_mb": 0.01,
+          "priority": "standard"
+        }
+      ]
+    },
+    "files_analyzed": {
+      "critical": [
+        {
+          "name": "registry_partition_0.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/registry_partition_0.txt",
+          "size": 275,
+          "line_count": 8,
+          "key_findings": [
+            {
+              "type": "hive_found",
+              "description": "SYSTEM: 1 references",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Registry Hives for Partition 0",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 34 bytes",
+            "Filesystem: ntfs",
+            "================================================================================",
+            "",
+            "No registry hives found in standard locations.",
+            ""
+          ]
+        },
+        {
+          "name": "shadow_copies_partition_1.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/shadow_copies_partition_1.txt",
+          "size": 1179,
+          "line_count": 23,
+          "key_findings": [
+            {
+              "type": "extend_found",
+              "description": "$Extend metadata folder found",
+              "severity": "info"
+            },
+            {
+              "type": "vss_indicator",
+              "description": "VSS-related entry: vss",
+              "severity": "info"
+            },
+            {
+              "type": "vss_indicator",
+              "description": "VSS-related entry: snapshot",
+              "severity": "info"
+            },
+            {
+              "type": "vss_indicator",
+              "description": "VSS-related entry: shadow",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Shadow Copy / VSS Indicators for Partition 1",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "================================================================================",
+            "",
+            "Potential Shadow Copy / VSS Related Files:",
+            "++++++++++ r/r 741-128-1:\tbg-zbtn-shadow-mid[1].png",
+            "++++++++++ r/r 887-128-4:\tfooter_shadow[1].png",
+            "++++++++++ r/r 742-128-1:\tbg-zbtn-shadow-right[1].png",
+            "++++++++++ r/r 647-128-1:\tbg-zbtn-shadow-right.png.pagespeed.ce.bs0u1wHZrn[1].png",
+            "++++++++++ r/r 890-128-4:\tshadow_body770[1].png",
+            "++++++++++ r/r 883-128-4:\tshadow_narrowbox[1].png",
+            "++++++++++ r/r 644-128-1:\tbg-zbtn-shadow-left.png.pagespeed.ce.x8DkJtUdak[1].png",
+            "++++++++++ r/r 646-128-1:\txbg-zbtn-shadow-mid.png.pagespeed.ic.Dx6BLEpjlx[1].png",
+            "++++++++++ r/r 691-128-1:\tnav-shadow-lt.png.pagespeed.ce.hg3j3fJvno[1].png",
+            "++++++++++ r/r 693-128-1:\tnav-shadow-rt.png.pagespeed.ce.OEwQNLnNH_[1].png",
+            "++++++++++ r/r 740-128-1:\tbg-zbtn-shadow-left[1].png",
+            "++++++++++ r/r 870-128-4:\tshadow_sidebox[1].png",
+            "d/d 11-144-4:\t$Extend",
+            "r/r 3-128-3:\t$Volume",
+            "+++++ r/r 4996-128-3:\tsnapshot.etl"
+          ]
+        },
+        {
+          "name": "shadow_copies_partition_0.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/shadow_copies_partition_0.txt",
+          "size": 241,
+          "line_count": 6,
+          "key_findings": [
+            {
+              "type": "no_shadow_copies",
+              "description": "No shadow copy indicators found",
+              "severity": "medium"
+            },
+            {
+              "type": "vss_indicator",
+              "description": "VSS-related entry: vss",
+              "severity": "info"
+            },
+            {
+              "type": "vss_indicator",
+              "description": "VSS-related entry: shadow",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Shadow Copy / VSS Indicators for Partition 0",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "================================================================================",
+            "",
+            "No shadow copy indicators found.",
+            ""
+          ]
+        },
+        {
+          "name": "usn_journal_partition_0.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/usn_journal_partition_0.txt",
+          "size": 290,
+          "line_count": 10,
+          "key_findings": [
+            {
+              "type": "missing",
+              "description": "USN journal not found",
+              "severity": "high"
+            },
+            {
+              "type": "entry_count",
+              "description": "USN journal contains 6 entries",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "USN Journal Files for Partition 0",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 34 bytes",
+            "Filesystem: ntfs",
+            "================================================================================",
+            "",
+            "No USN journal files found.",
+            "",
+            "Full file list for reference:",
+            ""
+          ]
+        },
+        {
+          "name": "usn_journal_partition_1.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/usn_journal_partition_1.txt",
+          "size": 50293,
+          "line_count": 1080,
+          "key_findings": [
+            {
+              "type": "missing",
+              "description": "USN journal not found",
+              "severity": "high"
+            },
+            {
+              "type": "entry_count",
+              "description": "USN journal contains 1077 entries",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "USN Journal Files for Partition 1",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 65664 bytes",
+            "Filesystem: auto",
+            "================================================================================",
+            "",
+            "No USN journal files found.",
+            "",
+            "Full file list for reference:",
+            "d/d 35-144-1:\tDocuments and Settings",
+            "d/d 4213-144-8:\tUSERS",
+            "+ d/d 4376-144-1:\tBillyBob",
+            "+ d/d 4374-144-1:\tFred Flintstone",
+            "+ d/d 4375-144-1:\tJames Russell",
+            "+ d/d 36-144-6:\tJimmy Wilson",
+            "++ r/r 3960-128-4:\tNTUSER.DAT{016888bd-6c6f-11de-8d1d-001e0bcde3ec}.TM.blf",
+            "++ d/d 37-144-1:\tAppData",
+            "+++ d/d 38-144-5:\tLocal",
+            "++++ d/d 86-144-1:\tAdobe",
+            "+++++ d/d 87-144-1:\tAcrobat"
+          ]
+        },
+        {
+          "name": "registry_partition_1.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/registry_partition_1.txt",
+          "size": 1084,
+          "line_count": 19,
+          "key_findings": [
+            {
+              "type": "hive_found",
+              "description": "SYSTEM: 1 references",
+              "severity": "info"
+            },
+            {
+              "type": "hive_found",
+              "description": "NTUSER: 6 references",
+              "severity": "info"
+            },
+            {
+              "type": "hive_found",
+              "description": "USRCLASS: 6 references",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Registry Hives for Partition 1",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 65664 bytes",
+            "Filesystem: auto",
+            "================================================================================",
+            "",
+            "Registry Hives Found:",
+            "++ r/r 3960-128-4:\tNTUSER.DAT{016888bd-6c6f-11de-8d1d-001e0bcde3ec}.TM.blf",
+            "++++++ r/r 3998-128-3:\tUsrClass.dat",
+            "++++++ r/r 3999-128-4:\tUsrClass.dat.LOG1",
+            "++++++ r/r 4000-128-1:\tUsrClass.dat.LOG2",
+            "++++++ r/r 4001-128-4:\tUsrClass.dat{30f0885a-85ed-11e3-b557-001641e7bb6b}.TM.blf",
+            "++++++ r/r 4002-128-4:\tUsrClass.dat{30f0885a-85ed-11e3-b557-001641e7bb6b}.TMContainer00000000000000000001.regtrans-ms",
+            "++++++ r/r 4003-128-4:\tUsrClass.dat{30f0885a-85ed-11e3-b557-001641e7bb6b}.TMContainer00000000000000000002.regtrans-ms",
+            "++ r/r 90-128-3:\tNTUSER.DAT",
+            "++ r/r 3952-128-4:\tntuser.dat.LOG1",
+            "++ r/r 3958-128-1:\tntuser.dat.LOG2",
+            "++ r/r 3979-128-4:\tNTUSER.DAT{016888bd-6c6f-11de-8d1d-001e0bcde3ec}.TMContainer00000000000000000002.regtrans-ms",
+            "++ r/r 3975-128-4:\tNTUSER.DAT{016888bd-6c6f-11de-8d1d-001e0bcde3ec}.TMContainer00000000000000000001.regtrans-ms"
+          ]
+        }
+      ],
+      "important": [
+        {
+          "name": "mft_partition_1.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/mft_partition_1.txt",
+          "size": 681,
+          "line_count": 26,
+          "key_findings": [
+            {
+              "type": "orphan_files",
+              "description": "Orphaned files found (deleted but recoverable)",
+              "severity": "medium"
+            },
+            {
+              "type": "system_files",
+              "description": "System files found: $MFT, $MFTMirr, $LogFile, $Volume, $AttrDef, $Bitmap, $Boot, $BadClus, $Secure, $UpCase",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "MFT Listing for Partition 1",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 65664 bytes",
+            "Filesystem: auto",
+            "================================================================================",
+            "",
+            "d/d 35-144-1:\tDocuments and Settings",
+            "d/d 4213-144-8:\tUSERS",
+            "r/r 4-128-4:\t$AttrDef",
+            "r/r 8-128-2:\t$BadClus",
+            "r/r 8-128-1:\t$BadClus:$Bad",
+            "r/r 6-128-4:\t$Bitmap",
+            "r/r 7-128-1:\t$Boot",
+            "d/d 11-144-4:\t$Extend",
+            "r/r 2-128-1:\t$LogFile",
+            "r/r 0-128-1:\t$MFT",
+            "r/r 1-128-1:\t$MFTMirr",
+            "d/d 4378-144-5:\t$RECYCLE.BIN",
+            "r/r 9-128-8:\t$Secure:$SDS",
+            "r/r 9-144-11:\t$Secure:$SDH"
+          ]
+        },
+        {
+          "name": "timestomp_indicators_partition_1.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/timestomp_indicators_partition_1.txt",
+          "size": 918844,
+          "line_count": 5808,
+          "key_findings": [
+            {
+              "type": "zero_timestamp",
+              "description": "Zero timestamps found",
+              "severity": "medium"
+            },
+            {
+              "type": "total_entries",
+              "description": "Timeline contains 5808 entries",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Timestamp Analysis for Partition 1",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "================================================================================",
+            "",
+            "Full file listing with timestamps:",
+            "Format: mode uid gid size date time name",
+            "",
+            "d/d 35-144-1:\tDocuments and Settings\t2009-07-14 10:38:56 (IST)\t2009-07-14 10:38:56 (IST)\t2015-05-26 18:15:14 (IST)\t2009-07-14 10:38:56 (IST)\t48\t0\t0",
+            "d/d 4213-144-8:\tUSERS\t2015-05-26 18:36:52 (IST)\t2015-05-26 18:36:52 (IST)\t2015-05-26 18:36:52 (IST)\t2015-05-26 18:16:28 (IST)\t56\t0\t0",
+            "+ d/d 4376-144-1:\tBillyBob\t2015-05-26 18:36:36 (IST)\t2015-05-26 18:36:36 (IST)\t2015-05-26 18:36:43 (IST)\t2015-05-26 18:36:36 (IST)\t48\t0\t0",
+            "+ d/d 4374-144-1:\tFred Flintstone\t2015-05-26 18:36:10 (IST)\t2015-05-26 18:36:10 (IST)\t2015-05-26 18:36:18 (IST)\t2015-05-26 18:36:10 (IST)\t48\t0\t0",
+            "+ d/d 4375-144-1:\tJames Russell\t2015-05-26 18:36:21 (IST)\t2015-05-26 18:36:21 (IST)\t2015-05-26 18:36:28 (IST)\t2015-05-26 18:36:21 (IST)\t48\t0\t0",
+            "+ d/d 36-144-6:\tJimmy Wilson\t2015-05-26 18:16:17 (IST)\t2015-05-26 18:16:17 (IST)\t2015-05-26 18:16:37 (IST)\t2014-01-25 23:57:38 (IST)\t256\t0\t0",
+            "++ r/r 3960-128-4:\tNTUSER.DAT{016888bd-6c6f-11de-8d1d-001e0bcde3ec}.TM.blf\t2015-05-26 18:16:16 (IST)\t2015-05-26 18:16:16 (IST)\t2015-05-26 18:16:16 (IST)\t2015-05-26 18:16:16 (IST)\t65536\t0\t0",
+            "++ d/d 37-144-1:\tAppData\t2014-01-25 23:57:39 (IST)\t2014-01-25 23:57:39 (IST)\t2015-05-26 18:16:16 (IST)\t2014-01-25 23:57:38 (IST)\t344\t0\t0",
+            "+++ d/d 38-144-5:\tLocal\t2015-05-26 18:16:18 (IST)\t2015-05-26 18:16:18 (IST)\t2015-05-26 18:16:18 (IST)\t2014-01-25 23:57:38 (IST)\t56\t0\t0",
+            "++++ d/d 86-144-1:\tAdobe\t2015-05-26 18:15:56 (IST)\t2015-05-26 18:15:56 (IST)\t2015-05-26 18:15:56 (IST)\t2014-02-10 20:27:11 (IST)\t240\t0\t0",
+            "+++++ d/d 87-144-1:\tAcrobat\t2014-02-10 20:27:11 (IST)\t2014-02-10 20:27:11 (IST)\t2015-05-26 18:15:56 (IST)\t2014-02-10 20:27:11 (IST)\t144\t0\t0",
+            "++++++ d/d 88-144-5:\t11.0\t2015-05-26 18:15:57 (IST)\t2015-05-26 18:15:57 (IST)\t2015-05-26 18:15:57 (IST)\t2014-02-10 20:27:11 (IST)\t56\t0\t0",
+            "+++++++ r/r 482-128-4:\tAdobeCMapFnt11.lst\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t1011\t0\t0"
+          ]
+        },
+        {
+          "name": "timeline_partition_1.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/timeline_partition_1.txt",
+          "size": 918782,
+          "line_count": 5806,
+          "key_findings": [
+            {
+              "type": "zero_timestamp",
+              "description": "Zero timestamps found",
+              "severity": "medium"
+            },
+            {
+              "type": "total_entries",
+              "description": "Timeline contains 5806 entries",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Full Timeline for Partition 1",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 65664 bytes",
+            "================================================================================",
+            "",
+            "d/d 35-144-1:\tDocuments and Settings\t2009-07-14 10:38:56 (IST)\t2009-07-14 10:38:56 (IST)\t2015-05-26 18:15:14 (IST)\t2009-07-14 10:38:56 (IST)\t48\t0\t0",
+            "d/d 4213-144-8:\tUSERS\t2015-05-26 18:36:52 (IST)\t2015-05-26 18:36:52 (IST)\t2015-05-26 18:36:52 (IST)\t2015-05-26 18:16:28 (IST)\t56\t0\t0",
+            "+ d/d 4376-144-1:\tBillyBob\t2015-05-26 18:36:36 (IST)\t2015-05-26 18:36:36 (IST)\t2015-05-26 18:36:43 (IST)\t2015-05-26 18:36:36 (IST)\t48\t0\t0",
+            "+ d/d 4374-144-1:\tFred Flintstone\t2015-05-26 18:36:10 (IST)\t2015-05-26 18:36:10 (IST)\t2015-05-26 18:36:18 (IST)\t2015-05-26 18:36:10 (IST)\t48\t0\t0",
+            "+ d/d 4375-144-1:\tJames Russell\t2015-05-26 18:36:21 (IST)\t2015-05-26 18:36:21 (IST)\t2015-05-26 18:36:28 (IST)\t2015-05-26 18:36:21 (IST)\t48\t0\t0",
+            "+ d/d 36-144-6:\tJimmy Wilson\t2015-05-26 18:16:17 (IST)\t2015-05-26 18:16:17 (IST)\t2015-05-26 18:16:37 (IST)\t2014-01-25 23:57:38 (IST)\t256\t0\t0",
+            "++ r/r 3960-128-4:\tNTUSER.DAT{016888bd-6c6f-11de-8d1d-001e0bcde3ec}.TM.blf\t2015-05-26 18:16:16 (IST)\t2015-05-26 18:16:16 (IST)\t2015-05-26 18:16:16 (IST)\t2015-05-26 18:16:16 (IST)\t65536\t0\t0",
+            "++ d/d 37-144-1:\tAppData\t2014-01-25 23:57:39 (IST)\t2014-01-25 23:57:39 (IST)\t2015-05-26 18:16:16 (IST)\t2014-01-25 23:57:38 (IST)\t344\t0\t0",
+            "+++ d/d 38-144-5:\tLocal\t2015-05-26 18:16:18 (IST)\t2015-05-26 18:16:18 (IST)\t2015-05-26 18:16:18 (IST)\t2014-01-25 23:57:38 (IST)\t56\t0\t0",
+            "++++ d/d 86-144-1:\tAdobe\t2015-05-26 18:15:56 (IST)\t2015-05-26 18:15:56 (IST)\t2015-05-26 18:15:56 (IST)\t2014-02-10 20:27:11 (IST)\t240\t0\t0",
+            "+++++ d/d 87-144-1:\tAcrobat\t2014-02-10 20:27:11 (IST)\t2014-02-10 20:27:11 (IST)\t2015-05-26 18:15:56 (IST)\t2014-02-10 20:27:11 (IST)\t144\t0\t0",
+            "++++++ d/d 88-144-5:\t11.0\t2015-05-26 18:15:57 (IST)\t2015-05-26 18:15:57 (IST)\t2015-05-26 18:15:57 (IST)\t2014-02-10 20:27:11 (IST)\t56\t0\t0",
+            "+++++++ r/r 482-128-4:\tAdobeCMapFnt11.lst\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t1011\t0\t0",
+            "+++++++ r/r 479-128-4:\tAdobeSysFnt11.lst\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t2015-05-26 18:15:55 (IST)\t82455\t0\t0",
+            "+++++++ d/d 89-144-1:\tCache\t2015-05-26 18:15:54 (IST)\t2015-05-26 18:15:54 (IST)\t2015-05-26 18:15:54 (IST)\t2014-02-10 20:50:47 (IST)\t272\t0\t0"
+          ]
+        },
+        {
+          "name": "timeline_partition_0.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/timeline_partition_0.txt",
+          "size": 252,
+          "line_count": 8,
+          "key_findings": [
+            {
+              "type": "total_entries",
+              "description": "Timeline contains 8 entries",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Full Timeline for Partition 0",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 34 bytes",
+            "================================================================================",
+            "",
+            "Error: Cannot determine file system type",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "timestomp_indicators_partition_0.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/timestomp_indicators_partition_0.txt",
+          "size": 240,
+          "line_count": 7,
+          "key_findings": [
+            {
+              "type": "total_entries",
+              "description": "Timeline contains 7 entries",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Timestamp Analysis for Partition 0",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "================================================================================",
+            "",
+            "Error: Cannot determine file system type",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "hidden_structures_partition_0.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/hidden_structures_partition_0.txt",
+          "size": 235,
+          "line_count": 6,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Hidden Structures / ADS for Partition 0",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "================================================================================",
+            "",
+            "No hidden structures/ADS found.",
+            ""
+          ]
+        },
+        {
+          "name": "mft_partition_0.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/mft_partition_0.txt",
+          "size": 89,
+          "line_count": 4,
+          "key_findings": [
+            {
+              "type": "system_files",
+              "description": "System files found: ",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "MFT Listing for Partition 0",
+            "Error: Invalid magic value (Not a NTFS file system (magic))",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "hidden_structures_partition_1.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/hidden_structures_partition_1.txt",
+          "size": 588,
+          "line_count": 15,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Hidden Structures / ADS for Partition 1",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "================================================================================",
+            "",
+            "Potential Alternate Data Streams / Hidden Data:",
+            "r/r 8-128-1:\t$BadClus:$Bad",
+            "r/r 25-144-2:\t$Extend/$ObjId:$O",
+            "r/r 24-144-3:\t$Extend/$Quota:$O",
+            "r/r 24-144-2:\t$Extend/$Quota:$Q",
+            "r/r 26-144-2:\t$Extend/$Reparse:$R",
+            "r/r 28-128-2:\t$Extend/$RmMetadata/$Repair:$Config",
+            "r/r 31-128-4:\t$Extend/$RmMetadata/$TxfLog/$Tops:$T",
+            "r/r 9-128-8:\t$Secure:$SDS",
+            "r/r 9-144-11:\t$Secure:$SDH",
+            "r/r 9-144-14:\t$Secure:$SII"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-WindowsUpdateClient%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-WindowsUpdateClient%4Operational.evtx.json",
+          "size": 1146395,
+          "line_count": 10911,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 30,",
+            "    \"Timestamp\": \"2014-01-25 01:28:55.281225+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-WindowsUpdateClient/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-WindowsUpdateClient\\\" Guid=\\\"{945a8954-c147-4acd-923f-40c45405a658}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">30</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>1</Task>\\n<Opcode>17</Opcode>\\n<Keywords>0x4000000000000001</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:28:55.281225+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"888\\\" ThreadID=\\\"2808\\\"></Execution>\\n<Channel>Microsoft-Windows-WindowsUpdateClient/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 42,",
+            "    \"Timestamp\": \"2014-01-25 01:28:55.281225+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-WindowsUpdateClient/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"hc_stateid\": \"0\",",
+            "      \"restartDate\": \"\",",
+            "      \"restartTime\": \"\""
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Dhcpv6-Client%4Admin.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Dhcpv6-Client%4Admin.evtx.json",
+          "size": 5986,
+          "line_count": 67,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1006,",
+            "    \"Timestamp\": \"2014-01-25 04:20:54.702242+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Dhcpv6-Client/Admin\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"InterfaceId\": \"17\",",
+            "      \"Flag1\": \"True\",",
+            "      \"Flag2\": \"True\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-DHCPv6-Client\\\" Guid=\\\"{6a1f2b00-6a90-4c38-95a5-5cab3b056778}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1006</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>1</Task>\\n<Opcode>13</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:20:54.702242+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"812\\\" ThreadID=\\\"828\\\"></Execution>\\n<Channel>Microsoft-Windows-Dhcpv6-Client/Admin</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"InterfaceId\\\">17</Data>\\n<Data Name=\\\"Flag1\\\">True</Data>\\n<Data Name=\\\"Flag2\\\">True</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1006,",
+            "    \"Timestamp\": \"2014-01-25 13:39:24.117437+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Dhcpv6-Client/Admin\",",
+            "    \"Level\": \"Information\","
+          ]
+        },
+        {
+          "name": "Application.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Application.evtx.json",
+          "size": 2047178,
+          "line_count": 17181,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1532,",
+            "    \"Timestamp\": \"2010-11-21 03:58:31.124372+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Application\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-User Profiles Service\\\" Guid=\\\"{89b1e9f0-5aff-44a6-9b44-0a07a7ce5845}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1532</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2010-11-21 03:58:31.124372+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"928\\\" ThreadID=\\\"996\\\"></Execution>\\n<Channel>Application</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1531,",
+            "    \"Timestamp\": \"2014-01-25 04:19:32.224895+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Application\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-User Profiles Service\\\" Guid=\\\"{89b1e9f0-5aff-44a6-9b44-0a07a7ce5845}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1531</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:19:32.224895+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"868\\\" ThreadID=\\\"944\\\"></Execution>\\n<Channel>Application</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-DriverFrameworks-UserMode%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-DriverFrameworks-UserMode%4Operational.evtx.json",
+          "size": 905677,
+          "line_count": 5087,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1000,",
+            "    \"Timestamp\": \"2014-02-03 15:20:53.491571+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-DriverFrameworks-UserMode/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-DriverFrameworks-UserMode\\\" Guid=\\\"{2e35aaeb-857f-4beb-a418-2e6c0e54d988}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1000</EventID>\\n<Version>1</Version>\\n<Level>4</Level>\\n<Task>16</Task>\\n<Opcode>1</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-02-03 15:20:53.491571+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"900\\\" ThreadID=\\\"3004\\\"></Execution>\\n<Channel>Microsoft-Windows-DriverFrameworks-UserMode/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><UMDFDriverManagerStart xmlns:auto-ns2=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://www.microsoft.com/DriverFrameworks/UserMode/Event\\\"><Version>6.1.7601.17514. (win7sp1_rtm.101119-1850)</Version>\\n</UMDFDriverManagerStart>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1003,",
+            "    \"Timestamp\": \"2014-02-03 15:20:54.396374+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-DriverFrameworks-UserMode/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-DriverFrameworks-UserMode\\\" Guid=\\\"{2e35aaeb-857f-4beb-a418-2e6c0e54d988}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1003</EventID>\\n<Version>1</Version>\\n<Level>4</Level>\\n<Task>17</Task>\\n<Opcode>1</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-02-03 15:20:54.396374+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"900\\\" ThreadID=\\\"2220\\\"></Execution>\\n<Channel>Microsoft-Windows-DriverFrameworks-UserMode/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><UMDFDriverManagerHostCreateStart lifetime=\\\"{302b644c-12a4-4da4-94b2-ba783cb31a7d}\\\" xmlns:auto-ns2=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://www.microsoft.com/DriverFrameworks/UserMode/Event\\\"><HostGuid>{193a1820-d9ac-4997-8c55-be817523f6aa}</HostGuid>\\n<DeviceInstanceId>WPDBUSENUMROOT.UMB.2&amp;37C186B&amp;0&amp;STORAGE#VOLUME#_??_USBSTOR#DISK&amp;VEN_LEXAR&amp;PROD_JUMPDRIVE&amp;REV_1.20#I145291811100&amp;0#</DeviceInstanceId>\\n</UMDFDriverManagerHostCreateStart>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-ReliabilityAnalysisComponent%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-ReliabilityAnalysisComponent%4Operational.evtx.json",
+          "size": 34230,
+          "line_count": 236,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 2005,",
+            "    \"Timestamp\": \"2014-01-29 12:32:59.014389+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-ReliabilityAnalysisComponent/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Reliability-Analysis-Engine\\\" Guid=\\\"{4ba32972-6fc5-488a-8368-5da620d05127}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">2005</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000001000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-29 12:32:59.014389+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2492\\\" ThreadID=\\\"2544\\\"></Execution>\\n<Channel>Microsoft-Windows-ReliabilityAnalysisComponent/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<UserData><ProcessInfo xmlns:auto-ns2=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://www.microsoft.com/Windows/ReliabilityAnalysis/Engine/Event\\\"><Stability>10.0</Stability>\\n<Date>2014-01-26 00:00:00+00:00</Date>\\n</ProcessInfo>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 2005,",
+            "    \"Timestamp\": \"2014-01-29 12:32:59.185989+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-ReliabilityAnalysisComponent/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Reliability-Analysis-Engine\\\" Guid=\\\"{4ba32972-6fc5-488a-8368-5da620d05127}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">2005</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000001000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-29 12:32:59.185989+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2492\\\" ThreadID=\\\"2544\\\"></Execution>\\n<Channel>Microsoft-Windows-ReliabilityAnalysisComponent/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<UserData><ProcessInfo xmlns:auto-ns2=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://www.microsoft.com/Windows/ReliabilityAnalysis/Engine/Event\\\"><Stability>10.0</Stability>\\n<Date>2014-01-27 00:00:00+00:00</Date>\\n</ProcessInfo>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Kernel-WHEA%4Errors.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Kernel-WHEA%4Errors.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Kernel-EventTracing%4Admin.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Kernel-EventTracing%4Admin.evtx.json",
+          "size": 83766,
+          "line_count": 870,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 2,",
+            "    \"Timestamp\": \"2014-01-25 14:35:16.715525+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Kernel-EventTracing/Admin\",",
+            "    \"Level\": \"Error\",",
+            "    \"EventData\": {",
+            "      \"SessionName\": \"\",",
+            "      \"FileName\": \"\",",
+            "      \"ErrorCode\": \"3221225485\",",
+            "      \"LoggingMode\": \"32773\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Kernel-EventTracing\\\" Guid=\\\"{b675ec37-bdb6-4648-bc92-f3fdc74d3ca2}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">2</EventID>\\n<Version>0</Version>\\n<Level>2</Level>\\n<Task>2</Task>\\n<Opcode>12</Opcode>\\n<Keywords>0x8000000000000010</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 14:35:16.715525+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"788\\\" ThreadID=\\\"1856\\\"></Execution>\\n<Channel>Microsoft-Windows-Kernel-EventTracing/Admin</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"SessionName\\\"></Data>\\n<Data Name=\\\"FileName\\\"></Data>\\n<Data Name=\\\"ErrorCode\\\">3221225485</Data>\\n<Data Name=\\\"LoggingMode\\\">32773</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 2,",
+            "    \"Timestamp\": \"2014-01-25 14:35:17.207525+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Kernel-EventTracing/Admin\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-WindowsSystemAssessmentTool%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-WindowsSystemAssessmentTool%4Operational.evtx.json",
+          "size": 164972,
+          "line_count": 1512,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-25 04:23:26.550064+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-WindowsSystemAssessmentTool/Operational\",",
+            "    \"Level\": \"LogAlways\",",
+            "    \"EventData\": {",
+            "      \"StartTimeOfDay\": \"2014-01-25 04:23:26.550064+00:00\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-WindowsSystemAssessmentTool\\\" Guid=\\\"{11a75546-3234-465e-bec8-2d301cb501ac}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1</EventID>\\n<Version>0</Version>\\n<Level>0</Level>\\n<Task>1</Task>\\n<Opcode>1</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:23:26.550064+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"764\\\" ThreadID=\\\"768\\\"></Execution>\\n<Channel>Microsoft-Windows-WindowsSystemAssessmentTool/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"StartTimeOfDay\\\">2014-01-25 04:23:26.550064+00:00</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 9,",
+            "    \"Timestamp\": \"2014-01-25 04:23:26.550064+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-WindowsSystemAssessmentTool/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"PhaseID\": \"10\","
+          ]
+        },
+        {
+          "name": "Internet Explorer.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Internet Explorer.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-DiskDiagnosticDataCollector%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-DiskDiagnosticDataCollector%4Operational.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-PrintService%4Admin.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-PrintService%4Admin.evtx.json",
+          "size": 9774,
+          "line_count": 65,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 823,",
+            "    \"Timestamp\": \"2014-01-25 01:27:57.607924+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-PrintService/Admin\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-PrintService\\\" Guid=\\\"{747ef6fd-e535-4d16-b510-42c90f6873a1}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">823</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>49</Task>\\n<Opcode>11</Opcode>\\n<Keywords>0x8000000000020000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:27:57.607924+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"1240\\\" ThreadID=\\\"1244\\\"></Execution>\\n<Channel>Microsoft-Windows-PrintService/Admin</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<UserData><ChangingDefaultPrinter xmlns:auto-ns3=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://manifests.microsoft.com/win/2005/08/windows/printing/spooler/core/events\\\"><DefaultPrinterSelectedBySpooler>1</DefaultPrinterSelectedBySpooler>\\n<OldDefaultPrinter></OldDefaultPrinter>\\n<NewDefaultPrinter>Microsoft XPS Document Writer,winspool,Ne00:</NewDefaultPrinter>\\n<Status>0x00000000</Status>\\n<Module>spoolsv.exe</Module>\\n</ChangingDefaultPrinter>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 808,",
+            "    \"Timestamp\": \"2014-01-25 13:27:30.138090+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-PrintService/Admin\",",
+            "    \"Level\": \"Error\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-PrintService\\\" Guid=\\\"{747ef6fd-e535-4d16-b510-42c90f6873a1}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">808</EventID>\\n<Version>0</Version>\\n<Level>2</Level>\\n<Task>36</Task>\\n<Opcode>12</Opcode>\\n<Keywords>0x8000000000020000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 13:27:30.138090+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"1176\\\" ThreadID=\\\"1200\\\"></Execution>\\n<Channel>Microsoft-Windows-PrintService/Admin</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><LoadPluginFailed xmlns:auto-ns3=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://manifests.microsoft.com/win/2005/08/windows/printing/spooler/core/events\\\"><PluginDllName>localspl.dll</PluginDllName>\\n<ErrorCode>0x00000020</ErrorCode>\\n<Context>115</Context>\\n</LoadPluginFailed>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Bits-Client%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Bits-Client%4Operational.evtx.json",
+          "size": 2775141,
+          "line_count": 27562,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 4,",
+            "    \"Timestamp\": \"2014-02-04 16:06:48.466402+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Bits-Client/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"User\": \"IACIS-HDD-2014\\\\Sgt. Joe T. Nameless\",",
+            "      \"jobTitle\": \"ShortCatalog\",",
+            "      \"jobId\": \"{f3548941-495e-44b9-91c5-cf7daa4b9c31}\",",
+            "      \"jobOwner\": \"IACIS-HDD-2014\\\\Sgt. Joe T. Nameless\",",
+            "      \"fileCount\": \"1\",",
+            "      \"bytesTransferred\": \"3796\",",
+            "      \"bytesTransferredFromPeer\": \"0\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Bits-Client\\\" Guid=\\\"{ef1cc15b-46c1-414e-bb95-e76b077bd51e}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">4</EventID>\\n<Version>1</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x4000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-02-04 16:06:48.466402+00:00\\\"></TimeCreated>\\n<EventRecordID>1631</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"988\\\" ThreadID=\\\"3188\\\"></Execution>\\n<Channel>Microsoft-Windows-Bits-Client/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"User\\\">IACIS-HDD-2014\\\\Sgt. Joe T. Nameless</Data>\\n<Data Name=\\\"jobTitle\\\">ShortCatalog</Data>\\n<Data Name=\\\"jobId\\\">{f3548941-495e-44b9-91c5-cf7daa4b9c31}</Data>\\n<Data Name=\\\"jobOwner\\\">IACIS-HDD-2014\\\\Sgt. Joe T. Nameless</Data>\\n<Data Name=\\\"fileCount\\\">1</Data>\\n<Data Name=\\\"bytesTransferred\\\">3796</Data>\\n<Data Name=\\\"bytesTransferredFromPeer\\\">0</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 306,"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Windows Firewall With Advanced Security%4Firewall.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Windows Firewall With Advanced Security%4Firewall.evtx.json",
+          "size": 856539,
+          "line_count": 9201,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 2010,",
+            "    \"Timestamp\": \"2014-01-25 04:20:43.111420+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Windows Firewall With Advanced Security/Firewall\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"InterfaceGuid\": \"{78a289b4-f8b9-43c7-8bba-f96e0bbc2185}\",",
+            "      \"InterfaceName\": \"ethernet_6\",",
+            "      \"OldProfile\": \"2147483649\",",
+            "      \"NewProfile\": \"4\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Windows Firewall With Advanced Security\\\" Guid=\\\"{d1bc9aff-2abf-4d71-9146-ecb2a986eb85}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">2010</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:20:43.111420+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"732\\\" ThreadID=\\\"1036\\\"></Execution>\\n<Channel>Microsoft-Windows-Windows Firewall With Advanced Security/Firewall</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"InterfaceGuid\\\">{78a289b4-f8b9-43c7-8bba-f96e0bbc2185}</Data>\\n<Data Name=\\\"InterfaceName\\\">ethernet_6</Data>\\n<Data Name=\\\"OldProfile\\\">2147483649</Data>\\n<Data Name=\\\"NewProfile\\\">4</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 2010,",
+            "    \"Timestamp\": \"2014-01-25 04:20:44.219023+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Windows Firewall With Advanced Security/Firewall\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Diagnosis-Scheduled%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-Scheduled%4Operational.evtx.json",
+          "size": 39215,
+          "line_count": 357,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 2,",
+            "    \"Timestamp\": \"2014-01-25 16:24:33.526636+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Diagnosis-Scheduled/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Diagnosis-Scheduled\\\" Guid=\\\"{40ab57c2-1c53-4df9-9324-ff7cf898a02c}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">2</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000800000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:24:33.526636+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"968\\\" ThreadID=\\\"2952\\\"></Execution>\\n<Channel>Microsoft-Windows-Diagnosis-Scheduled/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 5,",
+            "    \"Timestamp\": \"2014-01-25 16:24:33.526636+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Diagnosis-Scheduled/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"PackagePath\": \"C:\\\\Windows\\\\diagnostics\\\\scheduled\\\\Maintenance\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Diagnosis-Scheduled\\\" Guid=\\\"{40ab57c2-1c53-4df9-9324-ff7cf898a02c}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">5</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000800000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:24:33.526636+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"968\\\" ThreadID=\\\"1544\\\"></Execution>\\n<Channel>Microsoft-Windows-Diagnosis-Scheduled/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"PackagePath\\\">C:\\\\Windows\\\\diagnostics\\\\scheduled\\\\Maintenance</Data>\\n</EventData>\\n</Event>\\n\""
+          ]
+        },
+        {
+          "name": "Security.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Security.evtx.json",
+          "size": 6717393,
+          "line_count": 68485,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 4608,",
+            "    \"Timestamp\": \"2014-01-25 04:19:10.540857+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Security\",",
+            "    \"Level\": \"LogAlways\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Security-Auditing\\\" Guid=\\\"{54849625-5478-4994-a5ba-3e3b0328c30d}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">4608</EventID>\\n<Version>0</Version>\\n<Level>0</Level>\\n<Task>12288</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8020000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:19:10.540857+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"456\\\" ThreadID=\\\"460\\\"></Execution>\\n<Channel>Security</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 4624,",
+            "    \"Timestamp\": \"2014-01-25 04:19:10.759256+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Security\",",
+            "    \"Level\": \"LogAlways\",",
+            "    \"EventData\": {",
+            "      \"SubjectUserSid\": \"S-1-0-0\",",
+            "      \"SubjectUserName\": \"-\",",
+            "      \"SubjectDomainName\": \"-\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Application-Experience%4Program-Compatibility-Assistant.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Program-Compatibility-Assistant.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-HomeGroup Provider Service%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-HomeGroup Provider Service%4Operational.evtx.json",
+          "size": 101016,
+          "line_count": 988,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 5013,",
+            "    \"Timestamp\": \"2014-01-25 01:27:19.255030+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-HomeGroup Provider Service/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"OldStatus\": \"0\",",
+            "      \"NewStatus\": \"2\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-HomeGroup-ProviderService\\\" Guid=\\\"{c9bdb4eb-9287-4c8e-8378-6896f0d1c5ef}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">5013</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:27:19.255030+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"936\\\" ThreadID=\\\"952\\\"></Execution>\\n<Channel>Microsoft-Windows-HomeGroup Provider Service/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"OldStatus\\\">0</Data>\\n<Data Name=\\\"NewStatus\\\">2</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 5013,",
+            "    \"Timestamp\": \"2014-01-25 01:27:19.255030+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-HomeGroup Provider Service/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-BranchCacheSMB%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-BranchCacheSMB%4Operational.evtx.json",
+          "size": 185461,
+          "line_count": 920,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 3005,",
+            "    \"Timestamp\": \"2014-01-25 04:19:34.096899+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-BranchCacheSMB/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-BranchCacheSMB\\\" Guid=\\\"{4a933674-fb3d-4e8d-b01d-17ee14e91a3e}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">3005</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000800</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:19:34.096899+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"844\\\" ThreadID=\\\"856\\\"></Execution>\\n<Channel>Microsoft-Windows-BranchCacheSMB/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><CounterSummary xmlns:auto-ns3=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"CounterSummaryNs\\\"><ServiceActiveTimeInSeconds>0</ServiceActiveTimeInSeconds>\\n<SMBBranchCacheBytesRequested>0</SMBBranchCacheBytesRequested>\\n<SMBBranchCacheBytesReceived>0</SMBBranchCacheBytesReceived>\\n<SMBBranchCacheBytesPublished>0</SMBBranchCacheBytesPublished>\\n<SMBBranchCacheBytesRequestedFromServer>0</SMBBranchCacheBytesRequestedFromServer>\\n<SMBBranchCacheHashesRequested>0</SMBBranchCacheHashesRequested>\\n<SMBBranchCacheHashesReceived>0</SMBBranchCacheHashesReceived>\\n<SMBBranchCacheHashBytesReceived>0</SMBBranchCacheHashBytesReceived>\\n<PrefetchOperationsQueued>0</PrefetchOperationsQueued>\\n<PrefetchBytesReadFromCache>0</PrefetchBytesReadFromCache>\\n<PrefetchBytesReadFromServer>0</PrefetchBytesReadFromServer>\\n<ApplicationBytesReadFromCache>0</ApplicationBytesReadFromCache>\\n<ApplicationBytesReadFromServer>0</ApplicationBytesReadFromServer>\\n<ApplicationBytesReadFromServerNotCached>0</ApplicationBytesReadFromServerNotCached>\\n</CounterSummary>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 3001,",
+            "    \"Timestamp\": \"2014-01-25 04:19:35.188900+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-BranchCacheSMB/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-BranchCacheSMB\\\" Guid=\\\"{4a933674-fb3d-4e8d-b01d-17ee14e91a3e}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">3001</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000800</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:19:35.188900+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"844\\\" ThreadID=\\\"976\\\"></Execution>\\n<Channel>Microsoft-Windows-BranchCacheSMB/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-NetworkLocationWizard%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NetworkLocationWizard%4Operational.evtx.json",
+          "size": 1218,
+          "line_count": 11,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1007,",
+            "    \"Timestamp\": \"2014-01-29 12:32:11.075504+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-NetworkLocationWizard/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-PrimaryNetworkIcon\\\" Guid=\\\"{8ce93926-bdae-4409-9155-2fe4799ef4d3}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1007</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x4000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-29 12:32:11.075504+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2120\\\" ThreadID=\\\"2696\\\"></Execution>\\n<Channel>Microsoft-Windows-NetworkLocationWizard/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1003\\\"></Security>\\n</System>\\n<ProcessingErrorData><ErrorCode>15005</ErrorCode>\\n<DataItemName>GUID</DataItemName>\\n<EventPayload>ENiLoXKCIkYBAAAA</EventPayload>\\n</ProcessingErrorData>\\n</Event>\\n\"",
+            "  }",
+            "]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Resource-Exhaustion-Detector%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Resource-Exhaustion-Detector%4Operational.evtx.json",
+          "size": 96703,
+          "line_count": 731,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1002,",
+            "    \"Timestamp\": \"2010-11-21 03:58:31.093172+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Resource-Exhaustion-Detector/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Resource-Exhaustion-Detector\\\" Guid=\\\"{9988748e-c2e8-4054-85f6-0c3e1cad2470}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1002</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>1</Task>\\n<Opcode>12</Opcode>\\n<Keywords>0x4000000010000000</Keywords>\\n<TimeCreated SystemTime=\\\"2010-11-21 03:58:31.093172+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"1048\\\" ThreadID=\\\"1576\\\"></Execution>\\n<Channel>Microsoft-Windows-Resource-Exhaustion-Detector/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1001,",
+            "    \"Timestamp\": \"2014-01-25 01:27:53.895119+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Resource-Exhaustion-Detector/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Resource-Exhaustion-Detector\\\" Guid=\\\"{9988748e-c2e8-4054-85f6-0c3e1cad2470}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1001</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>1</Task>\\n<Opcode>11</Opcode>\\n<Keywords>0x4000000010000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:27:53.895119+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"1268\\\" ThreadID=\\\"1668\\\"></Execution>\\n<Channel>Microsoft-Windows-Resource-Exhaustion-Detector/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-CodeIntegrity%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-CodeIntegrity%4Operational.evtx.json",
+          "size": 1096,
+          "line_count": 13,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 3024,",
+            "    \"Timestamp\": \"2014-02-03 12:11:43.806005+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-CodeIntegrity/Operational\",",
+            "    \"Level\": \"Warning\",",
+            "    \"EventData\": {",
+            "      \"Status\": \"0xc0000034\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-CodeIntegrity\\\" Guid=\\\"{4ee76bd8-3cf4-44a0-a0ac-3937643e37a3}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">3024</EventID>\\n<Version>0</Version>\\n<Level>3</Level>\\n<Task>10</Task>\\n<Opcode>109</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-02-03 12:11:43.806005+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"4\\\" ThreadID=\\\"52\\\"></Execution>\\n<Channel>Microsoft-Windows-CodeIntegrity/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"Status\\\">0xc0000034</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  }",
+            "]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Diagnosis-Scripted%4Admin.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-Scripted%4Admin.evtx.json",
+          "size": 5279,
+          "line_count": 50,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-25 16:24:34.915039+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Diagnosis-Scripted/Admin\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"PackagePath\": \"C:\\\\Windows\\\\diagnostics\\\\scheduled\\\\Maintenance\",",
+            "      \"PackageId\": \"MaintenanceDiagnostic\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Diagnosis-Scripted\\\" Guid=\\\"{e1dd7e52-621d-44e3-a1ad-0370c2b25946}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000400000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:24:34.915039+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"968\\\" ThreadID=\\\"1544\\\"></Execution>\\n<Channel>Microsoft-Windows-Diagnosis-Scripted/Admin</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"PackagePath\\\">C:\\\\Windows\\\\diagnostics\\\\scheduled\\\\Maintenance</Data>\\n<Data Name=\\\"PackageId\\\">MaintenanceDiagnostic</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-29 14:33:22.428867+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Diagnosis-Scripted/Admin\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-User Profile Service%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-User Profile Service%4Operational.evtx.json",
+          "size": 234538,
+          "line_count": 2166,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-25 01:27:52.069914+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-User Profile Service/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"Session\": \"1\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-User Profiles Service\\\" Guid=\\\"{89b1e9f0-5aff-44a6-9b44-0a07a7ce5845}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x4000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:27:52.069914+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"{02905900-f800-0000-24ea-4c1b8519cf01}\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"888\\\" ThreadID=\\\"1792\\\"></Execution>\\n<Channel>Microsoft-Windows-User Profile Service/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"Session\\\">1</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 5,",
+            "    \"Timestamp\": \"2014-01-25 01:27:55.299120+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-User Profile Service/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"File\": \"C:\\\\Users\\\\BillyBob\\\\ntuser.dat\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-OfflineFiles%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-OfflineFiles%4Operational.evtx.json",
+          "size": 95565,
+          "line_count": 758,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-25 04:19:34.081299+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-OfflineFiles/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-OfflineFiles\\\" Guid=\\\"{95353826-4fbe-41d4-9c42-f521c6e86360}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x4000000000000010</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:19:34.081299+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"844\\\" ThreadID=\\\"936\\\"></Execution>\\n<Channel>Microsoft-Windows-OfflineFiles/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-25 04:24:39.901394+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-OfflineFiles/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-OfflineFiles\\\" Guid=\\\"{95353826-4fbe-41d4-9c42-f521c6e86360}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x4000000000000010</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:24:39.901394+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"864\\\" ThreadID=\\\"1056\\\"></Execution>\\n<Channel>Microsoft-Windows-OfflineFiles/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Resource-Exhaustion-Resolver%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Resource-Exhaustion-Resolver%4Operational.evtx.json",
+          "size": 96908,
+          "line_count": 614,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1001,",
+            "    \"Timestamp\": \"2014-01-25 01:39:46.111921+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Resource-Exhaustion-Resolver/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Resource-Exhaustion-Resolver\\\" Guid=\\\"{91f5fb12-fdea-4095-85d5-614b495cd9de}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1001</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>1</Task>\\n<Opcode>11</Opcode>\\n<Keywords>0x8000000000001000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:39:46.111921+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"3052\\\" ThreadID=\\\"1076\\\"></Execution>\\n<Channel>Microsoft-Windows-Resource-Exhaustion-Resolver/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1015,",
+            "    \"Timestamp\": \"2014-01-25 01:39:46.158722+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Resource-Exhaustion-Resolver/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Resource-Exhaustion-Resolver\\\" Guid=\\\"{91f5fb12-fdea-4095-85d5-614b495cd9de}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1015</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>3</Task>\\n<Opcode>21</Opcode>\\n<Keywords>0x8000000000002000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:39:46.158722+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"{aee9cfed-81dd-40b2-bdf1-d12977c8c8dc}\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"3052\\\" ThreadID=\\\"1076\\\"></Execution>\\n<Channel>Microsoft-Windows-Resource-Exhaustion-Resolver/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<UserData><EventInfo xmlns:auto-ns2=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://www.microsoft.com/Windows/Resource/Exhaustion/Resolver/Event\\\"><Event>4</Event>\\n</EventInfo>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Application-Experience%4Program-Inventory.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Program-Inventory.evtx.json",
+          "size": 133030,
+          "line_count": 740,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 900,",
+            "    \"Timestamp\": \"2014-01-25 16:17:52.481133+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Application-Experience/Program-Inventory\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Application-Experience\\\" Guid=\\\"{eef54e71-0661-422d-9a98-82fd4940b820}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">900</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x0800000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:17:52.481133+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2952\\\" ThreadID=\\\"1944\\\"></Execution>\\n<Channel>Microsoft-Windows-Application-Experience/Program-Inventory</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><IEAddOnChangeInfoEvent xmlns:auto-ns2=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://www.microsoft.com/Windows/Diagnosis/PDU/events\\\"><Name>XML HTTP</Name>\\n<Type>ActiveX</Type>\\n<Publisher>Microsoft Corporation</Publisher>\\n<CLSID>{f6d90f16-9c73-11d3-b32e-00c04f990bb4}</CLSID>\\n<FileName>msxml3.dll</FileName>\\n<FileID>0000d9f90bf62d40aa4daf347814253f6c4e9f9365e7</FileID>\\n<Language>0</Language>\\n<FileVersion>8.110.7601.17988</FileVersion>\\n</IEAddOnChangeInfoEvent>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 900,",
+            "    \"Timestamp\": \"2014-01-25 16:17:52.481133+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Application-Experience/Program-Inventory\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Application-Experience\\\" Guid=\\\"{eef54e71-0661-422d-9a98-82fd4940b820}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">900</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x0800000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:17:52.481133+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2952\\\" ThreadID=\\\"1944\\\"></Execution>\\n<Channel>Microsoft-Windows-Application-Experience/Program-Inventory</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><IEAddOnChangeInfoEvent xmlns:auto-ns2=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"http://www.microsoft.com/Windows/Diagnosis/PDU/events\\\"><Name>XML Data Source Object</Name>\\n<Type>ActiveX</Type>\\n<Publisher>Microsoft Corporation</Publisher>\\n<CLSID>{f6d90f14-9c73-11d3-b32e-00c04f990bb4}</CLSID>\\n<FileName>msxml3.dll</FileName>\\n<FileID>0000d9f90bf62d40aa4daf347814253f6c4e9f9365e7</FileID>\\n<Language>0</Language>\\n<FileVersion>8.110.7601.17988</FileVersion>\\n</IEAddOnChangeInfoEvent>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-WindowsBackup%4ActionCenter.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-WindowsBackup%4ActionCenter.evtx.json",
+          "size": 19639,
+          "line_count": 206,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 100,",
+            "    \"Timestamp\": \"2014-01-25 01:32:50.674040+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-WindowsBackup/ActionCenter\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"hc_stateid\": \"1\",",
+            "      \"pwszTimeStamp\": \"\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-WindowsBackup\\\" Guid=\\\"{01979c6a-42fa-414c-b8aa-eee2c8202018}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">100</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:32:50.674040+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2932\\\" ThreadID=\\\"1400\\\"></Execution>\\n<Channel>Microsoft-Windows-WindowsBackup/ActionCenter</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"hc_stateid\\\">1</Data>\\n<Data Name=\\\"pwszTimeStamp\\\"></Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 100,",
+            "    \"Timestamp\": \"2014-01-25 15:33:36.811588+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-WindowsBackup/ActionCenter\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Kernel-StoreMgr%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Kernel-StoreMgr%4Operational.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Kernel-WHEA%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Kernel-WHEA%4Operational.evtx.json",
+          "size": 329567,
+          "line_count": 366,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 5,",
+            "    \"Timestamp\": \"2014-01-25 04:18:42.398407+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Kernel-WHEA/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"ErrorSourceCount\": \"4\",",
+            "      \"ErrorRecordFormat\": \"10\",",
+            "      \"ErrorSourceTableLength\": \"4256\",",
+            "      \"ErrorSourceTable\": \"0MuDAYD6//+oq4ECAPj//wAAAAAAAACAAAAAAAIAAAAoBwAAV2hlYQAAAAAAAAAAEMCFAYD6//8AAAAAAAAAAAQAAABYAQAAAAAAAAAAAAAAAAAAAAAAAADMAwAACgAAAAAAAAACAAAAQQEAAAIAAAAEAAAAAAAAAAAAAIAAAAAAAAABBgAAAAAAAAAAAAAAAP//////////AAEAAAAEAAABBAAAAgQAAAMEAAD//////////wEBAAAEBAAABQQAAAYEAAAHBAAA//////////8CAQAACAQAAAkEAAAKBAAACwQAAP//////////AwEAAAwEAAANBAAADgQAAA8EAAD//////////wQBAAAQBAAAEQQAABIEAAATBAAA//////////8FAQAAFAQAABUEAAAWBAAAFwQAAP//////////BgEAABgEAAAZBAAAGgQAABsEAAD//////////wcBAAAcBAAAHQQAAB4EAAAfBAAA//////////8IAQAAIAQAACEEAAAiBAAAIwQAAP//////////CQEAACQEAAAlBAAAJgQAACcEAAD//////////woBAAAoBAAAKQQAACoEAAArBAAA//////////8LAQAALAQAAC0EAAAuBAAALwQAAP//////////DAEAADAEAAAxBAAAMgQAADMEAAD//////////w0BAAA0BAAANQQAADYEAAA3BAAA//////////8OAQAAOAQAADkEAAA6BAAAOwQAAP//////////DwEAADwEAAA9BAAAPgQAAD8EAAD//////////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ4IQBgPr//9ALhAGA+v//AAAAAAAAAIAAAAAAAwAAACgHAABXaGVhAQAAAAAAAAAA0IUBgPr//wAAAAAAAAAABAAAAFgBAAAAAAAAAAAAAAAAAAAAAAAAAMwDAAAKAAAAAQAAAAIAAABBAQAAAwAAAAQAAAABAAAAAAAAgAAAAAABAAEGAAAAAAAcAABg6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAEEAAACBAAAAwQAAP//////////AQEAAAQEAAAFBAAABgQAAAcEAAD//////////wIBAAAIBAAACQQAAAoEAAALBAAA//////////8DAQAADAQAAA0EAAAOBAAADwQAAP//////////BAEAABAEAAARBAAAEgQAABMEAAD//////////wUBAAAUBAAAFQQAABYEAAAXBAAA//////////8GAQAAGAQAABkEAAAaBAAAGwQAAP//////////BwEAABwEAAAdBAAAHgQAAB8EAAD//////////wgBAAAgBAAAIQQAACIEAAAjBAAA//////////8JAQAAJAQAACUEAAAmBAAAJwQAAP//////////CgEAACgEAAApBAAAKgQAACsEAAD//////////wsBAAAsBAAALQQAAC4EAAAvBAAA//////////8MAQAAMAQAADEEAAAyBAAAMwQAAP//////////DQEAADQEAAA1BAAANgQAADcEAAD//////////w4BAAA4BAAAOQQAADoEAAA7BAAA//////////8PAQAAPAQAAD0EAAA+BAAAPwQAAP//////////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABDwhAGA+v//0MuDAYD6//8AAAAAAAAAgAAAAAABAAAAwAYAAFdoZWEDAAAAAAAAAEAZhQGA+v//AAAAAAAAAAADAAAAwAEAAAAAAAAAAAAAAAAAAAAAAAAAzAMAAAoAAAADAAAAAgAAAAABAAABAAAAAwAAAAIAAAAAAACAAAAAAAIAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqKuBAgD4//8Q4IQBgPr//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHMAwAACgAAAAcAAAACAAAAAAQAAAEAAAABAAAAAwAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Kernel-WHEA\\\" Guid=\\\"{7b563579-53c8-44e7-8236-0f87b9fe6594}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">5</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x2000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:18:42.398407+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"4\\\" ThreadID=\\\"8\\\"></Execution>\\n<Channel>Microsoft-Windows-Kernel-WHEA/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"ErrorSourceCount\\\">4</Data>\\n<Data Name=\\\"ErrorRecordFormat\\\">10</Data>\\n<Data Name=\\\"ErrorSourceTableLength\\\">4256</Data>\\n<Data Name=\\\"ErrorSourceTable\\\">0MuDAYD6//+oq4ECAPj//wAAAAAAAACAAAAAAAIAAAAoBwAAV2hlYQAAAAAAAAAAEMCFAYD6//8AAAAAAAAAAAQAAABYAQAAAAAAAAAAAAAAAAAAAAAAAADMAwAACgAAAAAAAAACAAAAQQEAAAIAAAAEAAAAAAAAAAAAAIAAAAAAAAABBgAAAAAAAAAAAAAAAP//////////AAEAAAAEAAABBAAAAgQAAAMEAAD//////////wEBAAAEBAAABQQAAAYEAAAHBAAA//////////8CAQAACAQAAAkEAAAKBAAACwQAAP//////////AwEAAAwEAAANBAAADgQAAA8EAAD//////////wQBAAAQBAAAEQQAABIEAAATBAAA//////////8FAQAAFAQAABUEAAAWBAAAFwQAAP//////////BgEAABgEAAAZBAAAGgQAABsEAAD//////////wcBAAAcBAAAHQQAAB4EAAAfBAAA//////////8IAQAAIAQAACEEAAAiBAAAIwQAAP//////////CQEAACQEAAAlBAAAJgQAACcEAAD//////////woBAAAoBAAAKQQAACoEAAArBAAA//////////8LAQAALAQAAC0EAAAuBAAALwQAAP//////////DAEAADAEAAAxBAAAMgQAADMEAAD//////////w0BAAA0BAAANQQAADYEAAA3BAAA//////////8OAQAAOAQAADkEAAA6BAAAOwQAAP//////////DwEAADwEAAA9BAAAPgQAAD8EAAD//////////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ4IQBgPr//9ALhAGA+v//AAAAAAAAAIAAAAAAAwAAACgHAABXaGVhAQAAAAAAAAAA0IUBgPr//wAAAAAAAAAABAAAAFgBAAAAAAAAAAAAAAAAAAAAAAAAAMwDAAAKAAAAAQAAAAIAAABBAQAAAwAAAAQAAAABAAAAAAAAgAAAAAABAAEGAAAAAAAcAABg6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAEEAAACBAAAAwQAAP//////////AQEAAAQEAAAFBAAABgQAAAcEAAD//////////wIBAAAIBAAACQQAAAoEAAALBAAA//////////8DAQAADAQAAA0EAAAOBAAADwQAAP//////////BAEAABAEAAARBAAAEgQAABMEAAD//////////wUBAAAUBAAAFQQAABYEAAAXBAAA//////////8GAQAAGAQAABkEAAAaBAAAGwQAAP//////////BwEAABwEAAAdBAAAHgQAAB8EAAD//////////wgBAAAgBAAAIQQAACIEAAAjBAAA//////////8JAQAAJAQAACUEAAAmBAAAJwQAAP//////////CgEAACgEAAApBAAAKgQAACsEAAD//////////wsBAAAsBAAALQQAAC4EAAAvBAAA//////////8MAQAAMAQAADEEAAAyBAAAMwQAAP//////////DQEAADQEAAA1BAAANgQAADcEAAD//////////w4BAAA4BAAAOQQAADoEAAA7BAAA//////////8PAQAAPAQAAD0EAAA+BAAAPwQAAP//////////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABDwhAGA+v//0MuDAYD6//8AAAAAAAAAgAAAAAABAAAAwAYAAFdoZWEDAAAAAAAAAEAZhQGA+v//AAAAAAAAAAADAAAAwAEAAAAAAAAAAAAAAAAAAAAAAAAAzAMAAAoAAAADAAAAAgAAAAABAAABAAAAAwAAAAIAAAAAAACAAAAAAAIAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqKuBAgD4//8Q4IQBgPr//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHMAwAACgAAAAcAAAACAAAAAAQAAAEAAAABAAAAAwAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 5,",
+            "    \"Timestamp\": \"2014-01-25 04:22:52.635605+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Kernel-WHEA/Operational\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Diagnosis-DPS%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-DPS%4Operational.evtx.json",
+          "size": 558575,
+          "line_count": 4665,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 100,",
+            "    \"Timestamp\": \"2014-01-25 04:19:42.177713+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Diagnosis-DPS/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"ScenarioId\": \"{2698178d-fdad-40ae-9d3c-1371703adc5b}\",",
+            "      \"InstanceId\": \"{48ac0883-e13a-47bf-86fc-38852bd21ad7}\",",
+            "      \"OriginalActivityId\": \"{2698178d-fdad-40ae-9d3c-1371703adc5b}\",",
+            "      \"DiagnosticModuleImageName\": \"%SystemRoot%\\\\system32\\\\diagperf.dll\",",
+            "      \"DiagnosticModuleId\": \"{15fba3b8-a37a-4f91-bdba-fbb98fe804bf}\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Diagnosis-DPS\\\" Guid=\\\"{6bba3851-2c7e-4dea-8f54-31e5afd029e3}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">100</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>1</Task>\\n<Opcode>12</Opcode>\\n<Keywords>0x4000000800000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:19:42.177713+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"{48ac0883-e13a-47bf-86fc-38852bd21ad7}\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"732\\\" ThreadID=\\\"1040\\\"></Execution>\\n<Channel>Microsoft-Windows-Diagnosis-DPS/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"ScenarioId\\\">{2698178d-fdad-40ae-9d3c-1371703adc5b}</Data>\\n<Data Name=\\\"InstanceId\\\">{48ac0883-e13a-47bf-86fc-38852bd21ad7}</Data>\\n<Data Name=\\\"OriginalActivityId\\\">{2698178d-fdad-40ae-9d3c-1371703adc5b}</Data>\\n<Data Name=\\\"DiagnosticModuleImageName\\\">%SystemRoot%\\\\system32\\\\diagperf.dll</Data>\\n<Data Name=\\\"DiagnosticModuleId\\\">{15fba3b8-a37a-4f91-bdba-fbb98fe804bf}</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 105,",
+            "    \"Timestamp\": \"2014-01-25 04:19:42.177713+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Diagnosis-PLA%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-PLA%4Operational.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-WLAN-AutoConfig%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-WLAN-AutoConfig%4Operational.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Known Folders API Service.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Known Folders API Service.evtx.json",
+          "size": 162789,
+          "line_count": 1510,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1002,",
+            "    \"Timestamp\": \"2014-01-25 04:20:25.764191+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Known Folders API Service\",",
+            "    \"Level\": \"Warning\",",
+            "    \"EventData\": {",
+            "      \"hrError\": \"0x80070002\",",
+            "      \"FolderId\": \"{fdd39ad0-238f-46af-adb4-6c85480369c7}\",",
+            "      \"Path\": \"C:\\\\Windows\\\\system32\\\\config\\\\systemprofile\\\\Documents\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-KnownFolders\\\" Guid=\\\"{8939299f-2315-4c5c-9b91-abb86aa0627d}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1002</EventID>\\n<Version>0</Version>\\n<Level>3</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:20:25.764191+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2024\\\" ThreadID=\\\"2044\\\"></Execution>\\n<Channel>Microsoft-Windows-Known Folders API Service</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"hrError\\\">0x80070002</Data>\\n<Data Name=\\\"FolderId\\\">{fdd39ad0-238f-46af-adb4-6c85480369c7}</Data>\\n<Data Name=\\\"Path\\\">C:\\\\Windows\\\\system32\\\\config\\\\systemprofile\\\\Documents</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1002,",
+            "    \"Timestamp\": \"2014-01-25 04:20:33.860603+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Known Folders API Service\",",
+            "    \"Level\": \"Warning\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Diagnosis-Scripted%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnosis-Scripted%4Operational.evtx.json",
+          "size": 26955,
+          "line_count": 248,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 101,",
+            "    \"Timestamp\": \"2014-01-25 16:24:33.542236+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Diagnosis-Scripted/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"PackagePath\": \"C:\\\\Windows\\\\diagnostics\\\\scheduled\\\\Maintenance\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Diagnosis-Scripted\\\" Guid=\\\"{e1dd7e52-621d-44e3-a1ad-0370c2b25946}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">101</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x4000000800000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:24:33.542236+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"968\\\" ThreadID=\\\"1544\\\"></Execution>\\n<Channel>Microsoft-Windows-Diagnosis-Scripted/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"PackagePath\\\">C:\\\\Windows\\\\diagnostics\\\\scheduled\\\\Maintenance</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 102,",
+            "    \"Timestamp\": \"2014-01-25 16:24:34.915039+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Diagnosis-Scripted/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"PackagePath\": \"C:\\\\Windows\\\\diagnostics\\\\scheduled\\\\Maintenance\""
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-MUI%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-MUI%4Operational.evtx.json",
+          "size": 17493,
+          "line_count": 182,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 3000,",
+            "    \"Timestamp\": \"2014-01-25 04:24:45.299002+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-MUI/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"Flags\": \"264\",",
+            "      \"NewLanguage\": \"(null)\",",
+            "      \"PrevLanguage\": \"(null)\",",
+            "      \"ExtendedFlag\": \"0\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-MUI\\\" Guid=\\\"{a8a1f2f6-a13a-45e9-b1fe-3419569e5ef2}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">3000</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>30</Task>\\n<Opcode>30</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:24:45.299002+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"812\\\" ThreadID=\\\"280\\\"></Execution>\\n<Channel>Microsoft-Windows-MUI/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"Flags\\\">264</Data>\\n<Data Name=\\\"NewLanguage\\\">(null)</Data>\\n<Data Name=\\\"PrevLanguage\\\">(null)</Data>\\n<Data Name=\\\"ExtendedFlag\\\">0</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 3002,",
+            "    \"Timestamp\": \"2014-01-25 04:24:45.455002+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-MUI/Operational\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-ReadyBoost%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-ReadyBoost%4Operational.evtx.json",
+          "size": 129199,
+          "line_count": 1339,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1017,",
+            "    \"Timestamp\": \"2014-01-25 04:20:19.555378+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-ReadyBoost/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"DeviceName\": \"Unknown Unknown\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-ReadyBoost\\\" Guid=\\\"{e6307a09-292c-497e-aad6-498f68e2b619}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1017</EventID>\\n<Version>1</Version>\\n<Level>4</Level>\\n<Task>1019</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000004000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:20:19.555378+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"844\\\" ThreadID=\\\"1148\\\"></Execution>\\n<Channel>Microsoft-Windows-ReadyBoost/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"DeviceName\\\">Unknown Unknown</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1016,",
+            "    \"Timestamp\": \"2014-01-25 04:20:29.944996+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-ReadyBoost/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"BootPlanTimestamp\": \"2014-01-24 20:20:29.851397+00:00\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-VHDMP%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-VHDMP%4Operational.evtx.json",
+          "size": 21726,
+          "line_count": 218,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-25 15:35:10.742153+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-VHDMP/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"VhdFileName\": \"C:\\\\Windows\\\\System32\\\\config\\\\SYSTEM.vhd\",",
+            "      \"VhdDiskNumber\": \"1\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-VHDMP\\\" Guid=\\\"{e2816346-87f4-4f85-95c3-0c79409aa89d}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 15:35:10.742153+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"4\\\" ThreadID=\\\"60\\\"></Execution>\\n<Channel>Microsoft-Windows-VHDMP/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"VhdFileName\\\">C:\\\\Windows\\\\System32\\\\config\\\\SYSTEM.vhd</Data>\\n<Data Name=\\\"VhdDiskNumber\\\">1</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-25 18:22:17.943949+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-VHDMP/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-NCSI%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NCSI%4Operational.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Dhcp-Client%4Admin.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Dhcp-Client%4Admin.evtx.json",
+          "size": 2469,
+          "line_count": 29,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1001,",
+            "    \"Timestamp\": \"2014-01-25 02:10:02.115112+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Dhcp-Client/Admin\",",
+            "    \"Level\": \"Error\",",
+            "    \"EventData\": {",
+            "      \"HWLength\": \"6\",",
+            "      \"HWAddress\": \"ABl+MNQi\",",
+            "      \"StatusCode\": \"121\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Dhcp-Client\\\" Guid=\\\"{15a7a4f8-0072-4eab-abad-f98a4d666aed}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1001</EventID>\\n<Version>0</Version>\\n<Level>2</Level>\\n<Task>3</Task>\\n<Opcode>75</Opcode>\\n<Keywords>0x4000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 02:10:02.115112+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"936\\\" ThreadID=\\\"2888\\\"></Execution>\\n<Channel>Microsoft-Windows-Dhcp-Client/Admin</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"HWLength\\\">6</Data>\\n<Data Name=\\\"HWAddress\\\">ABl+MNQi</Data>\\n<Data Name=\\\"StatusCode\\\">121</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 1002,",
+            "    \"Timestamp\": \"2014-01-25 13:39:23.789837+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Dhcp-Client/Admin\",",
+            "    \"Level\": \"Error\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Windows Defender%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Windows Defender%4Operational.evtx.json",
+          "size": 5542,
+          "line_count": 60,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 2002,",
+            "    \"Timestamp\": \"2014-01-25 02:04:04.905684+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Windows Defender/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"Product Name\": \"%%827\",",
+            "      \"Product Version\": \"6.1.7600.16385\",",
+            "      \"Current Engine Version\": \"1.1.10201.0\",",
+            "      \"Previous Engine Version\": \"1.1.6402.0\",",
+            "      \"Update Source Index\": \"1\",",
+            "      \"Update Source\": \"%%815\",",
+            "      \"Unused\": \"\",",
+            "      \"Domain\": \"IACIS-HDD-2014\",",
+            "      \"User\": \"BillyBob\",",
+            "      \"SID\": \"S-1-5-21-1171287513-3642516788-2358256967-1001\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Windows Defender\\\" Guid=\\\"{11cd958a-c507-4ef3-b3f2-5fd9dfbd2c78}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">2002</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 02:04:04.905684+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"1768\\\" ThreadID=\\\"2364\\\"></Execution>\\n<Channel>Microsoft-Windows-Windows Defender/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"Product Name\\\">%%827</Data>\\n<Data Name=\\\"Product Version\\\">6.1.7600.16385</Data>\\n<Data Name=\\\"Current Engine Version\\\">1.1.10201.0</Data>\\n<Data Name=\\\"Previous Engine Version\\\">1.1.6402.0</Data>\\n<Data Name=\\\"Update Source Index\\\">1</Data>\\n<Data Name=\\\"Update Source\\\">%%815</Data>\\n<Data Name=\\\"Unused\\\"></Data>\\n<Data Name=\\\"Domain\\\">IACIS-HDD-2014</Data>\\n<Data Name=\\\"User\\\">BillyBob</Data>\\n<Data Name=\\\"SID\\\">S-1-5-21-1171287513-3642516788-2358256967-1001</Data>\\n</EventData>\\n</Event>\\n\""
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-UAC-FileVirtualization%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-UAC-FileVirtualization%4Operational.evtx.json",
+          "size": 2168,
+          "line_count": 20,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 2007,",
+            "    \"Timestamp\": \"2014-02-03 12:30:18.945713+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-UAC-FileVirtualization/Operational\",",
+            "    \"Level\": \"Error\",",
+            "    \"EventData\": {",
+            "      \"Flags\": \"0\",",
+            "      \"SidLength\": \"28\",",
+            "      \"Sid\": \"S-1-5-21-1171287513-3642516788-2358256967-1001\",",
+            "      \"FileNameLength\": \"133\",",
+            "      \"FileNameBuffer\": \"\\\\Device\\\\HarddiskVolume2\\\\Users\\\\BillyBob\\\\AppData\\\\Local\\\\Microsoft\\\\Windows\\\\Temporary Internet Files\\\\Low\\\\Content.IE5\\\\U6FJ09YU\\\\Scout[1].swf\",",
+            "      \"ProcessImageNameLength\": \"74\",",
+            "      \"ProcessImageNameBuffer\": \"\\\\Device\\\\HarddiskVolume2\\\\Program Files (x86)\\\\Internet Explorer\\\\iexplore.exe\",",
+            "      \"Error\": \"3221225506\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-UAC-FileVirtualization\\\" Guid=\\\"{c02afc2b-e24e-4449-ad76-bcc2c2575ead}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">2007</EventID>\\n<Version>0</Version>\\n<Level>2</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-02-03 12:30:18.945713+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"4072\\\" ThreadID=\\\"2628\\\"></Execution>\\n<Channel>Microsoft-Windows-UAC-FileVirtualization/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-21-1171287513-3642516788-2358256967-1001\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"Flags\\\">0</Data>\\n<Data Name=\\\"SidLength\\\">28</Data>\\n<Data Name=\\\"Sid\\\">S-1-5-21-1171287513-3642516788-2358256967-1001</Data>\\n<Data Name=\\\"FileNameLength\\\">133</Data>\\n<Data Name=\\\"FileNameBuffer\\\">\\\\Device\\\\HarddiskVolume2\\\\Users\\\\BillyBob\\\\AppData\\\\Local\\\\Microsoft\\\\Windows\\\\Temporary Internet Files\\\\Low\\\\Content.IE5\\\\U6FJ09YU\\\\Scout[1].swf</Data>\\n<Data Name=\\\"ProcessImageNameLength\\\">74</Data>\\n<Data Name=\\\"ProcessImageNameBuffer\\\">\\\\Device\\\\HarddiskVolume2\\\\Program Files (x86)\\\\Internet Explorer\\\\iexplore.exe</Data>\\n<Data Name=\\\"Error\\\">3221225506</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  }",
+            "]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-NetworkAccessProtection%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NetworkAccessProtection%4Operational.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-MUI%4Admin.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-MUI%4Admin.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-NetworkProfile%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NetworkProfile%4Operational.evtx.json",
+          "size": 225539,
+          "line_count": 2350,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 4001,",
+            "    \"Timestamp\": \"2014-01-25 04:20:43.080219+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-NetworkProfile/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"InterfaceGuid\": \"{78a289b4-f8b9-43c7-8bba-f96e0bbc2185}\",",
+            "      \"CurrentOrNextState\": \"0\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-NetworkProfile\\\" Guid=\\\"{fbcfac3f-8459-419f-8e48-1f0b49cdb85e}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">4001</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>1</Task>\\n<Opcode>1</Opcode>\\n<Keywords>0x4000200000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:20:43.080219+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"1004\\\" ThreadID=\\\"1552\\\"></Execution>\\n<Channel>Microsoft-Windows-NetworkProfile/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-19\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"InterfaceGuid\\\">{78a289b4-f8b9-43c7-8bba-f96e0bbc2185}</Data>\\n<Data Name=\\\"CurrentOrNextState\\\">0</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 10000,",
+            "    \"Timestamp\": \"2014-01-25 04:20:43.080219+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-NetworkProfile/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Application-Experience%4Program-Compatibility-Troubleshooter.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Program-Compatibility-Troubleshooter.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Windows PowerShell.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Windows PowerShell.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "HardwareEvents.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/HardwareEvents.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Application-Experience%4Problem-Steps-Recorder.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Problem-Steps-Recorder.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-LanguagePackSetup%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-LanguagePackSetup%4Operational.evtx.json",
+          "size": 26995,
+          "line_count": 236,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 4000,",
+            "    \"Timestamp\": \"2014-01-25 16:24:33.511036+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-LanguagePackSetup/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-LanguagePackSetup\\\" Guid=\\\"{7237fff9-a08a-4804-9c79-4a8704b70b87}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">4000</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>35</Task>\\n<Opcode>1</Opcode>\\n<Keywords>0x4000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:24:33.511036+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2224\\\" ThreadID=\\\"712\\\"></Execution>\\n<Channel>Microsoft-Windows-LanguagePackSetup/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 4001,",
+            "    \"Timestamp\": \"2014-01-25 16:24:33.511036+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-LanguagePackSetup/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-LanguagePackSetup\\\" Guid=\\\"{7237fff9-a08a-4804-9c79-4a8704b70b87}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">4001</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>35</Task>\\n<Opcode>2</Opcode>\\n<Keywords>0x4000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:24:33.511036+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2224\\\" ThreadID=\\\"712\\\"></Execution>\\n<Channel>Microsoft-Windows-LanguagePackSetup/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Setup.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Setup.evtx.json",
+          "size": 723838,
+          "line_count": 5225,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 1,",
+            "    \"Timestamp\": \"2014-01-25 01:28:21.054764+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Setup\",",
+            "    \"Level\": \"LogAlways\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Servicing\\\" Guid=\\\"{bd12f3b8-fc40-4a61-a307-b7a013a069c1}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">1</EventID>\\n<Version>0</Version>\\n<Level>0</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:28:21.054764+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"1068\\\" ThreadID=\\\"2692\\\"></Execution>\\n<Channel>Setup</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><CbsPackageInitiateChanges xmlns=\\\"http://manifests.microsoft.com/win/2004/08/windows/setup_provider\\\"><PackageIdentifier>WindowsUpdateClient-SelfUpdate-ActiveX-Package</PackageIdentifier>\\n<InitialPackageState>Absent</InitialPackageState>\\n<IntendedPackageState>Staged</IntendedPackageState>\\n<Client>WindowsUpdateAgent</Client>\\n</CbsPackageInitiateChanges>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 2,",
+            "    \"Timestamp\": \"2014-01-25 01:28:29.431980+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Setup\",",
+            "    \"Level\": \"LogAlways\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Servicing\\\" Guid=\\\"{bd12f3b8-fc40-4a61-a307-b7a013a069c1}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">2</EventID>\\n<Version>0</Version>\\n<Level>0</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:28:29.431980+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"1068\\\" ThreadID=\\\"2692\\\"></Execution>\\n<Channel>Setup</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><CbsPackageChangeState xmlns=\\\"http://manifests.microsoft.com/win/2004/08/windows/setup_provider\\\"><PackageIdentifier>WindowsUpdateClient-SelfUpdate-ActiveX-Package</PackageIdentifier>\\n<IntendedPackageState>Staged</IntendedPackageState>\\n<ErrorCode>0x0</ErrorCode>\\n<Client>WindowsUpdateAgent</Client>\\n</CbsPackageChangeState>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Windows Firewall With Advanced Security%4ConnectionSecurity.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Windows Firewall With Advanced Security%4ConnectionSecurity.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-NetworkAccessProtection%4WHC.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-NetworkAccessProtection%4WHC.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Key Management Service.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Key Management Service.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-VDRVROOT%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-VDRVROOT%4Operational.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "System.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/System.evtx.json",
+          "size": 7142076,
+          "line_count": 66921,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 7036,",
+            "    \"Timestamp\": \"2010-11-21 03:58:31.093172+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"System\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"param1\": \"Diagnostic Policy Service\",",
+            "      \"param2\": \"stopped\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Service Control Manager\\\" Guid=\\\"{555908d1-a6d7-4695-8e1e-26931d2012f4}\\\" EventSourceName=\\\"Service Control Manager\\\"></Provider>\\n<EventID Qualifiers=\\\"16384\\\">7036</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x8080000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2010-11-21 03:58:31.093172+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"524\\\" ThreadID=\\\"848\\\"></Execution>\\n<Channel>System</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"param1\\\">Diagnostic Policy Service</Data>\\n<Data Name=\\\"param2\\\">stopped</Data>\\n<Binary>RABQAFMALwAxAAAA</Binary>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 7036,",
+            "    \"Timestamp\": \"2010-11-21 03:58:31.093172+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"System\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-RestartManager%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-RestartManager%4Operational.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Windows Defender%4WHC.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Windows Defender%4WHC.evtx.json",
+          "size": 11884,
+          "line_count": 123,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 101,",
+            "    \"Timestamp\": \"2010-11-21 03:58:31.420773+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Windows Defender/WHC\",",
+            "    \"Level\": \"LogAlways\",",
+            "    \"EventData\": {",
+            "      \"hc_stateid\": \"2\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Windows Defender\\\" Guid=\\\"{11cd958a-c507-4ef3-b3f2-5fd9dfbd2c78}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">101</EventID>\\n<Version>0</Version>\\n<Level>0</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x4000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2010-11-21 03:58:31.420773+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"2272\\\" ThreadID=\\\"752\\\"></Execution>\\n<Channel>Microsoft-Windows-Windows Defender/WHC</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"hc_stateid\\\">2</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 101,",
+            "    \"Timestamp\": \"2014-01-25 04:21:53.202343+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-Windows Defender/WHC\",",
+            "    \"Level\": \"LogAlways\",",
+            "    \"EventData\": {",
+            "      \"hc_stateid\": \"10\""
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-TerminalServices-LocalSessionManager%4Admin.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-TerminalServices-LocalSessionManager%4Admin.evtx.json",
+          "size": 2,
+          "line_count": 1,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[]"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-TerminalServices-LocalSessionManager%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-TerminalServices-LocalSessionManager%4Operational.evtx.json",
+          "size": 123461,
+          "line_count": 866,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 21,",
+            "    \"Timestamp\": \"2014-01-25 01:27:57.561125+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-TerminalServices-LocalSessionManager/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-TerminalServices-LocalSessionManager\\\" Guid=\\\"{5d896912-022d-40aa-a3a8-4fa5515c76d7}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">21</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x1000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:27:57.561125+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"476\\\" ThreadID=\\\"820\\\"></Execution>\\n<Channel>Microsoft-Windows-TerminalServices-LocalSessionManager/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><EventXML xmlns:auto-ns3=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"Event_NS\\\"><User>IACIS-HDD-2014\\\\BillyBob</User>\\n<SessionID>1</SessionID>\\n<Address>LOCAL</Address>\\n</EventXML>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 22,",
+            "    \"Timestamp\": \"2014-01-25 01:27:57.795124+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-TerminalServices-LocalSessionManager/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-TerminalServices-LocalSessionManager\\\" Guid=\\\"{5d896912-022d-40aa-a3a8-4fa5515c76d7}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">22</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x1000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 01:27:57.795124+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"476\\\" ThreadID=\\\"720\\\"></Execution>\\n<Channel>Microsoft-Windows-TerminalServices-LocalSessionManager/Operational</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<UserData><EventXML xmlns:auto-ns3=\\\"http://schemas.microsoft.com/win/2004/08/events\\\" xmlns=\\\"Event_NS\\\"><User>IACIS-HDD-2014\\\\BillyBob</User>\\n<SessionID>1</SessionID>\\n<Address>LOCAL</Address>\\n</EventXML>\\n</UserData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Application-Experience%4Program-Telemetry.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Application-Experience%4Program-Telemetry.evtx.json",
+          "size": 15920,
+          "line_count": 128,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 701,",
+            "    \"Timestamp\": \"2014-01-25 16:17:39.602428+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Application-Experience/Program-Telemetry\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Application-Experience\\\" Guid=\\\"{eef54e71-0661-422d-9a98-82fd4940b820}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">701</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x1000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 16:17:39.602428+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"820\\\" ThreadID=\\\"2708\\\"></Execution>\\n<Channel>Microsoft-Windows-Application-Experience/Program-Telemetry</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 701,",
+            "    \"Timestamp\": \"2014-01-29 13:20:09.434380+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Application-Experience/Program-Telemetry\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {},",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-Application-Experience\\\" Guid=\\\"{eef54e71-0661-422d-9a98-82fd4940b820}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">701</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x1000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-29 13:20:09.434380+00:00\\\"></TimeCreated>\\n<EventRecordID>2</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"3984\\\" ThreadID=\\\"2376\\\"></Execution>\\n<Channel>Microsoft-Windows-Application-Experience/Program-Telemetry</Channel>\\n<Computer>IACIS-HDD-2014</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData></EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {"
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-Diagnostics-Performance%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-Diagnostics-Performance%4Operational.evtx.json",
+          "size": 221355,
+          "line_count": 2298,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 100,",
+            "    \"Timestamp\": \"2014-01-25 13:34:11.758089+00:00\",",
+            "    \"Computer\": \"IACIS-HDD-2014\",",
+            "    \"Channel\": \"Microsoft-Windows-Diagnostics-Performance/Operational\",",
+            "    \"Level\": \"Error\",",
+            "    \"EventData\": {",
+            "      \"BootTsVersion\": \"2\",",
+            "      \"BootStartTime\": \"2014-01-25 13:31:25.640400+00:00\",",
+            "      \"BootEndTime\": \"2014-01-25 13:34:09.090485+00:00\",",
+            "      \"SystemBootInstance\": \"6\",",
+            "      \"UserBootInstance\": \"1\",",
+            "      \"BootTime\": \"89594\",",
+            "      \"MainPathBootTime\": \"76694\",",
+            "      \"BootKernelInitTime\": \"26\",",
+            "      \"BootDriverInitTime\": \"17862\",",
+            "      \"BootDevicesInitTime\": \"2664\",",
+            "      \"BootPrefetchInitTime\": \"87936\",",
+            "      \"BootPrefetchBytes\": \"629080064\","
+          ]
+        },
+        {
+          "name": "Microsoft-Windows-GroupPolicy%4Operational.evtx.json",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs/windows/evtx/Microsoft-Windows-GroupPolicy%4Operational.evtx.json",
+          "size": 1444450,
+          "line_count": 13716,
+          "key_findings": [],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "[",
+            "  {",
+            "    \"EventID\": 5320,",
+            "    \"Timestamp\": \"2014-01-25 04:19:32.240496+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-GroupPolicy/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"InfoDescription\": \"%%4168\"",
+            "    },",
+            "    \"RawXml\": \"<Event xmlns=\\\"http://schemas.microsoft.com/win/2004/08/events/event\\\"><System><Provider Name=\\\"Microsoft-Windows-GroupPolicy\\\" Guid=\\\"{aea1b4fa-97d1-45f2-a64c-4d69fffd92c9}\\\"></Provider>\\n<EventID Qualifiers=\\\"\\\">5320</EventID>\\n<Version>0</Version>\\n<Level>4</Level>\\n<Task>0</Task>\\n<Opcode>0</Opcode>\\n<Keywords>0x4000000000000000</Keywords>\\n<TimeCreated SystemTime=\\\"2014-01-25 04:19:32.240496+00:00\\\"></TimeCreated>\\n<EventRecordID>1</EventRecordID>\\n<Correlation ActivityID=\\\"\\\" RelatedActivityID=\\\"\\\"></Correlation>\\n<Execution ProcessID=\\\"868\\\" ThreadID=\\\"884\\\"></Execution>\\n<Channel>Microsoft-Windows-GroupPolicy/Operational</Channel>\\n<Computer>37L4247F27-25</Computer>\\n<Security UserID=\\\"S-1-5-18\\\"></Security>\\n</System>\\n<EventData><Data Name=\\\"InfoDescription\\\">%%4168</Data>\\n</EventData>\\n</Event>\\n\"",
+            "  },",
+            "  {",
+            "    \"EventID\": 5320,",
+            "    \"Timestamp\": \"2014-01-25 04:19:32.240496+00:00\",",
+            "    \"Computer\": \"37L4247F27-25\",",
+            "    \"Channel\": \"Microsoft-Windows-GroupPolicy/Operational\",",
+            "    \"Level\": \"Information\",",
+            "    \"EventData\": {",
+            "      \"InfoDescription\": \"%%4160\""
+          ]
+        }
+      ],
+      "standard": [
+        {
+          "name": "logs_partition_0.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs_partition_0.txt",
+          "size": 252,
+          "line_count": 8,
+          "key_findings": [
+            {
+              "type": "event_logs",
+              "description": "0 Windows event log files found",
+              "severity": "info"
+            },
+            {
+              "type": "few_logs",
+              "description": "Few or no log files found",
+              "severity": "medium"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Log Files for Partition 0",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 34 bytes",
+            "Filesystem: ntfs",
+            "================================================================================",
+            "",
+            "No explicit log files found.",
+            ""
+          ]
+        },
+        {
+          "name": "logs_partition_1.txt",
+          "path": "/home/utsav/Github/FreeKhana/siem-tool/backend-python/../forensic_output/2020JimmyWilson/logs_partition_1.txt",
+          "size": 7163,
+          "line_count": 134,
+          "key_findings": [
+            {
+              "type": "event_logs",
+              "description": "67 Windows event log files found",
+              "severity": "info"
+            }
+          ],
+          "suspicious_patterns": [],
+          "sample_lines": [
+            "Log Files for Partition 1",
+            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Offset: 65664 bytes",
+            "Filesystem: auto",
+            "================================================================================",
+            "",
+            "Log Files Found:",
+            "++++++ r/r 3999-128-4:\tUsrClass.dat.LOG1",
+            "++++++ r/r 4000-128-1:\tUsrClass.dat.LOG2",
+            "+++++++ r/r 1784-128-3:\tV01.log",
+            "+++++++ r/r 4150-128-3:\tV010000E.log",
+            "+++++++ r/r 2961-128-3:\tV0100016.log",
+            "++++++ r/r 3712-128-1:\tWindowsUpdate.log",
+            "+++++++++++ r/r 3752-128-3:\tedb.log",
+            "++++++++++++ r/r 702-128-3:\tedb00001.log",
+            "+++++++++++ r/r 3780-128-3:\tedb.log",
+            "+++++++++++ r/r 3778-128-3:\tedb00001.log",
+            "++++++++++ r/r 3734-128-3:\tedb.log",
+            "+++++++++++ r/r 3743-128-3:\tedb.log",
+            "++++++++ r/r 3782-128-3:\tedb00001.log"
+          ]
+        }
+      ]
+    },
+    "total_files": 78
+  },
+  "evidence": {
+    "timestomping": {
+      "future_dates": [
+        "USN journal missing",
+        "USN journal missing"
+      ],
+      "zero_timestamps": [],
+      "identical_timestamps": [],
+      "total_checked": 7
+    },
+    "shadow_copies": {
+      "extend_exists": true,
+      "system_volume_info": false,
+      "indicators": [
+        "No shadow copies found"
+      ]
+    },
+    "alternate_data_streams": {
+      "total_found": 10,
+      "zone_identifier": 0,
+      "samples": [
+        "$BadClus:$Bad",
+        "$Extend/$ObjId:$O",
+        "$Extend/$Quota:$O",
+        "$Extend/$Quota:$Q",
+        "$Extend/$Reparse:$R",
+        "$Extend/$RmMetadata/$Repair:$Config",
+        "$Extend/$RmMetadata/$TxfLog/$Tops:$T",
+        "$Secure:$SDS",
+        "$Secure:$SDH",
+        "$Secure:$SII"
+      ]
+    },
+    "file_deletion": {
+      "orphans": 1,
+      "deleted_entries": 0,
+      "recycle_bin": false
+    },
+    "registry": {
+      "hives_found": [
+        "NTUSER"
+      ],
+      "tool_indicators": []
+    },
+    "logs": {
+      "event_logs": 62,
+      "log_files": [
+        "Microsoft-Windows-WindowsUpdateClient%4Operational.evtx.json",
+        "Microsoft-Windows-Dhcpv6-Client%4Admin.evtx.json",
+        "Application.evtx.json",
+        "Microsoft-Windows-DriverFrameworks-UserMode%4Operational.evtx.json",
+        "Microsoft-Windows-ReliabilityAnalysisComponent%4Operational.evtx.json",
+        "Microsoft-Windows-Kernel-WHEA%4Errors.evtx.json",
+        "Microsoft-Windows-Kernel-EventTracing%4Admin.evtx.json",
+        "Microsoft-Windows-WindowsSystemAssessmentTool%4Operational.evtx.json",
+        "Internet Explorer.evtx.json",
+        "Microsoft-Windows-DiskDiagnosticDataCollector%4Operational.evtx.json"
+      ]
+    }
+  },
+  "context": {
+    "system_prompt": "You are an expert forensic analyst specializing in digital forensics and anti-forensic technique detection. Your role is to analyze extracted disk image artifacts and identify evidence of anti-forensic activities.\n\nKNOWLEDGE AREAS:\n- Windows NTFS filesystem forensics\n- Master File Table (MFT) analysis\n- USN Journal interpretation\n- Registry forensics (SAM, SECURITY, SOFTWARE, SYSTEM hives)\n- Volume Shadow Copy (VSS) analysis\n- Alternate Data Streams (ADS)\n- Timestomping techniques\n- Log manipulation and clearing\n- Common anti-forensic tools (Timestomp, CCleaner, BleachBit, etc.)\n\nRESPONSE REQUIREMENTS:\n1. Provide reasoning for each finding\n2. Distinguish between normal Windows behavior and suspicious activity\n3. Correlate findings across multiple artifacts\n4. Assign severity levels with justification\n5. Suggest specific follow-up investigations",
+    "evidence_summary": "\nEVIDENCE SUMMARY\n================\n\nTIMESTOMPING ANALYSIS:\n- Files with future dates: 2\n- Zero timestamps: 0\n- Total timeline entries analyzed: 7\n- Sample future dates: ['USN journal missing', 'USN journal missing']\n\nSHADOW COPY STATUS:\n- $Extend exists: True\n- System Volume Information: False\n- Other indicators: ['No shadow copies found']\n\nALTERNATE DATA STREAMS:\n- Total ADS found: 10\n- Zone.Identifier (downloaded): 0\n- Samples: ['$BadClus:$Bad', '$Extend/$ObjId:$O', '$Extend/$Quota:$O', '$Extend/$Quota:$Q', '$Extend/$Reparse:$R']\n\nFILE DELETION:\n- Orphaned files: 1\n- Deleted MFT entries: 0\n- Recycle Bin present: False\n\nREGISTRY:\n- Hives found: ['NTUSER']\n- Tool indicators: []\n\nLOG FILES:\n- Event logs (.evtx): 62\n",
+    "analysis_instructions": "\nTASK:\nAnalyze the extracted forensic artifacts and produce a structured analysis report.\n\nFOR EACH FINDING, PROVIDE:\n1. Technique detected (e.g., timestomping, shadow copy deletion)\n2. Severity (LOW/MEDIUM/HIGH/CRITICAL)\n3. Evidence: Specific file entries or data that supports the finding\n4. Explanation: WHY this indicates anti-forensic activity vs normal behavior\n5. Recommendation: Specific follow-up investigation steps\n\nCORRELATE ACROSS ARTIFACTS:\n- Timestomping: Cross-reference timeline with USN journal timestamps\n- Deletion: Check MFT deleted entries + Recycle Bin + orphan files\n- Shadow Copies: Verify $Extend + System Volume Information status\n- ADS: Note which files have streams and their types\n\nFINAL OUTPUT:\nProvide a JSON object with your findings (schema below).\n",
+    "json_output_schema": "\nJSON Output Schema:\n{\n  \"findings\": [\n    {\n      \"technique\": \"timestomping|shadow_deletion|ads|deletion|registry_tampering|log_clearing|other\",\n      \"severity\": \"LOW|MEDIUM|HIGH|CRITICAL\",\n      \"evidence\": \"Specific data supporting this finding\",\n      \"explanation\": \"Detailed reasoning for why this is/isn't suspicious\",\n      \"recommendation\": \"Specific follow-up investigation\",\n      \"file_source\": \"Which artifact file contains this evidence\"\n    }\n  ],\n  \"summary\": \"Overall assessment in 2-3 sentences\",\n  \"risk_level\": \"LOW|MEDIUM|HIGH|CRITICAL\",\n  \"recommendations\": [\"List of general recommendations\"]\n}\n"
+  },
+  "statistics": {
+    "total_files_processed": 78,
+    "total_size_bytes": 28849248,
+    "total_size_mb": 27.51,
+    "files_by_priority": {
+      "critical": 6,
+      "important": 70,
+      "standard": 2
+    }
+  }
+}

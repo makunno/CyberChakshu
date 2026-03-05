@@ -3,3 +3,5 @@ uvicorn
 python-multipart
 numpy
 scikit-learn
+reportlab
+python-evtx>=0.7.0

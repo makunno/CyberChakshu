@@ -1,0 +1,48 @@
+{
+  "image": "/home/utsav/Github/imageProcessor/jo-favorites-usb-2009-12-11.E01",
+  "partitions": [
+    {
+      "slot": "002:",
+      "start": "0000000063",
+      "desc": "Win95 FAT32 (0x0b)"
+    }
+  ],
+  "extracted_files": {
+    "mft": [
+      "mft_partition_0.txt"
+    ],
+    "usn_journals": [
+      "usn_journal_partition_0.txt"
+    ],
+    "registry": [
+      "registry_partition_0.txt"
+    ],
+    "logs": [
+      "logs_partition_0.txt"
+    ],
+    "timelines": [
+      "timeline_partition_0.txt"
+    ],
+    "shadow_copies": [
+      "shadow_copies_partition_0.txt"
+    ],
+    "hidden_structures": [
+      "hidden_structures_partition_0.txt"
+    ],
+    "timestomp": [
+      "timestomp_indicators_partition_0.txt"
+    ]
+  },
+  "status": {
+    "partition_0": {
+      "mft": true,
+      "usn": true,
+      "registry": true,
+      "logs": true,
+      "timeline": true,
+      "shadow_copies": true,
+      "hidden_structures": true,
+      "timestomp": true
+    }
+  }
+}

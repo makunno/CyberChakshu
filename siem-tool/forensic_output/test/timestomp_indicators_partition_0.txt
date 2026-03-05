@@ -1,0 +1,6 @@
+Timestamp Analysis for Partition 0
+Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/test.dd
+================================================================================
+
+Error: Cannot determine file system type
+

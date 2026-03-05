@@ -1,0 +1,14 @@
+{
+  "image": "/home/utsav/Github/imageProcessor/jo-favorites-usb-2009-12-11.E01",
+  "extraction_time": "2026-02-23T20:13:51.931599Z",
+  "total_logs_found": 0,
+  "total_logs_extracted": 0,
+  "total_size_mb": 0.0,
+  "by_type": {
+    "evtx": 0,
+    "log": 0,
+    "txt": 0
+  },
+  "errors": [],
+  "extracted_files": []
+}
