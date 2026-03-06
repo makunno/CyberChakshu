@@ -1,3 +1,0 @@
-MFT Listing for Partition 0
-Error: Invalid magic value (Not a NTFS file system (magic))
-

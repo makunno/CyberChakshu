@@ -1,7 +1,0 @@
-Full Timeline for Partition 0
-Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01
-Offset: 34 bytes
-================================================================================
-
-Error: Cannot determine file system type
-
