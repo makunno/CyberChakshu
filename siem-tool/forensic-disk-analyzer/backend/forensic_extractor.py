@@ -101,7 +101,9 @@ class ForensicExtractor:
                     if ":" in slot:
                         slot_parts = slot.split(":")
                         if len(slot_parts) == 2 and slot_parts[0].isdigit():
-                            part_num = len(partitions)  # Use sequential index instead
+                            part_num = (
+                                int(slot_parts[1]) if slot_parts[1].isdigit() else 0
+                            )
                             is_partition = True
                     elif slot.replace("-", "").isdigit():
                         is_partition = True
@@ -125,16 +127,7 @@ class ForensicExtractor:
                                 "table",
                                 "gpt ",
                                 "safety",
-                                "reserved",  # Skip MS reserved partitions
                             ]
-
-                            # Also skip very small partitions
-                            try:
-                                length_sectors = int(parts[4])
-                                if length_sectors < 10000:
-                                    skip_patterns.append("small")
-                            except:
-                                pass
 
                             if start_sector > 0 and not any(
                                 p in desc_lower for p in skip_patterns
@@ -152,29 +145,6 @@ class ForensicExtractor:
                                 )
                         except (ValueError, IndexError):
                             pass
-
-        # If no partitions found, treat the entire image as a single raw filesystem partition
-        if not partitions:
-            cmd_test = ["fls"]
-            if self.image_type == "ewf":
-                cmd_test.extend(["-i", "ewf"])
-            cmd_test.extend(["-o", "0"])
-            cmd_test.append(self.image_path)
-            test_code, test_stdout, _ = self.run_command(cmd_test)
-
-            if test_code == 0 and test_stdout:
-                partitions.append(
-                    {
-                        "slot": "0:0",
-                        "partition_num": 0,
-                        "start": "0",
-                        "start_int": 0,
-                        "end": "0",
-                        "length": "0",
-                        "desc": "Raw NTFS/Filesystem Image (No partition table)",
-                    }
-                )
-
         return partitions
 
     def detect_filesystem(self, offset: int = 0) -> Optional[str]:
@@ -261,53 +231,90 @@ class ForensicExtractor:
 
     def extract_registry_hives(self, partition_num: int = 0) -> bool:
         """Extract Windows registry hives from NTFS partition."""
-        output_file = self.output_dir / f"registry_partition_{partition_num}.txt"
+        output_dir = self.output_dir / "registry"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Standard registry hives
+        hives = {
+            "SYSTEM": "/Windows/System32/config/SYSTEM",
+            "SOFTWARE": "/Windows/System32/config/SOFTWARE",
+            "SAM": "/Windows/System32/config/SAM",
+            "SECURITY": "/Windows/System32/config/SECURITY",
+            "Amcache": "/Windows/AppCompat/Programs/Amcache.hve",
+        }
+        
+        extracted_count = 0
+        for name, path in hives.items():
+            out_path = output_dir / f"{name}_partition_{partition_num}.hive"
+            if self.extract_file_by_path(path, partition_num, out_path):
+                extracted_count += 1
+                
+        # Also save a text listing for backward compatibility
+        list_file = self.output_dir / f"registry_partition_{partition_num}.txt"
+        with open(list_file, "w") as f:
+            f.write(f"Registry Hives Extraction for Partition {partition_num}\n")
+            f.write(f"Extracted {extracted_count} raw hives to registry/ directory\n")
+            
+        return extracted_count > 0
+
+    def extract_prefetch(self, partition_num: int = 0) -> bool:
+        """Extract Windows Prefetch files (.pf)."""
+        output_dir = self.output_dir / "prefetch"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
         offset = self.get_partition_offset(partition_num)
         fs_type = self.detect_filesystem(offset)
-
+        
+        # List files in Prefetch directory
         cmd = ["fls", "-o", str(offset), "-r"]
         if fs_type and fs_type != "auto":
             cmd.extend(["-f", fs_type])
         cmd.append(self.image_path)
-
+        
         code, stdout, stderr = self.run_command(cmd)
+        
+        if code != 0 or not stdout:
+            return False
+            
+        pf_files = []
+        for line in stdout.split("\n"):
+            if ".pf" in line.lower() and "Windows/Prefetch" in line:
+                parts = line.split()
+                if len(parts) >= 3:
+                    full_path = " ".join(parts[2:])
+                    pf_files.append(full_path)
+                    
+        extracted_count = 0
+        for pf_path in pf_files[:100]:
+            filename = os.path.basename(pf_path)
+            out_path = output_dir / f"{filename}_partition_{partition_num}.pf"
+            if self.extract_file_by_path(pf_path, partition_num, out_path):
+                extracted_count += 1
+                
+        return extracted_count > 0
 
-        registry_patterns = [
-            "System32/config/SAM",
-            "System32/config/SECURITY",
-            "System32/config/SOFTWARE",
-            "System32/config/SYSTEM",
-            "System32/config/DEFAULT",
-            "NTUSER.DAT",
-            "USRCLASS.DAT",
-        ]
-
-        registry_hives = []
-        if code == 0 and stdout:
-            for line in stdout.split("\n"):
-                line_lower = line.lower()
-                for pattern in registry_patterns:
-                    if pattern.lower() in line_lower:
-                        registry_hives.append(line)
-                        break
-
-        with open(output_file, "w") as f:
-            f.write(f"Registry Hives for Partition {partition_num}\n")
-            f.write(f"Image: {self.image_path}\n")
-            f.write(f"Offset: {offset} bytes\n")
-            f.write(f"Filesystem: {fs_type}\n")
-            f.write("=" * 80 + "\n\n")
-            if registry_hives:
-                f.write("Registry Hives Found:\n")
-                f.write("\n".join(registry_hives))
-            else:
-                f.write("No registry hives found in standard locations.\n")
-                if code == 0 and stdout:
-                    f.write("\nSearching full output for .DAT/.LOG files...\n")
-                    for line in stdout.split("\n"):
-                        if ".DAT" in line or ".LOG" in line:
-                            f.write(line + "\n")
-        return True
+    def extract_file_by_path(self, file_path: str, partition_num: int, output_path: Path) -> bool:
+        """Helper to extract a file by its full path using icat."""
+        offset = self.get_partition_offset(partition_num)
+        
+        cmd = ["icat"]
+        if self.image_type == "ewf":
+            cmd.extend(["-i", "ewf"])
+        cmd.extend(["-o", str(offset)])
+        cmd.append(self.image_path)
+        cmd.append(file_path)
+        
+        import subprocess
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=60)
+            if result.returncode == 0 and result.stdout:
+                with open(output_path, "wb") as f:
+                    f.write(result.stdout)
+                return True
+        except Exception as e:
+            pass
+            
+        return False
 
     def extract_logs(self, partition_num: int = 0) -> bool:
         """Extract Windows event logs and other log files."""
@@ -351,10 +358,7 @@ class ForensicExtractor:
         offset = self.get_partition_offset(partition_num)
         fs_type = self.detect_filesystem(offset)
 
-        cmd = ["fls"]
-        if self.image_type == "ewf":
-            cmd.extend(["-i", "ewf"])
-        cmd.extend(["-o", str(offset), "-r", "-l"])
+        cmd = ["fls", "-o", str(offset), "-r", "-l"]
         if fs_type and fs_type != "auto":
             cmd.extend(["-f", fs_type])
         cmd.append(self.image_path)
@@ -570,14 +574,12 @@ class ForensicExtractor:
         cmd.append(self.image_path)
         cmd.append("$UsnJrnl:$J")
 
-        try:
-            result = subprocess.run(cmd, capture_output=True, timeout=300)
-            if result.returncode == 0 and result.stdout:
-                with open(output_file, "wb") as f:
-                    f.write(result.stdout)
-                return True
-        except Exception:
-            pass
+        code, stdout, stderr = self.run_command(cmd)
+
+        if code == 0 and stdout:
+            with open(output_file, "wb") as f:
+                f.write(stdout.encode("latin-1") if isinstance(stdout, str) else stdout)
+            return True
         return False
 
     def extract_raw_logfile(self, partition_num: int = 0) -> bool:
@@ -592,14 +594,12 @@ class ForensicExtractor:
         cmd.append(self.image_path)
         cmd.append("$LogFile")
 
-        try:
-            result = subprocess.run(cmd, capture_output=True, timeout=300)
-            if result.returncode == 0 and result.stdout:
-                with open(output_file, "wb") as f:
-                    f.write(result.stdout)
-                return True
-        except Exception:
-            pass
+        code, stdout, stderr = self.run_command(cmd)
+
+        if code == 0 and stdout:
+            with open(output_file, "wb") as f:
+                f.write(stdout.encode("latin-1") if isinstance(stdout, str) else stdout)
+            return True
         return False
 
     def extract_raw_volume(self, partition_num: int = 0) -> bool:
@@ -614,14 +614,12 @@ class ForensicExtractor:
         cmd.append(self.image_path)
         cmd.append("$Volume")
 
-        try:
-            result = subprocess.run(cmd, capture_output=True, timeout=300)
-            if result.returncode == 0 and result.stdout:
-                with open(output_file, "wb") as f:
-                    f.write(result.stdout)
-                return True
-        except Exception:
-            pass
+        code, stdout, stderr = self.run_command(cmd)
+
+        if code == 0 and stdout:
+            with open(output_file, "wb") as f:
+                f.write(stdout.encode("latin-1") if isinstance(stdout, str) else stdout)
+            return True
         return False
 
     def extract_raw_boot_sector(self, partition_num: int = 0) -> bool:
@@ -654,70 +652,15 @@ class ForensicExtractor:
             cmd.extend(["-i", "ewf"])
         cmd.extend(["-o", str(offset)])
         cmd.append(self.image_path)
-        # Use inode format with sequence number
-        cmd.append("0-128-1")
-
-        try:
-            result = subprocess.run(cmd, capture_output=True, timeout=300)
-            if result.returncode == 0 and result.stdout:
-                with open(output_file, "wb") as f:
-                    f.write(result.stdout)
-                return True
-        except Exception:
-            pass
-        return False
-
-    def extract_prefetch(self, partition_num: int = 0) -> bool:
-        """Extract Windows Prefetch files (.pf) for malware execution analysis."""
-        output_dir = self.output_dir / f"prefetch_partition_{partition_num}"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
-        offset = self.get_partition_offset(partition_num)
-        fs_type = self.detect_filesystem(offset)
-
-        # 1. Locate Prefetch directory
-        cmd = self.get_fls_cmd_base(offset)
-        cmd.append("-r")
-        if fs_type and fs_type != "auto":
-            cmd.extend(["-f", fs_type])
-        cmd.append(self.image_path)
+        cmd.append("$MFT")
 
         code, stdout, stderr = self.run_command(cmd)
-        if code != 0 or not stdout:
-            return False
 
-        prefetch_files = []
-        for line in stdout.split("\n"):
-            if ".pf" in line and "/Prefetch/" in line:
-                # Extract inode
-                match = re.search(r"(\d+-\d+-\d+):", line)
-                if match:
-                    inode = match.group(1)
-                    # Extract filename
-                    fname = line.split("\t")[-1].strip()
-                    prefetch_files.append((inode, fname))
-
-        # 2. Extract each .pf file
-        count = 0
-        for inode, fname in prefetch_files[:100]: # Limit to top 100 for AI signal
-            output_file = output_dir / fname
-            icat_cmd = ["icat"]
-            if self.image_type == "ewf":
-                icat_cmd.extend(["-i", "ewf"])
-            icat_cmd.extend(["-o", str(offset)])
-            icat_cmd.append(self.image_path)
-            icat_cmd.append(inode)
-
-            try:
-                result = subprocess.run(icat_cmd, capture_output=True, timeout=30)
-                if result.returncode == 0 and result.stdout:
-                    with open(output_file, "wb") as f:
-                        f.write(result.stdout)
-                    count += 1
-            except Exception:
-                continue
-        
-        return count > 0
+        if code == 0 and stdout:
+            with open(output_file, "wb") as f:
+                f.write(stdout.encode("latin-1") if isinstance(stdout, str) else stdout)
+            return True
+        return False
 
     def extract_all_artifacts(self, partition_num: int = 0) -> Dict[str, bool]:
         """Extract all artifact types for a specific partition."""
@@ -725,12 +668,12 @@ class ForensicExtractor:
         results["mft"] = self.extract_mft(partition_num)
         results["usn"] = self.extract_usn_journal(partition_num)
         results["registry"] = self.extract_registry_hives(partition_num)
+        results["prefetch"] = self.extract_prefetch(partition_num)
         results["logs"] = self.extract_logs(partition_num)
         results["timeline"] = self.extract_timeline(partition_num)
         results["shadow_copies"] = self.detect_shadow_copies(partition_num)
         results["hidden_structures"] = self.detect_hidden_structures(partition_num)
         results["timestomp"] = self.detect_timestomping(partition_num)
-        results["prefetch"] = self.extract_prefetch(partition_num)
         results["raw_usn_journal"] = self.extract_raw_usn_journal(partition_num)
         results["raw_logfile"] = self.extract_raw_logfile(partition_num)
         results["raw_volume"] = self.extract_raw_volume(partition_num)
@@ -747,12 +690,12 @@ class ForensicExtractor:
                 "mft": [],
                 "usn_journals": [],
                 "registry": [],
+                "prefetch": [],
                 "logs": [],
                 "timelines": [],
                 "shadow_copies": [],
                 "hidden_structures": [],
                 "timestomp": [],
-                "prefetch": [],
                 "raw_usn_journal": [],
                 "raw_logfile": [],
                 "raw_volume": [],
@@ -789,7 +732,6 @@ class ForensicExtractor:
             summary["extracted_files"]["timestomp"].append(
                 f"timestomp_indicators_partition_{i}.txt"
             )
-            summary["extracted_files"]["prefetch"].append(f"prefetch_partition_{i}")
             summary["extracted_files"]["raw_usn_journal"].append(
                 f"raw_usn_journal_partition_{i}.bin"
             )

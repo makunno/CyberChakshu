@@ -809,19 +809,22 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                           <div className="kpi-grid">
                             <div className="kpi-card">
                               <div className="kpi-value">
-                                {forensicData.results.layered_analysis.analysis_summary.total_files_analyzed || 0}
+                                {forensicData.results.layered_analysis?.analysis_summary?.total_files_analyzed || 
+                                 forensicData.results.advanced_analysis?.summary?.total_indicators || 0}
                               </div>
                               <div className="kpi-label">Files Analyzed</div>
                             </div>
                             <div className="kpi-card warning">
                               <div className="kpi-value">
-                                {forensicData.results.layered_analysis.analysis_summary.suspicious_files || 0}
+                                {forensicData.results.timestomping?.summary?.possibly_copied_count ||
+                                 forensicData.results.advanced_analysis?.summary?.total_shadow_copy_indicators ||
+                                 0}
                               </div>
-                              <div className="kpi-label">Suspicious Files</div>
+                              <div className="kpi-label">Copied Files Detected</div>
                             </div>
                             <div className="kpi-card info">
                               <div className="kpi-value">
-                                {forensicData.results.layered_analysis.analysis_summary.partitions_analyzed || 0}
+                                {forensicData.results.layered_analysis?.analysis_summary?.partitions_analyzed || 0}
                               </div>
                               <div className="kpi-label">Partitions</div>
                             </div>
@@ -879,19 +882,19 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                           <div className="kpi-grid">
                             <div className="kpi-card danger">
                               <div className="kpi-value">
-                                {forensicData.results.timestomping.summary.critical || 0}
+                                {forensicData.results.timestomping.summary.critical_count || forensicData.results.timestomping.summary.critical || 0}
                               </div>
                               <div className="kpi-label">Critical</div>
                             </div>
                             <div className="kpi-card warning">
                               <div className="kpi-value">
-                                {forensicData.results.timestomping.summary.high || 0}
+                                {forensicData.results.timestomping.summary.high_count || forensicData.results.timestomping.summary.high || 0}
                               </div>
                               <div className="kpi-label">High</div>
                             </div>
                             <div className="kpi-card info">
                               <div className="kpi-value">
-                                {forensicData.results.timestomping.summary.medium || 0}
+                                {forensicData.results.timestomping.summary.medium_count || forensicData.results.timestomping.summary.medium || 0}
                               </div>
                               <div className="kpi-label">Medium</div>
                             </div>
@@ -908,47 +911,133 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                           <div className="kpi-grid">
                             <div className="kpi-card danger">
                               <div className="kpi-value">
-                                {forensicData.results.advanced_analysis.summary.timestomped_files || 0}
+                                {forensicData.results.advanced_analysis.summary.total_shadow_copy_indicators || 0}
                               </div>
-                              <div className="kpi-label">Timestomped Files</div>
+                              <div className="kpi-label">Shadow Copy Deletion</div>
                             </div>
                             <div className="kpi-card warning">
                               <div className="kpi-value">
-                                {forensicData.results.advanced_analysis.summary.high_severity_count || 0}
+                                {forensicData.results.advanced_analysis.summary.total_log_clearing_indicators || 0}
                               </div>
-                              <div className="kpi-label">High Severity</div>
+                              <div className="kpi-label">Log Clearing</div>
                             </div>
                             <div className="kpi-card danger">
                               <div className="kpi-value">
-                                {forensicData.results.advanced_analysis.summary.critical_severity_count || 0}
+                                {forensicData.results.advanced_analysis.summary.total_deletion_indicators || 
+                                 forensicData.results.advanced_analysis.summary.total_registry_indicators || 0}
                               </div>
-                              <div className="kpi-label">Critical Severity</div>
+                              <div className="kpi-label">File/Registry Deletion</div>
                             </div>
+                          </div>
+                        )}
+                        
+                        {/* Advanced Anti-Forensic Details */}
+                        {(forensicData.results.advanced_analysis?.shadow_copy_deletion?.length > 0 ||
+                          forensicData.results.advanced_analysis?.log_clearing?.length > 0 ||
+                          forensicData.results.advanced_analysis?.file_deletion?.length > 0) && (
+                          <div style={{ marginTop: '16px' }}>
+                            <h4 style={{ marginBottom: '8px' }}>Detailed Findings</h4>
+                            
+                            {forensicData.results.advanced_analysis?.shadow_copy_deletion?.length > 0 && (
+                              <div style={{ marginBottom: '12px' }}>
+                                <strong>Shadow Copy Deletion:</strong>
+                                <ul style={{ margin: '4px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                                  {forensicData.results.advanced_analysis.shadow_copy_deletion.filter((x: any) => !x.includes('No shadow copy')).map((item: any, i: number) => (
+                                    <li key={i}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {forensicData.results.advanced_analysis?.log_clearing?.length > 0 && (
+                              <div style={{ marginBottom: '12px' }}>
+                                <strong>Log Clearing:</strong>
+                                <ul style={{ margin: '4px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                                  {forensicData.results.advanced_analysis.log_clearing.filter((x: any) => !x.includes('No Windows event log')).map((item: any, i: number) => (
+                                    <li key={i}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {forensicData.results.advanced_analysis?.file_deletion?.length > 0 && (
+                              <div style={{ marginBottom: '12px' }}>
+                                <strong>File Deletion:</strong>
+                                <ul style={{ margin: '4px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                                  {forensicData.results.advanced_analysis.file_deletion.map((item: any, i: number) => (
+                                    <li key={i}>{typeof item === 'string' ? item : item.message || JSON.stringify(item)}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* AI Analysis */}
+                    {/* AI Forensic Analysis */}
                     {forensicData.results.ai_analysis && (
                       <div className="forensic-card card">
                         <h3>AI Forensic Analysis</h3>
-                        <div className="ai-results">
-                          <pre className="json-view">
-                            {JSON.stringify(forensicData.results.ai_analysis, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* AI Summary Report (HTML) */}
-                    {forensicData.results.ai_report_html && (
-                      <div className="forensic-card card">
-                        <h3>AI Forensic Summary Report</h3>
-                        <div 
-                          className="ai-report-html" 
-                          dangerouslySetInnerHTML={{ __html: forensicData.results.ai_report_html }}
-                        />
+                        {forensicData.results.ai_analysis.error ? (
+                          <div className="error-message" style={{ padding: '12px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>
+                            <AlertTriangle size={18} />
+                            <span style={{ marginLeft: '8px' }}>{forensicData.results.ai_analysis.error}</span>
+                          </div>
+                        ) : (
+                          <div>
+                            {forensicData.results.ai_analysis.summary && (
+                              <div style={{ marginBottom: '16px' }}>
+                                <div className="kpi-grid">
+                                  <div className="kpi-card danger">
+                                    <div className="kpi-value">
+                                      {forensicData.results.ai_analysis.risk_level || 'UNKNOWN'}
+                                    </div>
+                                    <div className="kpi-label">Risk Level</div>
+                                  </div>
+                                </div>
+                                <div style={{ marginTop: '12px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                  <strong>AI Summary:</strong>
+                                  <p style={{ marginTop: '8px', fontSize: '14px', lineHeight: '1.5' }}>
+                                    {forensicData.results.ai_analysis.summary}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {forensicData.results.ai_analysis.findings && forensicData.results.ai_analysis.findings.length > 0 && (
+                              <div style={{ marginTop: '16px' }}>
+                                <h4>AI Detected Findings</h4>
+                                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                  {forensicData.results.ai_analysis.findings.map((finding: any, i: number) => (
+                                    <div key={i} style={{ padding: '8px', marginBottom: '8px', background: 'var(--bg-secondary)', borderRadius: '4px', borderLeft: '3px solid var(--color-danger)' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                        <strong>{finding.technique || finding.type || 'Unknown'}</strong>
+                                        <span style={{ 
+                                          padding: '2px 8px', 
+                                          borderRadius: '4px', 
+                                          fontSize: '12px',
+                                          background: finding.severity === 'CRITICAL' ? 'var(--color-danger)' : 
+                                                     finding.severity === 'HIGH' ? 'orange' : 
+                                                     finding.severity === 'MEDIUM' ? 'yellow' : 'gray',
+                                          color: 'black'
+                                        }}>
+                                          {finding.severity || 'UNKNOWN'}
+                                        </span>
+                                      </div>
+                                      <p style={{ fontSize: '12px', margin: '4px 0' }}>{finding.explanation || finding.description}</p>
+                                      {finding.recommendation && (
+                                        <p style={{ fontSize: '11px', color: 'var(--color-success)', margin: '4px 0' }}>
+                                          Recommendation: {finding.recommendation}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 

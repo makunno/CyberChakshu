@@ -132,7 +132,7 @@ class AntiForensicAnalyzer:
                     content = f.read()
                     lines = content.split("\n")
 
-                for line_num, line in enumerate(lines, 1):
+                for line in lines:
                     # Skip header lines
                     if (
                         line.startswith("=")
@@ -147,25 +147,13 @@ class AntiForensicAnalyzer:
                         year, month, day = int(match[0]), int(match[1]), int(match[2])
                         if year > datetime.now().year + 1:
                             self.results["timestomping"].append(
-                                {
-                                    "message": f"Partition {partition}: Future date {match[0]}-{match[1]}-{match[2]} in {line.split()[-1] if line.split() else 'unknown'}",
-                                    "source_file": str(tf.name),
-                                    "line_number": line_num,
-                                    "partition": partition,
-                                    "evidence": line[:100],
-                                }
+                                f"Partition {partition}: Future date {match[0]}-{match[1]}-{match[2]} in {line.split()[-1] if line.split() else 'unknown'}"
                             )
 
                     # Look for all-zero timestamps (00-00-0000)
                     if "00-00-0000" in line or "00-00-00" in line:
                         self.results["timestomping"].append(
-                            {
-                                "message": f"Partition {partition}: Zero timestamp detected",
-                                "source_file": str(tf.name),
-                                "line_number": line_num,
-                                "partition": partition,
-                                "evidence": line[:100],
-                            }
+                            f"Partition {partition}: Zero timestamp detected: {line[:80]}"
                         )
 
                     # Look for identical timestamps (common in timestomping tools)
@@ -187,40 +175,11 @@ class AntiForensicAnalyzer:
                                     and timestamps[1] == timestamps[3]
                                 ):
                                     self.results["timestomping"].append(
-                                        {
-                                            "message": f"Partition {partition}: Identical SI/FN timestamps (possible timestomp)",
-                                            "source_file": str(tf.name),
-                                            "line_number": line_num,
-                                            "partition": partition,
-                                            "evidence": line[:100],
-                                        }
+                                        f"Partition {partition}: Identical SI/FN timestamps (possible timestomp): {line[:80]}"
                                     )
                         except:
                             pass
 
-            except Exception as e:
-                print(f"    [!] Error analyzing {tf}: {e}")
-
-        # Check USN journal for timestomping evidence
-        usn_files = list(self.output_dir.glob("usn_journal_partition_*.txt"))
-        for usn in usn_files:
-            partition = usn.stem.split("_")[-1]
-            try:
-                with open(usn, "r", errors="ignore") as f:
-                    content = f.read()
-                    lines = content.split("\n")
-                    for line_num, line in enumerate(lines, 1):
-                        if "No USN journal" in line or not content.strip():
-                            self.results["timestomping"].append(
-                                {
-                                    "message": f"Partition {partition}: USN journal missing or empty - possible clearing",
-                                    "source_file": str(usn.name),
-                                    "line_number": line_num,
-                                    "partition": partition,
-                                    "evidence": line[:100],
-                                }
-                            )
-                            break
             except Exception as e:
                 print(f"    [!] Error analyzing {tf}: {e}")
 
@@ -480,7 +439,6 @@ class AntiForensicAnalyzer:
 
                 system_file_count = 0
                 specific_anomalies = []
-
                 for line in lines:
                     if "$" in line:
                         system_file_count += 1

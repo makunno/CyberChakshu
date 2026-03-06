@@ -19,14 +19,77 @@ from urllib.error import URLError
 
 
 class OpenRouterClient:
-    """Client for OpenRouter API."""
+    """Client for OpenRouter API and Ollama."""
 
-    def __init__(self, api_key: str, model: str = "google/gemini-2.0-flash-001"):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "glm-5:cloud",
+        ollama_url: str = "http://localhost:11434",
+    ):
         self.api_key = api_key
         self.model = model
+        self.ollama_url = ollama_url
         self.base_url = "https://openrouter.ai/api/v1"
 
+        # Determine if using Ollama (local) or OpenRouter (cloud)
+        self.use_ollama = "glm-" in model or "llama" in model.lower()
+
     def chat(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = 4000,
+        temperature: float = 0.2,
+    ) -> Optional[str]:
+        """Send chat request to OpenRouter API or Ollama."""
+
+        if self.use_ollama:
+            return self._ollama_chat(
+                system_prompt, user_prompt, max_tokens, temperature
+            )
+        else:
+            return self._openrouter_chat(
+                system_prompt, user_prompt, max_tokens, temperature
+            )
+
+    def _ollama_chat(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = 4000,
+        temperature: float = 0.2,
+    ) -> Optional[str]:
+        """Send chat request to Ollama."""
+
+        url = f"{self.ollama_url}/api/chat"
+        print(f"[*] Using Ollama API with model: {self.model}")
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+
+        try:
+            req = Request(url, data=json.dumps(payload).encode("utf-8"))
+            req.add_header("Content-Type", "application/json")
+
+            with urlopen(req, timeout=300) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                return result.get("message", {}).get("content", "")
+        except Exception as e:
+            print(f"[!] Ollama API error: {e}")
+            return None
+
+    def _openrouter_chat(
         self,
         system_prompt: str,
         user_prompt: str,
@@ -93,13 +156,17 @@ class AIForensicAnalyzer:
         output_dir: str,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        ollama_url: Optional[str] = None,
     ):
         self.output_dir = Path(output_dir)
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
         self.model = model or os.environ.get(
             "OPENROUTER_MODEL", "google/gemini-2.0-flash-001"
         )
-        self.client = OpenRouterClient(self.api_key, self.model)
+        self.ollama_url = ollama_url or os.environ.get(
+            "OLLAMA_URL", "http://localhost:11434"
+        )
+        self.client = OpenRouterClient(self.api_key, self.model, self.ollama_url)
 
     def analyze(self, preprocessed_data: Optional[Dict] = None) -> Dict[str, Any]:
         """Run AI analysis using OpenRouter GLM model."""

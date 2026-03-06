@@ -34,7 +34,6 @@ class ForensicPreprocessor:
             "evidence": {},
             "context": {},
             "statistics": {},
-            "layered_correlation": {},
         }
 
         # Step 1: Discover and classify files
@@ -46,19 +45,24 @@ class ForensicPreprocessor:
         result["file_analysis"] = self._analyze_all_files()
 
         # Step 3: Extract evidence features
-        print("[*] Step 3: Extracting evidence...")
+        print("[*] Step 3: Extract evidence...")
         result["evidence"] = self._extract_evidence()
 
-        # Step 4: Load layered correlation results
-        print("[*] Step 4: Loading layered correlation results...")
-        result["layered_correlation"] = self._load_layered_correlation()
+        # Step 3.5: Load layered correlation results if they exist
+        layered_file = self.output_dir / "layered_analysis_results.json"
+        if layered_file.exists():
+            print("[*] Step 3.5: Loading layered correlation results...")
+            try:
+                with open(layered_file, "r") as f:
+                    result["layered_findings"] = json.load(f)
+            except Exception as e:
+                print(f"    [!] Error loading layered results: {e}")
 
-        # Step 5: Build AI context with layered data
-        print("[*] Step 5: Building AI context...")
+        print("[*] Step 4: Building AI context...")
         result["context"] = self._build_context()
 
-        # Step 6: Calculate statistics
-        print("[*] Step 6: Calculating statistics...")
+        # Step 5: Calculate statistics
+        print("[*] Step 5: Calculating statistics...")
         result["statistics"] = self._calculate_stats()
 
         # Save preprocessed data
@@ -570,28 +574,13 @@ class ForensicPreprocessor:
         except Exception as e:
             print(f"    [!] Error processing {file_path.name}: {e}")
 
-    def _load_layered_correlation(self) -> Dict[str, Any]:
-        """Load and parse layered correlation analysis results."""
-        layered_file = self.output_dir / "layered_timestomp_analysis.json"
-
-        if layered_file.exists():
-            try:
-                with open(layered_file, "r") as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"[!] Error loading layered correlation: {e}")
-
-        return {}
-
     def _build_context(self) -> Dict[str, Any]:
         """Build AI-ready context from extracted evidence."""
         evidence = self._extract_evidence()
-        layered = self._load_layered_correlation()
 
         context = {
             "system_prompt": self._get_system_prompt(),
-            "evidence_summary": self._format_evidence_summary(evidence, layered),
-            "layered_summary": self._format_layered_summary(layered),
+            "evidence_summary": self._format_evidence_summary(evidence),
             "analysis_instructions": self._get_analysis_instructions(),
             "json_output_schema": self._get_output_schema(),
         }
@@ -605,45 +594,27 @@ class ForensicPreprocessor:
 KNOWLEDGE AREAS:
 - Windows NTFS filesystem forensics
 - Master File Table (MFT) analysis
-- USN Journal interpretation ($UsnJrnl:$J)
-- $LogFile transaction analysis
+- USN Journal interpretation
 - Registry forensics (SAM, SECURITY, SOFTWARE, SYSTEM hives)
 - Volume Shadow Copy (VSS) analysis
 - Alternate Data Streams (ADS)
-- Timestomping techniques (SI vs FN mismatch detection)
+- Timestomping techniques
 - Log manipulation and clearing
 - Common anti-forensic tools (Timestomp, CCleaner, BleachBit, etc.)
 
-IMPORTANT - LAYERED CORRELATION METHODOLOGY:
-The analysis uses a 4-layer weighted correlation model to detect timestomping:
-- Layer 1 (30%): MFT $SI vs $FN timestamp comparison - compares Standard Information vs File Name timestamps
-- Layer 2 (30%): USN Journal - verifies file creation against FILE_CREATE events
-- Layer 3 (20%): $LogFile - checks transaction history for SetFileInformation operations
-- Layer 4 (20%): External artifacts - future dates, zero timestamps, volume correlation
-
-Use the layered correlation findings in your analysis to provide accurate assessments.
-
 RESPONSE REQUIREMENTS:
-1. Prioritize findings from the layered correlation analysis
-2. Provide reasoning for each finding
-3. Distinguish between normal Windows behavior and suspicious activity
-4. Correlate findings across multiple artifacts
-5. Assign severity levels with justification
-6. Suggest specific follow-up investigations"""
+1. Provide reasoning for each finding
+2. Distinguish between normal Windows behavior and suspicious activity
+3. Correlate findings across multiple artifacts
+4. Assign severity levels with justification
+5. Suggest specific follow-up investigations"""
 
-    def _format_evidence_summary(self, evidence: Dict, layered: Dict = None) -> str:
+    def _format_evidence_summary(self, evidence: Dict) -> str:
         """Format evidence for AI context."""
-        layered = layered or {}
-
         summary = f"""
 EVIDENCE SUMMARY
 ================
 
-LAYERED TIMESTOMP CORRELATION (PRIMARY ANALYSIS):
-"""
-        summary += self._format_layered_summary(layered)
-
-        summary += f"""
 TIMESTOMPING ANALYSIS:
 - Files with future dates: {len(evidence["timestomping"]["future_dates"])}
 - Zero timestamps: {len(evidence["timestomping"]["zero_timestamps"])}
@@ -673,46 +644,6 @@ LOG FILES:
 - Event logs (.evtx): {evidence["logs"]["event_logs"]}
 """
         return summary
-
-    def _format_layered_summary(self, layered: Dict) -> str:
-        """Format layered correlation results for AI context."""
-        if not layered:
-            return "Layered correlation results not available.\n"
-
-        summary_lines = []
-
-        analysis_summary = layered.get("analysis_summary", {})
-        summary_lines.append(
-            f"Files Analyzed: {analysis_summary.get('total_files_analyzed', 0)}"
-        )
-        summary_lines.append(
-            f"Suspicious Files: {analysis_summary.get('suspicious_files', 0)}"
-        )
-        summary_lines.append(
-            f"Critical Severity: {analysis_summary.get('critical', 0)}"
-        )
-        summary_lines.append(f"High Severity: {analysis_summary.get('high', 0)}")
-        summary_lines.append(f"Medium Severity: {analysis_summary.get('medium', 0)}")
-
-        suspicious_files = layered.get("suspicious_files", [])
-
-        if suspicious_files:
-            summary_lines.append(
-                "\nTOP SUSPICIOUS FILES (for immediate investigation):"
-            )
-
-            for i, sf in enumerate(suspicious_files[:10], 1):
-                filename = sf.get("filename", "Unknown")
-                severity = sf.get("severity", "UNKNOWN")
-                score = sf.get("score", 0)
-                explanation = sf.get("explanation", "")[:80]
-
-                summary_lines.append(f"  {i}. [{severity}] {filename}")
-                summary_lines.append(f"     Score: {score:.1f}/100")
-                summary_lines.append(f"     Details: {explanation}")
-
-        summary_lines.append("")
-        return "\n".join(summary_lines)
 
     def _get_analysis_instructions(self) -> str:
         """Get analysis instructions for AI."""

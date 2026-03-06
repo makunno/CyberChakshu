@@ -987,16 +987,16 @@ def run_forensic_analysis_async(image_path: str, output_dir: str, temp_dir: str 
             FORENSIC_STATE["message"] = "Starting forensic analysis pipeline..."
 
         api_key = os.environ.get("OPENROUTER_API_KEY")
-        ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
         model = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.0-flash-001")
+        ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
         results = run_pipeline(
             image_path,
             output_dir,
             api_key=api_key,
-            skip_extraction=False,
-            ollama_url=ollama_url,
             model=model,
+            ollama_url=ollama_url,
+            skip_extraction=False,
         )
 
         with forensic_lock:
@@ -1116,12 +1116,14 @@ async def get_forensic_status():
 async def get_forensic_results():
     """Get forensic analysis results"""
     with forensic_lock:
-        # Prioritize in-memory result_data if available
+        # Prioritize in-memory result_data if available and valid
+        result_data = FORENSIC_STATE.get("result_data")
         if (
-            FORENSIC_STATE.get("result_data")
+            result_data
+            and isinstance(result_data, dict)
             and FORENSIC_STATE.get("status") == "completed"
         ):
-            results = FORENSIC_STATE["result_data"]
+            results = result_data
 
             # Load AI HTML report if it exists
             output_dir = FORENSIC_STATE.get("results")
@@ -1283,17 +1285,36 @@ async def export_forensic_pdf(data: Dict[str, Any]):
 
     # Summary Stats
     elements.append(Paragraph("Analysis Summary", styles["Heading2"]))
-    summary_data = results.get("layered_analysis", {}).get("analysis_summary", {})
+    layered_data = results.get("layered_analysis", {})
+    advanced_data = results.get("advanced_analysis", {})
+    summary_data = layered_data.get("analysis_summary", {})
+
+    # Get correct values from the new JSON structure
+    total_files = summary_data.get("total_files_analyzed", 0)
+    if total_files == 0:
+        # Try getting from advanced_analysis
+        total_files = advanced_data.get("summary", {}).get("total_indicators", 0)
+
+    suspicious_files = summary_data.get("suspicious_files", 0)
+    if suspicious_files == 0:
+        # Try getting from timestomping or advanced_analysis
+        suspicious_files = (
+            results.get("timestomping", {})
+            .get("summary", {})
+            .get("possibly_copied_count", 0)
+        )
+        if suspicious_files == 0:
+            suspicious_files = advanced_data.get("summary", {}).get(
+                "total_timestomping_indicators", 0
+            )
+
+    anti_forensic_hits = advanced_data.get("summary", {}).get("total_indicators", 0)
+
     stats = [
         ["Metric", "Value"],
-        ["Total Files Analyzed", summary_data.get("total_files_analyzed", 0)],
-        ["Suspicious Files Detected", summary_data.get("suspicious_files", 0)],
-        [
-            "Advanced Anti-Forensic Hits",
-            results.get("advanced_analysis", {})
-            .get("summary", {})
-            .get("timestomped_files", 0),
-        ],
+        ["Total Files Analyzed", total_files],
+        ["Suspicious Files Detected", suspicious_files],
+        ["Advanced Anti-Forensic Hits", anti_forensic_hits],
     ]
     t = Table(stats, colWidths=[200, 100])
     t.setStyle(
@@ -1329,7 +1350,41 @@ async def export_forensic_pdf(data: Dict[str, Any]):
 
     # Findings Table
     elements.append(Paragraph("Top Suspicious Findings", styles["Heading2"]))
-    findings = results.get("layered_analysis", {}).get("suspicious_files", [])[:30]
+
+    # Try different sources for findings
+    findings = results.get("layered_analysis", {}).get("suspicious_files", [])
+
+    # If no findings, try copied files
+    if not findings:
+        copied = results.get("copied_files", {}).get("files", [])
+        if copied:
+            findings = [
+                {
+                    "filename": f.get("filename", "Unknown"),
+                    "explanation": f"Created: {f.get('created')} Modified: {f.get('modified')}",
+                }
+                for f in copied[:30]
+            ]
+
+    # If still no findings, try advanced analysis indicators
+    if not findings:
+        advanced = results.get("advanced_analysis", {})
+        if advanced.get("shadow_copy_deletion"):
+            findings.append(
+                {
+                    "filename": "Shadow Copies",
+                    "explanation": "Shadow copy deletion detected",
+                }
+            )
+        if advanced.get("log_clearing"):
+            findings.append(
+                {"filename": "Event Logs", "explanation": "Log clearing detected"}
+            )
+        if advanced.get("file_deletion"):
+            findings.append(
+                {"filename": "Files", "explanation": "File deletion detected"}
+            )
+
     if findings:
         f_data = [["Filename", "Reason"]]
         for f in findings:
