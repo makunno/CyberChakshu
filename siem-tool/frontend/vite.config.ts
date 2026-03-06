@@ -11,5 +11,17 @@ export default defineConfig(({ mode }) => {
         env.VITE_API_URL || 'http://127.0.0.1:8788'
       ),
     },
+    server: {
+      host: '0.0.0.0',
+      proxy: {
+        '/api': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+      },
+    },
+    optimizeDeps: {
+      exclude: ['jszip'],
+    },
   }
 })
