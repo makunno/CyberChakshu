@@ -1,18 +1,20 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { 
    Upload, Shield, AlertTriangle, Activity, FileText, 
-   Download, RefreshCw, ChevronDown, X, Search, Terminal,
+   Download, RefreshCw, X, Search, Terminal,
    Layers, Clock, Target, Zap, TrendingUp, Scissors, File, Archive,
-   MessageSquare, HardDrive, FileSearch
+   MessageSquare, HardDrive, FileSearch, BarChart3
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import JSZip from 'jszip';
+import * as JSZip from 'jszip';
 import { parseLogsFromFile, parseLogsFromText, parseLogsFromChunkedFile, splitFileClient, correlateMultipleFiles, EVTXUploadError, isEVTXFile, analyzeLogWithAI, type SplitFileResult, startForensicAnalysis, getForensicStatus, getForensicResults, type ForensicResultsResponse } from './api';
 import type { ParseResponse, ParsedLogEntry, CorrelateResponse, AttackChain, TimelineEvent } from './types';
 import { DynamicTable } from './DynamicTable';
 import { EVTXTutorial } from './EVTXTutorial';
 import { SOCAnalystChat } from './components/SOCAnalystChat';
 import { ForensicResults } from './components/ForensicResults';
+import { ReportGenerator } from './components/ReportGenerator';
+import { SmartReportGenerator } from './components/SmartReportGenerator';
 import './App.css';
 
 const SEVERITY_COLORS = {
@@ -102,7 +104,12 @@ function App() {
 const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
   const [displayedEntryCount, setDisplayedEntryCount] = useState(500);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [showChat, setShowChat] = useState(false);
+   const [showChat, setShowChat] = useState(false);
+   const [showReport, setShowReport] = useState(false);
+   const [reportType, setReportType] = useState<'standard' | 'smart'>('smart');
+   const [showReportDropdown, setShowReportDropdown] = useState(false);
+
+
   const [chatContext] = useState<{logEntry: string; logType: string} | null>(null);
   const [llmReady, setLlmReady] = useState(false);
   
@@ -114,6 +121,19 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
   const [forensicMessage, setForensicMessage] = useState('');
   const [forensicResults, setForensicResults] = useState<ForensicResultsResponse | null>(null);
   const forensicPollRef = useRef<NodeJS.Timeout | null>(null);
+  const reportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (reportDropdownRef.current && !reportDropdownRef.current.contains(e.target as Node)) {
+        setShowReportDropdown(false);
+      }
+    };
+    if (showReportDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showReportDropdown]);
 
   // Auto-feed logs to LLM after parsing completes
   useEffect(() => {
@@ -151,42 +171,7 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
     return matchesSearch && entry.severity === severityFilter;
   });
 
-  const exportToCSV = useCallback(() => {
-    if (!data && !correlationData) return;
-    
-    const entries = data?.entries || [];
-    const headers = ['timestamp', 'logType', 'severity', 'source_ip', 'user', 'action', 'outcome', 'message'];
-    const rows = entries.map(e => [
-      e.timestamp || '',
-      e.logType,
-      e.severity,
-      e.source.ip || '',
-      e.user?.name || '',
-      e.action || '',
-      e.outcome || '',
-      `"${e.message.replace(/"/g, '""')}"`,
-    ]);
-    
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `siem-logs-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  }, [data, correlationData]);
 
-  const exportToJSON = useCallback(() => {
-    const exportData = correlationData || data;
-    if (!exportData) return;
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `siem-analysis-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-  }, [data, correlationData]);
 
   const hasData = data || correlationData;
   const attackChains = correlationData?.correlation?.attackChains || [];
@@ -743,16 +728,68 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                   <Upload size={16} />
                   New Analysis
                 </button>
-                <div className="dropdown">
-                  <button className="btn btn-secondary">
-                    <Download size={16} />
-                    Export
-                    <ChevronDown size={14} />
+                <div className="dropdown-container" style={{ position: 'relative' }} ref={reportDropdownRef}>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => setShowReportDropdown(!showReportDropdown)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <BarChart3 size={16} />
+                    Generate Report
+                    <span style={{ fontSize: '10px' }}>▼</span>
                   </button>
-                  <div className="dropdown-menu">
-                    <button onClick={exportToCSV}>Export as CSV</button>
-                    <button onClick={exportToJSON}>Export as JSON</button>
-                  </div>
+                  {showReportDropdown && (
+                    <div className="dropdown-menu" style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '4px',
+                      background: '#1e293b',
+                      border: '1px solid #334155',
+                      borderRadius: '6px',
+                      padding: '4px',
+                      minWidth: '180px',
+                      zIndex: 1000,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    }}>
+                      <button 
+                        onClick={() => { setReportType('standard'); setShowReport(true); setShowReportDropdown(false); }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: reportType === 'standard' ? '#334155' : 'transparent',
+                          border: 'none',
+                          color: '#f1f5f9',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <FileText size={14} /> Standard Report
+                      </button>
+                      <button 
+                        onClick={() => { setReportType('smart'); setShowReport(true); setShowReportDropdown(false); }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: reportType === 'smart' ? '#334155' : 'transparent',
+                          border: 'none',
+                          color: '#f1f5f9',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <BarChart3 size={14} /> Smart Report
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1241,10 +1278,10 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
                                 <p className="alert-description">{alert.description}</p>
                                 <div className="alert-meta">
                                   <span>Confidence: {alert.confidence}</span>
-                                  {alert.sourceIps.length > 0 && (
+                                  {alert.sourceIps && alert.sourceIps.length > 0 && (
                                     <span>Sources: {alert.sourceIps.join(', ')}</span>
                                   )}
-                                  {alert.targetUsers.length > 0 && (
+                                  {alert.targetUsers && alert.targetUsers.length > 0 && (
                                     <span>Users: {alert.targetUsers.join(', ')}</span>
                                   )}
                                 </div>
@@ -1902,6 +1939,24 @@ const [selectedChain, setSelectedChain] = useState<AttackChain | null>(null);
           onClose={() => setShowChat(false)}
         />
       )}
+      {showReport && hasData && (
+        reportType === 'smart' ? (
+          <SmartReportGenerator
+            data={correlationData || data}
+            onClose={() => setShowReport(false)}
+            logType={correlationData ? 'correlation' : 'single'}
+          />
+        ) : (
+          <ReportGenerator 
+            data={correlationData || data} 
+            onClose={() => setShowReport(false)} 
+            logType={correlationData ? 'correlation' : 'single'} 
+          />
+        )
+      )}
+
+      {/* Report Preview Modal */}
+
     </div>
   );
 }

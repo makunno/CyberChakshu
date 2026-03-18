@@ -1,6 +1,6 @@
 // API client for SIEM backend
 
-import type { ParseResponse, CorrelateResponse } from './types';
+import type { ParseResponse, CorrelateResponse, ParsedLogEntry, CorrelatedEvent } from './types';
 
 // Read API URL from environment or injected window variable
 // - VITE_API_URL: set during build for Cloudflare deployment
@@ -525,4 +525,94 @@ export async function downloadForensicPdf(taskId: string): Promise<void> {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Smart Filtering API for AI Agent
+export interface FilterCriteria {
+  column?: string;
+  value?: string | number;
+  operator?: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan';
+  attackType?: string;
+  severity?: string;
+  logType?: string;
+}
+
+export interface SmartFilterResponse {
+  entries: (ParsedLogEntry | CorrelatedEvent)[];
+  totalCount: number;
+  filteredCount: number;
+  appliedFilters: FilterCriteria[];
+}
+
+export function smartFilterLogs(
+  data: ParseResponse | CorrelateResponse,
+  logType: 'single' | 'correlation',
+  criteria: FilterCriteria[]
+): SmartFilterResponse {
+  const entries = logType === 'single'
+    ? (data as ParseResponse).entries || []
+    : (data as CorrelateResponse).correlation?.attackChains?.flatMap(c => c.events) || [];
+
+  let filtered = [...entries];
+
+  for (const criterion of criteria) {
+    filtered = filtered.filter(entry => {
+      // Handle attack type filtering (only for ParsedLogEntry, not CorrelatedEvent)
+      if (criterion.attackType && 'attackType' in entry) {
+        if (criterion.attackType === 'any') {
+          return entry.attackType !== undefined && entry.attackType !== 'normal';
+        }
+        return entry.attackType === criterion.attackType;
+      }
+
+      // Handle severity filtering
+      if (criterion.severity) {
+        return entry.severity === criterion.severity;
+      }
+
+      // Handle log type filtering
+      if (criterion.logType) {
+        return entry.logType.toLowerCase().includes(criterion.logType.toLowerCase());
+      }
+
+      // Handle column-based filtering
+      if (criterion.column && criterion.value !== undefined) {
+        const value = getNestedValue(entry, criterion.column);
+        if (value === undefined) return false;
+
+        const strValue = String(value).toLowerCase();
+        const criterionValue = String(criterion.value).toLowerCase();
+
+        switch (criterion.operator) {
+          case 'contains':
+            return strValue.includes(criterionValue);
+          case 'startsWith':
+            return strValue.startsWith(criterionValue);
+          case 'endsWith':
+            return strValue.endsWith(criterionValue);
+          case 'greaterThan':
+            return Number(value) > Number(criterion.value);
+          case 'lessThan':
+            return Number(value) < Number(criterion.value);
+          default:
+            return strValue === criterionValue;
+        }
+      }
+
+      return true;
+    });
+  }
+
+  return {
+    entries: filtered,
+    totalCount: entries.length,
+    filteredCount: filtered.length,
+    appliedFilters: criteria
+  };
+}
+
+function getNestedValue(obj: any, path: string): any {
+  return path.split('.').reduce((current, key) => {
+    return current && current[key] !== undefined ? current[key] : undefined;
+  }, obj);
 }

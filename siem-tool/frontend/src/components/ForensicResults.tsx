@@ -1,7 +1,7 @@
 import { 
   AlertTriangle, Shield, Clock, FileSearch, HardDrive, FolderOpen, 
-  Download, Loader2, Zap, FileX, Trash2, FileText, Key, 
-  Activity, TrendingUp, CheckCircle2, XCircle, AlertCircle, 
+  Download, Loader2, FileX, Trash2, FileText, Key, 
+  Activity, CheckCircle2, XCircle, AlertCircle, 
   Info, Sparkles, Target, Eye, Lightbulb
 } from 'lucide-react';
 import { downloadForensicPdf } from '../api';
