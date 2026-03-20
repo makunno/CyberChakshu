@@ -283,7 +283,7 @@ class LogParsers:
     
     @staticmethod
     def palo_alto(line: str) -> Optional[Dict[str, Any]]:
-        m = re.match(r'^(\d{4}\/\d{2}\/\d{2})\s+(\d{2}:\d{2}:\d{2})\s+(allow|deny|drop)\s+(tcp|udp|icmp)\s+(?:\d{1,3}\.){3}\d{1,3}\s+(?:\d{1,3}\.){3}\d{1,3}\s+rule=(\S+).*$', line)
+        m = re.match(r'^(\d{4}/\d{2}/\d{2})\s+(\d{2}:\d{2}:\d{2})\s+(allow|deny|drop)\s+(tcp|udp|icmp)\s+(\S+)\s+(\S+)\s+rule=(\S+).*$', line)
         if not m:
             return None
         date, time, action, proto, src_ip, dst_ip, rule = m.groups()

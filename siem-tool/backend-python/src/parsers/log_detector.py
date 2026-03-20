@@ -64,11 +64,11 @@ class LogDetector:
     MYSQL_ERROR_RE = re.compile(r'(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)\s+(\d+)\s+\[(ERROR|Warning|Note)\]\s+\[MY-(\d+)\]\s+\[(\w+)\]\s+(.*)')
     MYSQL_QUERY_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\d+\s+(Query|Connect|Execute)\s+')
     MYSQL_SLOW_RE = re.compile(r'^# Time:')
-    POSTGRES_ERROR_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\[\d+\]\s+\S+\s+\S+\s+(LOG|ERROR|FATAL):')
-    POSTGRES_AUTH_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\[\d+\]\s+\S+\s+\S+\s+LOG:\s+connection received:')
-    POSTGRES_STATEMENT_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\[\d+\]\s+.*STATEMENT:\s+(.*);')
+    POSTGRES_ERROR_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+[\d:.]+\s+UTC\s+\[\d+\]\s+\S+\s+(LOG|ERROR|FATAL|PANIC):\s*(.*)$')
+    POSTGRES_AUTH_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+[\d:.]+\s+UTC\s+\[\d+\]\s+\S+\s+LOG:\s+connection received:.*host=(\d+\.\d+\.\d+\.\d+)\s+port=(\d+)')
+    POSTGRES_STATEMENT_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+[\d:.]+\s+[A-Za-z]{3,4}(?:/[A-Za-z]+)?\s+\[\d+\]\s+STATEMENT:\s+(.*);')
 
-    ORACLE_ALERT_RE = re.compile(r'^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}')
+    ORACLE_ALERT_RE = re.compile(r'^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}\s+\*.*\*.*\*')
     ORACLE_LISTENER_RE = re.compile(r'(.*?)\s+\*.*SERVICE_NAME=(\w+).*PROTOCOL=(\w+).*HOST=(\d+\.\d+\.\d+\.\d+).*PORT=(\d+).*\*\s+(\d+)')
     ORACLE_AUDIT_RE = re.compile(r'^Audit trail:')
     SQLSERVER_ERROR_RE = re.compile(r'(.*?) Server Error: (\d+), Severity: (\d+), State: (\d+)')
@@ -76,6 +76,10 @@ class LogDetector:
     SQLSERVER_TRANSACTION_RE = re.compile(r'\((\d+):(\d+):(\d+)\).*Operation:\s+(.*)')
     MONGODB_SERVER_RE = re.compile(r'^\{.*"t".*:.*"s".*:.*"c".*:.*"msg".*.*\}$')
     MONGODB_AUDIT_RE = re.compile(r'^\{.*"atype".*:.*"ts".*.*\}$')
+
+    FILEZILLA_RE = re.compile(r'^\((\d+)\)(\d{2}/\d{2}/\d{4}) (\d{2}:\d{2}:\d{2}) - (\S+) \(([\d.]+)\)> (\d+) (.*)$')
+    VSFTPD_RE = re.compile(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+vsftpd\[(\d+)\]:\s+\[([^\]]+)\]\s+(OK|FAIL)\s+(\w+):\s+(.*)$')
+    XFERLOG_RE = re.compile(r'(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+\d+\s+([\d.]+)\s+\d+\s+(\S+)\s+([ab])\s+[_]\s+([io])\s+([ra])\s+(\S+)\s+\w+\s+[01]\s+\*\s+([ci])')
 
     LINUX_SSHD_FAILED_RE = re.compile(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+sshd\[\d+\]:\s+Failed\s+\w+\s+for\s+(?:invalid\s+user\s+)?(\S+)\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})\s+port\s+(\d+)')
     LINUX_SSHD_ACCEPTED_RE = re.compile(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+sshd\[\d+\]:\s+Accepted\s+\w+\s+for\s+(\S+)\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})\s+port\s+(\d+)')
@@ -86,10 +90,10 @@ class LogDetector:
     LINUX_PACKAGE_RE = re.compile(r'(\d{4}-\d{2}-\d{2})\s+(.*)')
 
     WINDOWS_TEXT_RE = re.compile(r'(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}),\s*([^,]+),\s*([^,]+),\s*(\d+),\s*(.*)')
-    FILEZILLA_RE = re.compile(r'\(\d+\)(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+-\s+(\S+)\s+\(([\d\.]+)\)\s+>\s+(\d+)\s+(.*)')
     IIS_FTP_RE = re.compile(r'(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([\d\.]+)\s+([\w\-]+)\s+[\d\.]+\s+\d+\s+(\w+)\s+([\S]*)\s+(\d+)')
-    XFERLOG_RE = re.compile(r'(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+\d+\s+([\d\.]+)\s+\d+\s+(\S+)\s+[ab]\s+[_]\s+[io]\s+[ra]\s+(\S+)\s+\w+\s+[01]\s+\*\s+([ci])')
     JSON_FTP_RE = re.compile(r'^\[\[.*\]\]$')  # JSON FTP logs format [[{timestamp:...}]]
+
+    LINUX_SSHD_PAM_RE = re.compile(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+sshd\(pam_unix\)\[\d+\]:\s+(authentication failure|check pass|session (?:opened|closed)).*$')
 
     DHCP_RE = re.compile(r'^(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+(.*)')
     DNS_RE = re.compile(r'^(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+(.*)')
@@ -114,7 +118,6 @@ class LogDetector:
     WINDOWS_SETUP_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Setup\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)')
     WINDOWS_FORWARDED_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+ForwardedEvents\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)')
 
-    VSFTPD_RE = re.compile(r'^(\w{3}\s+\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+\[pid\s+(\d+)\](?:\s+\[\s*\])?\s*(.*)')
     PROFTPD_RE = re.compile(r'^(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+(?:proftpd|pure-ftpd)\[\d+\]:\s+(.*)')
 
     FASTAPI_JSON_RE = re.compile(r'^\{"time":\s*".*?",\s*"framework":\s*"FastAPI"')
@@ -493,8 +496,8 @@ class LogDetector:
     @staticmethod
     def is_mongodb_server(line: str) -> bool:
         try:
-            json.loads(line)
-            return True
+            j = json.loads(line)
+            return "t" in j and "s" in j and "c" in j and "msg" in j
         except:
             return False
 
@@ -509,6 +512,10 @@ class LogDetector:
     @staticmethod
     def is_sshd_failed(line: str) -> bool:
         return bool(LogDetector.LINUX_SSHD_FAILED_RE.match(line))
+
+    @staticmethod
+    def is_linux_sshd_pam(line: str) -> bool:
+        return bool(LogDetector.LINUX_SSHD_PAM_RE.match(line))
 
     @staticmethod
     def is_sshd_accepted(line: str) -> bool:
@@ -665,6 +672,7 @@ class LogDetector:
             ("Django", LogDetector.is_django),
             ("Flask", LogDetector.is_flask),
             ("Node.js", LogDetector.is_node),
+            ("MongoDB Server", LogDetector.is_mongodb_server),
             ("Express.js", LogDetector.is_express_json),
             ("Laravel", LogDetector.is_laravel),
             ("Ruby on Rails", LogDetector.is_rails),
@@ -732,15 +740,16 @@ class LogDetector:
             ("MongoDB Audit", LogDetector.is_mongodb_audit),
             ("Linux SSHD Failed", LogDetector.is_sshd_failed),
             ("Linux SSHD Accepted", LogDetector.is_sshd_accepted),
+            ("Linux SSHD PAM", LogDetector.is_linux_sshd_pam),
+            ("FileZilla FTP", LogDetector.is_filezilla),
+            ("VSFTPD", LogDetector.is_vsftpd),
+            ("xferlog", LogDetector.is_xferlog),
+            ("IIS FTP", LogDetector.is_iis_ftp),
             ("Linux Syslog", LogDetector.is_syslog),
             ("Linux Systemd", LogDetector.is_systemd),
             ("Linux Kernel", LogDetector.is_kernel),
             ("Linux Audit", LogDetector.is_audit),
             ("Linux Package", LogDetector.is_linux_package),
-            ("FileZilla FTP", LogDetector.is_filezilla),
-            ("IIS FTP", LogDetector.is_iis_ftp),
-            ("xferlog", LogDetector.is_xferlog),
-            ("JSON FTP Logs", LogDetector.is_json_ftp),
             ("Cloudflare", LogDetector.is_cloudflare),
             ("AWS CloudTrail", LogDetector.is_aws_cloudtrail),
             ("AWS GuardDuty", LogDetector.is_aws_guardduty),
@@ -772,6 +781,7 @@ class LogDetector:
             "Django": LogDetector.is_django,
             "Flask": LogDetector.is_flask,
             "Node.js": LogDetector.is_node,
+            "MongoDB Server": LogDetector.is_mongodb_server,
             "Express.js": LogDetector.is_express_json,
             "Laravel": LogDetector.is_laravel,
             "Ruby on Rails": LogDetector.is_rails,
@@ -839,15 +849,16 @@ class LogDetector:
             "MongoDB Audit": LogDetector.is_mongodb_audit,
             "Linux SSHD Failed": LogDetector.is_sshd_failed,
             "Linux SSHD Accepted": LogDetector.is_sshd_accepted,
+            "Linux SSHD PAM": LogDetector.is_linux_sshd_pam,
             "Linux Syslog": LogDetector.is_syslog,
             "Linux Systemd": LogDetector.is_systemd,
             "Linux Kernel": LogDetector.is_kernel,
             "Linux Audit": LogDetector.is_audit,
             "Linux Package": LogDetector.is_linux_package,
-            "Windows Text": LogDetector.is_windows_text,
             "FileZilla FTP": LogDetector.is_filezilla,
-            "IIS FTP": LogDetector.is_iis_ftp,
+            "VSFTPD": LogDetector.is_vsftpd,
             "xferlog": LogDetector.is_xferlog,
+            "IIS FTP": LogDetector.is_iis_ftp,
             "JSON FTP Logs": LogDetector.is_json_ftp,
             "Cloudflare": LogDetector.is_cloudflare,
             "AWS CloudTrail": LogDetector.is_aws_cloudtrail,
