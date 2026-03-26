@@ -3,7 +3,7 @@ import requests
 import json
 from pathlib import Path
 
-test_dir = Path(r"C:\Users\Tanubhav Juneja\Desktop\projects\FreeKhana\siem-test-logs")
+test_dir = Path(r"C:\Users\Tanubhav Juneja\Desktop\projects\Cyber Chakshu\siem-test-logs")
 
 results = []
 

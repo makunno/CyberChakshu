@@ -1,4 +1,4 @@
-# FreeKhana SIEM - Forensic Disk Analyzer
+# Cyber Chakshu SIEM - Forensic Disk Analyzer
 FROM python:3.11-slim
 
 # Install system dependencies

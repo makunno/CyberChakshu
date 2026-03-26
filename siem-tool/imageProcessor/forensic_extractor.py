@@ -231,90 +231,53 @@ class ForensicExtractor:
 
     def extract_registry_hives(self, partition_num: int = 0) -> bool:
         """Extract Windows registry hives from NTFS partition."""
-        output_dir = self.output_dir / "registry"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Standard registry hives
-        hives = {
-            "SYSTEM": "/Windows/System32/config/SYSTEM",
-            "SOFTWARE": "/Windows/System32/config/SOFTWARE",
-            "SAM": "/Windows/System32/config/SAM",
-            "SECURITY": "/Windows/System32/config/SECURITY",
-            "Amcache": "/Windows/AppCompat/Programs/Amcache.hve",
-        }
-        
-        extracted_count = 0
-        for name, path in hives.items():
-            out_path = output_dir / f"{name}_partition_{partition_num}.hive"
-            if self.extract_file_by_path(path, partition_num, out_path):
-                extracted_count += 1
-                
-        # Also save a text listing for backward compatibility
-        list_file = self.output_dir / f"registry_partition_{partition_num}.txt"
-        with open(list_file, "w") as f:
-            f.write(f"Registry Hives Extraction for Partition {partition_num}\n")
-            f.write(f"Extracted {extracted_count} raw hives to registry/ directory\n")
-            
-        return extracted_count > 0
-
-    def extract_prefetch(self, partition_num: int = 0) -> bool:
-        """Extract Windows Prefetch files (.pf)."""
-        output_dir = self.output_dir / "prefetch"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
+        output_file = self.output_dir / f"registry_partition_{partition_num}.txt"
         offset = self.get_partition_offset(partition_num)
         fs_type = self.detect_filesystem(offset)
-        
-        # List files in Prefetch directory
+
         cmd = ["fls", "-o", str(offset), "-r"]
         if fs_type and fs_type != "auto":
             cmd.extend(["-f", fs_type])
         cmd.append(self.image_path)
-        
-        code, stdout, stderr = self.run_command(cmd)
-        
-        if code != 0 or not stdout:
-            return False
-            
-        pf_files = []
-        for line in stdout.split("\n"):
-            if ".pf" in line.lower() and "Windows/Prefetch" in line:
-                parts = line.split()
-                if len(parts) >= 3:
-                    full_path = " ".join(parts[2:])
-                    pf_files.append(full_path)
-                    
-        extracted_count = 0
-        for pf_path in pf_files[:100]:
-            filename = os.path.basename(pf_path)
-            out_path = output_dir / f"{filename}_partition_{partition_num}.pf"
-            if self.extract_file_by_path(pf_path, partition_num, out_path):
-                extracted_count += 1
-                
-        return extracted_count > 0
 
-    def extract_file_by_path(self, file_path: str, partition_num: int, output_path: Path) -> bool:
-        """Helper to extract a file by its full path using icat."""
-        offset = self.get_partition_offset(partition_num)
-        
-        cmd = ["icat"]
-        if self.image_type == "ewf":
-            cmd.extend(["-i", "ewf"])
-        cmd.extend(["-o", str(offset)])
-        cmd.append(self.image_path)
-        cmd.append(file_path)
-        
-        import subprocess
-        try:
-            result = subprocess.run(cmd, capture_output=True, timeout=60)
-            if result.returncode == 0 and result.stdout:
-                with open(output_path, "wb") as f:
-                    f.write(result.stdout)
-                return True
-        except Exception as e:
-            pass
-            
-        return False
+        code, stdout, stderr = self.run_command(cmd)
+
+        registry_patterns = [
+            "System32/config/SAM",
+            "System32/config/SECURITY",
+            "System32/config/SOFTWARE",
+            "System32/config/SYSTEM",
+            "System32/config/DEFAULT",
+            "NTUSER.DAT",
+            "USRCLASS.DAT",
+        ]
+
+        registry_hives = []
+        if code == 0 and stdout:
+            for line in stdout.split("\n"):
+                line_lower = line.lower()
+                for pattern in registry_patterns:
+                    if pattern.lower() in line_lower:
+                        registry_hives.append(line)
+                        break
+
+        with open(output_file, "w") as f:
+            f.write(f"Registry Hives for Partition {partition_num}\n")
+            f.write(f"Image: {self.image_path}\n")
+            f.write(f"Offset: {offset} bytes\n")
+            f.write(f"Filesystem: {fs_type}\n")
+            f.write("=" * 80 + "\n\n")
+            if registry_hives:
+                f.write("Registry Hives Found:\n")
+                f.write("\n".join(registry_hives))
+            else:
+                f.write("No registry hives found in standard locations.\n")
+                if code == 0 and stdout:
+                    f.write("\nSearching full output for .DAT/.LOG files...\n")
+                    for line in stdout.split("\n"):
+                        if ".DAT" in line or ".LOG" in line:
+                            f.write(line + "\n")
+        return True
 
     def extract_logs(self, partition_num: int = 0) -> bool:
         """Extract Windows event logs and other log files."""
@@ -562,123 +525,17 @@ class ForensicExtractor:
                 f.write(f"Error: {stderr}\n")
         return True
 
-    def extract_raw_usn_journal(self, partition_num: int = 0) -> bool:
-        """Extract raw USN Journal binary data for deep analysis."""
-        output_file = self.output_dir / f"raw_usn_journal_partition_{partition_num}.bin"
-        offset = self.get_partition_offset(partition_num)
-
-        cmd = ["icat"]
-        if self.image_type == "ewf":
-            cmd.extend(["-i", "ewf"])
-        cmd.extend(["-o", str(offset)])
-        cmd.append(self.image_path)
-        cmd.append("$UsnJrnl:$J")
-
-        code, stdout, stderr = self.run_command(cmd)
-
-        if code == 0 and stdout:
-            with open(output_file, "wb") as f:
-                f.write(stdout.encode("latin-1") if isinstance(stdout, str) else stdout)
-            return True
-        return False
-
-    def extract_raw_logfile(self, partition_num: int = 0) -> bool:
-        """Extract raw $LogFile binary data for transaction analysis."""
-        output_file = self.output_dir / f"raw_logfile_partition_{partition_num}.bin"
-        offset = self.get_partition_offset(partition_num)
-
-        cmd = ["icat"]
-        if self.image_type == "ewf":
-            cmd.extend(["-i", "ewf"])
-        cmd.extend(["-o", str(offset)])
-        cmd.append(self.image_path)
-        cmd.append("$LogFile")
-
-        code, stdout, stderr = self.run_command(cmd)
-
-        if code == 0 and stdout:
-            with open(output_file, "wb") as f:
-                f.write(stdout.encode("latin-1") if isinstance(stdout, str) else stdout)
-            return True
-        return False
-
-    def extract_raw_volume(self, partition_num: int = 0) -> bool:
-        """Extract raw $Volume for volume metadata."""
-        output_file = self.output_dir / f"raw_volume_partition_{partition_num}.bin"
-        offset = self.get_partition_offset(partition_num)
-
-        cmd = ["icat"]
-        if self.image_type == "ewf":
-            cmd.extend(["-i", "ewf"])
-        cmd.extend(["-o", str(offset)])
-        cmd.append(self.image_path)
-        cmd.append("$Volume")
-
-        code, stdout, stderr = self.run_command(cmd)
-
-        if code == 0 and stdout:
-            with open(output_file, "wb") as f:
-                f.write(stdout.encode("latin-1") if isinstance(stdout, str) else stdout)
-            return True
-        return False
-
-    def extract_raw_boot_sector(self, partition_num: int = 0) -> bool:
-        """Extract boot sector for filesystem metadata."""
-        output_file = self.output_dir / f"raw_boot_partition_{partition_num}.bin"
-        offset = self.get_partition_offset(partition_num) * 512
-
-        cmd = [
-            "dd",
-            f"if={self.image_path}",
-            f"of={output_file}",
-            "bs=512",
-            "count=1",
-            "skip=" + str(offset // 512),
-        ]
-
-        code, stdout, stderr = self.run_command(cmd)
-
-        if code == 0 and os.path.exists(output_file):
-            return True
-        return False
-
-    def extract_raw_mft(self, partition_num: int = 0) -> bool:
-        """Extract raw MFT for binary parsing."""
-        output_file = self.output_dir / f"raw_mft_partition_{partition_num}.bin"
-        offset = self.get_partition_offset(partition_num)
-
-        cmd = ["icat"]
-        if self.image_type == "ewf":
-            cmd.extend(["-i", "ewf"])
-        cmd.extend(["-o", str(offset)])
-        cmd.append(self.image_path)
-        cmd.append("$MFT")
-
-        code, stdout, stderr = self.run_command(cmd)
-
-        if code == 0 and stdout:
-            with open(output_file, "wb") as f:
-                f.write(stdout.encode("latin-1") if isinstance(stdout, str) else stdout)
-            return True
-        return False
-
     def extract_all_artifacts(self, partition_num: int = 0) -> Dict[str, bool]:
         """Extract all artifact types for a specific partition."""
         results = {}
         results["mft"] = self.extract_mft(partition_num)
         results["usn"] = self.extract_usn_journal(partition_num)
         results["registry"] = self.extract_registry_hives(partition_num)
-        results["prefetch"] = self.extract_prefetch(partition_num)
         results["logs"] = self.extract_logs(partition_num)
         results["timeline"] = self.extract_timeline(partition_num)
         results["shadow_copies"] = self.detect_shadow_copies(partition_num)
         results["hidden_structures"] = self.detect_hidden_structures(partition_num)
         results["timestomp"] = self.detect_timestomping(partition_num)
-        results["raw_usn_journal"] = self.extract_raw_usn_journal(partition_num)
-        results["raw_logfile"] = self.extract_raw_logfile(partition_num)
-        results["raw_volume"] = self.extract_raw_volume(partition_num)
-        results["raw_boot"] = self.extract_raw_boot_sector(partition_num)
-        results["raw_mft"] = self.extract_raw_mft(partition_num)
         return results
 
     def extract_everything(self) -> Dict[str, Any]:
@@ -690,17 +547,11 @@ class ForensicExtractor:
                 "mft": [],
                 "usn_journals": [],
                 "registry": [],
-                "prefetch": [],
                 "logs": [],
                 "timelines": [],
                 "shadow_copies": [],
                 "hidden_structures": [],
                 "timestomp": [],
-                "raw_usn_journal": [],
-                "raw_logfile": [],
-                "raw_volume": [],
-                "raw_boot": [],
-                "raw_mft": [],
             },
             "status": {},
         }
@@ -732,17 +583,6 @@ class ForensicExtractor:
             summary["extracted_files"]["timestomp"].append(
                 f"timestomp_indicators_partition_{i}.txt"
             )
-            summary["extracted_files"]["raw_usn_journal"].append(
-                f"raw_usn_journal_partition_{i}.bin"
-            )
-            summary["extracted_files"]["raw_logfile"].append(
-                f"raw_logfile_partition_{i}.bin"
-            )
-            summary["extracted_files"]["raw_volume"].append(
-                f"raw_volume_partition_{i}.bin"
-            )
-            summary["extracted_files"]["raw_boot"].append(f"raw_boot_partition_{i}.bin")
-            summary["extracted_files"]["raw_mft"].append(f"raw_mft_partition_{i}.bin")
 
         summary_file = self.output_dir / "extraction_summary.json"
         with open(summary_file, "w") as f:

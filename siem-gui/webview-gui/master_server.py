@@ -61,8 +61,11 @@ def is_new_log_entry(line: str) -> bool:
     if re.match(r'^\{\s*"(timestamp|time|ts|date)"\s*:', line):
         return True
     
-    # Windows Event Log
-    if re.match(r'^\d{4}[-\d\s:]+,(Information|Warning|Error|Success|Failure)', line, re.I):
+    # Windows Event Log (CSV/Text)
+    if re.match(r'^\d{4}[-\d\s:]+,(\d+,)?(Information|Warning|Error|Success|Failure|Audit|Info)', line, re.I):
+        return True
+    
+    if line.startswith('TimeCreated,EventID,'):
         return True
     
     return False

@@ -237,21 +237,7 @@ class ForensicTaskManager:
             progress_callback(
                 45,
                 "preprocessing",
-                f"Extracted {len(result.get('partitions', []))} partitions. Running layered correlation...",
-            )
-
-            layered_results = self._run_layered_correlation(output_dir)
-
-            layered_json_file = os.path.join(
-                output_dir, "layered_timestomp_analysis.json"
-            )
-            with open(layered_json_file, "w") as f:
-                json.dump(layered_results, f, indent=2)
-
-            progress_callback(
-                50,
-                "ai_preprocessing",
-                "Preprocessing artifacts with layered correlation data...",
+                f"Extracted {len(result.get('partitions', []))} partitions. Preprocessing...",
             )
 
             preprocessor = ForensicPreprocessor(output_dir)
@@ -261,7 +247,7 @@ class ForensicTaskManager:
 
             stats = preprocessed.get("statistics", {})
             progress_callback(
-                65,
+                60,
                 "ai_analysis",
                 f"Processed {stats.get('total_files_processed', 0)} files. Running AI analysis...",
             )
@@ -273,7 +259,7 @@ class ForensicTaskManager:
             with open(json_file, "w") as f:
                 json.dump(analysis, f, indent=2, default=str)
 
-            progress_callback(80, "report_generation", "Generating HTML report...")
+            progress_callback(85, "report_generation", "Generating HTML report...")
 
             analyzer.generate_html_report(analysis)
 
@@ -299,8 +285,6 @@ class ForensicTaskManager:
                 image_path=image_path,
                 ai_results=analysis,
                 antiforensic_results=antiforensic_results,
-                layered_results=layered_results,
-                extraction_results=result,
             )
             pdf_report.generate()
 
@@ -323,27 +307,6 @@ class ForensicTaskManager:
                 status=TaskStatus.FAILED,
                 error=f"Pipeline error: {str(e)}\n{traceback.format_exc()}",
             )
-
-    def _run_layered_correlation(self, output_dir: str):
-        """Run the layered correlation engine for timestomp detection across all partitions"""
-        try:
-            sys.path.insert(
-                0,
-                os.path.join(
-                    os.path.dirname(__file__), "..", "forensic-disk-analyzer", "backend"
-                ),
-            )
-            from layered_correlation_engine import (
-                run_layered_analysis_for_all_partitions,
-            )
-
-            return run_layered_analysis_for_all_partitions(output_dir)
-        except Exception as e:
-            import traceback
-
-            print(f"Error in layered correlation: {e}")
-            print(traceback.format_exc())
-            return {"error": str(e), "findings": [], "analysis_summary": {}}
 
     def _extract_logs_thread(self, log_extractor, task_id: str):
         try:

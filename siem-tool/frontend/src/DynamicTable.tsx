@@ -69,6 +69,27 @@ const getColumnsForLogType = (_logType: string, sampleEntries: ParsedLogEntry[])
   columns.push(
     { key: 'timestamp', label: 'Timestamp', width: 180, visible: true, sortable: true, getValue: (e) => e.timestamp || '-' },
     {
+      key: 'country',
+      label: 'Country',
+      width: 80,
+      visible: true,
+      sortable: true,
+      getValue: (e) => (
+        <span 
+          style={{ 
+            backgroundColor: '#3b82f6', 
+            color: '#ffffff',
+            padding: '1px 6px',
+            borderRadius: '3px',
+            fontSize: '10px',
+            fontWeight: 'bold'
+          }}
+        >
+          {e.countryCode || '??'}
+        </span>
+      )
+    },
+    {
       key: 'severity',
       label: 'Severity',
       width: 100,

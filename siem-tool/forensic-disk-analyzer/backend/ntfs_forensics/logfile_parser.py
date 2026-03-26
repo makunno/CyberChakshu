@@ -12,7 +12,7 @@ The $LogFile contains NTFS transaction log records that track:
 Critical for forensic analysis - even if USN journal is cleared,
 $LogFile may still contain evidence of timestamp modifications.
 
-Author: FreeKhana SIEM Team
+Author: Cyber Chakshu SIEM Team
 """
 
 import struct

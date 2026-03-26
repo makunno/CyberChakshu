@@ -146,7 +146,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Registry Hives for Partition 0",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 34 bytes",
             "Filesystem: ntfs",
             "================================================================================",
@@ -185,7 +185,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Shadow Copy / VSS Indicators for Partition 1",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "================================================================================",
             "",
             "Potential Shadow Copy / VSS Related Files:",
@@ -231,7 +231,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Shadow Copy / VSS Indicators for Partition 0",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "================================================================================",
             "",
             "No shadow copy indicators found.",
@@ -258,7 +258,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "USN Journal Files for Partition 0",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 34 bytes",
             "Filesystem: ntfs",
             "================================================================================",
@@ -289,7 +289,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "USN Journal Files for Partition 1",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 65664 bytes",
             "Filesystem: auto",
             "================================================================================",
@@ -335,7 +335,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Registry Hives for Partition 1",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 65664 bytes",
             "Filesystem: auto",
             "================================================================================",
@@ -377,7 +377,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "MFT Listing for Partition 1",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 65664 bytes",
             "Filesystem: auto",
             "================================================================================",
@@ -418,7 +418,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Timestamp Analysis for Partition 1",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "================================================================================",
             "",
             "Full file listing with timestamps:",
@@ -459,7 +459,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Full Timeline for Partition 1",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 65664 bytes",
             "================================================================================",
             "",
@@ -495,7 +495,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Full Timeline for Partition 0",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 34 bytes",
             "================================================================================",
             "",
@@ -519,7 +519,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Timestamp Analysis for Partition 0",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "================================================================================",
             "",
             "Error: Cannot determine file system type",
@@ -536,7 +536,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Hidden Structures / ADS for Partition 0",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "================================================================================",
             "",
             "No hidden structures/ADS found.",
@@ -584,7 +584,7 @@
           "sample_lines": [
             "==========================================================================================",
             "           TIMESTOMPING DETECTION FORENSIC REPORT",
-            "           Generated by FreeKhana Hardcoded Detection Engine",
+            "           Generated by Cyber Chakshu Hardcoded Detection Engine",
             "==========================================================================================",
             "",
             "Analysis Date:      2026-02-28T21:48:42.891236",
@@ -613,7 +613,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Hidden Structures / ADS for Partition 1",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "================================================================================",
             "",
             "Potential Alternate Data Streams / Hidden Data:",
@@ -651,7 +651,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Log Files for Partition 0",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 34 bytes",
             "Filesystem: ntfs",
             "================================================================================",
@@ -675,7 +675,7 @@
           "suspicious_patterns": [],
           "sample_lines": [
             "Log Files for Partition 1",
-            "Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01",
+            "Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01",
             "Offset: 65664 bytes",
             "Filesystem: auto",
             "================================================================================",

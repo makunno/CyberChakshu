@@ -323,6 +323,63 @@ class LogParsers:
         }
     
     @staticmethod
+    def windows_security_csv(line: str) -> Optional[Dict[str, Any]]:
+        # Windows Security CSV format: TimeCreated,EventID,LevelDisplayName,LogName,MachineName,Message,...
+        # Skip header lines
+        if line.startswith('TimeCreated,') or line.startswith('EventID,'):
+            return None
+        if not line or ',' not in line:
+            return None
+        parts = line.split(',')
+        if len(parts) < 8:
+            return None
+        try:
+            # Check if first part is a timestamp
+            first = parts[0].strip()
+            if not re.match(r'\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}', first):
+                return None
+            return {
+                'timestamp': first,
+                'event_id': int(parts[1]) if parts[1].isdigit() else 0,
+                'level': parts[2].strip().lower() if len(parts) > 2 else 'info',
+                'log_name': parts[3].strip() if len(parts) > 3 else '',
+                'machine_name': parts[4].strip() if len(parts) > 4 else '',
+                'message': parts[5].strip() if len(parts) > 5 else '',
+                'account_name': parts[6].strip() if len(parts) > 6 else '',
+                'logon_type': parts[7].strip() if len(parts) > 7 else '',
+                'ip_address': parts[8].strip() if len(parts) > 8 else '',
+            }
+        except:
+            return None
+    
+    @staticmethod
+    def windows_application_csv(line: str) -> Optional[Dict[str, Any]]:
+        # Windows Application CSV format
+        # Skip header lines
+        if line.startswith('TimeCreated,') or line.startswith('EventID,') or line.startswith('Level,'):
+            return None
+        if not line or ',' not in line:
+            return None
+        parts = line.split(',')
+        if len(parts) < 6:
+            return None
+        try:
+            first = parts[0].strip()
+            if not re.match(r'\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}', first):
+                return None
+            return {
+                'timestamp': first,
+                'event_id': int(parts[1]) if parts[1].isdigit() else 0,
+                'level': parts[2].strip().lower() if len(parts) > 2 else 'info',
+                'log_name': parts[3].strip() if len(parts) > 3 else '',
+                'machine_name': parts[4].strip() if len(parts) > 4 else '',
+                'provider_name': parts[5].strip() if len(parts) > 5 else '',
+                'message': parts[6].strip() if len(parts) > 6 else '',
+            }
+        except:
+            return None
+    
+    @staticmethod
     def raw(line: str) -> Dict[str, Any]:
         return {
             'timestamp': None,

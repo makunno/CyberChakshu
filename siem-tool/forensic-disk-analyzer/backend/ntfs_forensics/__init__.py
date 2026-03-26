@@ -9,7 +9,7 @@ Architecture:
 - $LogFile Parser: Detects transaction history and log restarts
 - Correlation Engine: Multi-layer inconsistency detection with scoring
 
-Author: FreeKhana SIEM Team
+Author: Cyber Chakshu SIEM Team
 """
 
 __version__ = "1.0.0"

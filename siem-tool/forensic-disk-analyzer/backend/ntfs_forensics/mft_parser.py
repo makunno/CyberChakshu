@@ -6,7 +6,7 @@ Parses raw Master File Table to extract $SI and $FN timestamps separately.
 The key forensic insight: $SI and $FN store timestamps independently.
 Attackers often modify $SI but forget $FN (or vice versa).
 
-Author: FreeKhana SIEM Team
+Author: Cyber Chakshu SIEM Team
 """
 
 import struct

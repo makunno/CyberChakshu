@@ -6,7 +6,7 @@ Parses raw USN Journal ($UsnJrnl:$J) to extract file change records.
 The USN Journal logs file-level changes (create, delete, rename, modify).
 Critical for detecting timestomping - USN records the ACTUAL time of file creation.
 
-Author: FreeKhana SIEM Team
+Author: Cyber Chakshu SIEM Team
 """
 
 import struct

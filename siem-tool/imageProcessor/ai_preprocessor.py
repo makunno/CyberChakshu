@@ -45,19 +45,10 @@ class ForensicPreprocessor:
         result["file_analysis"] = self._analyze_all_files()
 
         # Step 3: Extract evidence features
-        print("[*] Step 3: Extract evidence...")
+        print("[*] Step 3: Extracting evidence...")
         result["evidence"] = self._extract_evidence()
 
-        # Step 3.5: Load layered correlation results if they exist
-        layered_file = self.output_dir / "layered_analysis_results.json"
-        if layered_file.exists():
-            print("[*] Step 3.5: Loading layered correlation results...")
-            try:
-                with open(layered_file, "r") as f:
-                    result["layered_findings"] = json.load(f)
-            except Exception as e:
-                print(f"    [!] Error loading layered results: {e}")
-
+        # Step 4: Build AI context
         print("[*] Step 4: Building AI context...")
         result["context"] = self._build_context()
 

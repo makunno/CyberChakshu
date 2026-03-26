@@ -15,7 +15,7 @@ Implements 11 forensic heuristics for detecting timestamp manipulation:
 10. Microsecond/Nanosecond Patterns
 11. Shadow Copy Differential Reconstruction
 
-Author: FreeKhana SIEM Team
+Author: Cyber Chakshu SIEM Team
 """
 
 import struct

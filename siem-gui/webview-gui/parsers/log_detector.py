@@ -82,7 +82,7 @@ class LogDetector:
     LINUX_SYSTEMD_RE = re.compile(r'(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+systemd\[(\d+)\]:\s+(.*)')
     LINUX_KERNEL_RE = re.compile(r'(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+kernel:\s+(.*)')
     LINUX_AUDIT_RE = re.compile(r'type=(\w+)\s+msg=audit\((\d+)\.\d+:(\d+)\):\s*(.*)')
-    LINUX_PACKAGE_RE = re.compile(r'(\d{4}-\d{2}-\d{2})\s+(.*)')
+    LINUX_PACKAGE_RE = re.compile(r'(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}:\d{2}\s+(status|configure|install|trigproc|upgrade)\s+')
 
     WINDOWS_TEXT_RE = re.compile(r'(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}),\s*([^,]+),\s*([^,]+),\s*(\d+),\s*(.*)')
     FILEZILLA_RE = re.compile(r'\(\d+\)(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+-\s+(\S+)\s+\(([\d\.]+)\)\s+>\s+(\d+)\s+(.*)')
@@ -107,6 +107,8 @@ class LogDetector:
     WINDOWS_APPLICATION_TXT_RE = re.compile(r'^(Information|Warning|Error|Critical)\t\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\t')
     WINDOWS_APPLICATION_CSV_RE = re.compile(r'^(Information|Warning|Error|Critical),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},[^,]+,\d+,[^,]+,')
     WINDOWS_EVENTVIEWER_CSV_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},[^,]+,\d+,[^,]+,')
+    WINDOWS_SECURITY_CSV_RE = re.compile(r'^TimeCreated,EventID,LevelDisplayName,LogName,MachineName,Message,AccountName,LogonType,IpAddress')
+    WINDOWS_SECURITY_CSV_LINE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d+,[^,]+,[^,]+,[^,]+,')
     WINDOWS_SETUP_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Setup\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)')
     WINDOWS_FORWARDED_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+ForwardedEvents\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)')
     WINDOWS_EVENTVIEWER_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning) \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2} ')
@@ -618,12 +620,27 @@ class LogDetector:
         return bool(LogDetector.WINDOWS_APPLICATION_TXT_RE.match(line))
 
     @staticmethod
+    def is_windows_security_csv(line: str) -> bool:
+        if LogDetector.WINDOWS_SECURITY_CSV_RE.match(line):
+            return True
+        if "Security" in line and "," in line and "TimeCreated" not in line:
+            # Check if it looks like security CSV line
+            parts = line.split(',')
+            if len(parts) >= 9 and parts[3] == "Security":
+                return True
+        return False
+
+    @staticmethod
     def is_windows_application_csv(line: str) -> bool:
         if LogDetector.WINDOWS_APPLICATION_CSV_RE.match(line):
             return True
         if LogDetector.WINDOWS_EVENTVIEWER_CSV_RE.match(line):
             return True
-        if line.startswith('Level,') or line.startswith('Keywords,'):
+        if LogDetector.WINDOWS_SECURITY_CSV_RE.match(line):
+            return True
+        if LogDetector.WINDOWS_SECURITY_CSV_LINE_RE.match(line):
+            return True
+        if line.startswith('Level,') or line.startswith('Keywords,') or line.startswith('TimeCreated,'):
             return True
         return False
 
@@ -683,6 +700,7 @@ class LogDetector:
             ("Windows Firewall", LogDetector.is_windows_fw),
             ("Windows Event Viewer", LogDetector.is_windows_event_viewer),
             ("Windows Application TXT", LogDetector.is_windows_application_txt),
+            ("Windows Security CSV", LogDetector.is_windows_security_csv),
             ("Windows Application CSV", LogDetector.is_windows_application_csv),
             ("Windows Event", LogDetector.is_windows_event),
             ("Windows Security", LogDetector.is_windows_security),
@@ -795,6 +813,7 @@ class LogDetector:
             "Windows Firewall": LogDetector.is_windows_fw,
             "Windows Event Viewer": LogDetector.is_windows_event_viewer,
             "Windows Application TXT": LogDetector.is_windows_application_txt,
+            "Windows Security CSV": LogDetector.is_windows_security_csv,
             "Windows Application CSV": LogDetector.is_windows_application_csv,
             "Windows Event": LogDetector.is_windows_event,
             "Windows Security": LogDetector.is_windows_security,
@@ -938,9 +957,9 @@ class LogDetector:
 
 
 def preprocess_json_array(content: str) -> str:
-    """Convert single-line JSON array to multiline format."""
+    """Convert single-line JSON array to multiline format for easier line-by-line parsing."""
     trimmed = content.strip()
-    if not trimmed.startswith('[[') or not trimmed.endswith(']]'):
+    if not (trimmed.startswith('[') and trimmed.endswith(']')):
         return content
 
     try:
@@ -948,8 +967,9 @@ def preprocess_json_array(content: str) -> str:
         if not isinstance(data, list):
             return content
 
-        lines = [json.dumps(entry) for entry in data]
+        lines = [json.dumps(entry) if isinstance(entry, (dict, list)) else str(entry) for entry in data]
         return '\n'.join(lines)
-    except:
+    except Exception as e:
+        print(f"JSON preprocessing failed: {e}")
         return content
 

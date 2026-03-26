@@ -11,7 +11,7 @@ Implements the 5-layer detection model:
 
 Provides graduated risk scoring (0-100) instead of binary detection.
 
-Author: FreeKhana SIEM Team
+Author: Cyber Chakshu SIEM Team
 """
 
 import os

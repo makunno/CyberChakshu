@@ -255,18 +255,8 @@ class AntiForensicAnalyzer:
                 if ads_matches:
                     for match in ads_matches[:20]:
                         if "$" not in match and len(match.split(":")) == 2:
-                            parts = match.split(":")
                             self.results["hidden_streams"].append(
-                                {
-                                    "message": f"ADS detected: {match}",
-                                    "stream_name": parts[1]
-                                    if len(parts) > 1
-                                    else "unknown",
-                                    "source_file": parts[0]
-                                    if len(parts) > 0
-                                    else "unknown",
-                                    "partition": partition,
-                                }
+                                f"Partition {partition}: ADS detected: {match}"
                             )
 
                 # Count potential ADS
@@ -388,16 +378,8 @@ class AntiForensicAnalyzer:
                 # Look for $OrphanFiles (deleted files with recoverable data)
                 if "$OrphanFiles" in content:
                     orphan_count = content.count("$OrphanFiles")
-                    orphan_files = re.findall(r"\$OrphanFiles[^\n]*", content)[:5]
-                    file_names = [f.strip() for f in orphan_files]
-
                     self.results["file_deletion"].append(
-                        {
-                            "message": f"Orphaned files found: {orphan_count} entries",
-                            "partition": partition,
-                            "orphan_file_names": file_names,
-                            "evidence": f"Sample: {file_names[0] if file_names else 'N/A'}",
-                        }
+                        f"Partition {partition}: Orphaned files found (deleted but recoverable): {orphan_count} entries"
                     )
 
                 # Check for deleted entries (prefixed with *)
@@ -437,33 +419,25 @@ class AntiForensicAnalyzer:
                 with open(mf, "r", errors="ignore") as f:
                     lines = f.readlines()
 
+                # Check for suspicious MFT entries
+                entry_count = 0
                 system_file_count = 0
-                specific_anomalies = []
+
                 for line in lines:
-                    if "$" in line:
+                    if "$" in line:  # System files
                         system_file_count += 1
 
+                    # Look for suspicious paths
                     for spath in suspicious_paths:
                         if spath.lower() in line.lower():
-                            specific_anomalies.append(line.strip()[:80])
+                            self.results["mft_anomalies"].append(
+                                f"Partition {partition}: Suspicious path: {line.strip()[:70]}"
+                            )
 
-                if specific_anomalies:
+                # Report MFT size
+                if system_file_count > 0:
                     self.results["mft_anomalies"].append(
-                        {
-                            "message": f"MFT contains {system_file_count} system files with suspicious paths",
-                            "partition": partition,
-                            "specific_paths": specific_anomalies[:10],
-                            "evidence": "; ".join(specific_anomalies[:3]),
-                        }
-                    )
-                elif system_file_count > 0:
-                    self.results["mft_anomalies"].append(
-                        {
-                            "message": f"MFT contains {system_file_count} system file entries",
-                            "partition": partition,
-                            "specific_paths": [],
-                            "evidence": "System files present but no suspicious paths",
-                        }
+                        f"Partition {partition}: MFT contains {system_file_count} system file entries"
                     )
 
             except Exception as e:

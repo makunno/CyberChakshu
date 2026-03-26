@@ -1,12 +1,12 @@
 // API client for SIEM backend
 
-import type { ParseResponse, CorrelateResponse } from './types';
+import type { ParseResponse, CorrelateResponse, ParsedLogEntry, CorrelatedEvent } from './types';
 
 // Read API URL from environment or injected window variable
 // - VITE_API_URL: set during build for Cloudflare deployment
-// - window.FREEKHANA_API_URL: injected by Flask for local development
+// - window.CYBERCHAKSHU_API_URL: injected by Flask for local development
 const ENV_API_URL = import.meta.env.VITE_API_URL || '';
-const INJECTED_API_URL = typeof window !== 'undefined' ? (window as any).FREEKHANA_API_URL : '';
+const INJECTED_API_URL = typeof window !== 'undefined' ? (window as any).CYBERCHAKSHU_API_URL : '';
 const API_URL = ENV_API_URL || INJECTED_API_URL || '';
 
 const CLIENT_SPLIT_THRESHOLD = 200 * 1024; // 200KB - split on frontend
@@ -119,6 +119,44 @@ export async function splitFileClient(file: File): Promise<SplitFileResult> {
     reader.onerror = () => reject(new Error('Failed to read file'));
     reader.readAsText(file);
   });
+}
+
+export async function trainAnomaly(content: string, forceType?: string): Promise<{ success: boolean; detail: string }> {
+  const formData = new FormData();
+  formData.append('content', content);
+  if (forceType) {
+    formData.append('forceType', forceType);
+  }
+
+  const response = await fetch(getApiUrl('/train-anomaly'), {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to train anomaly detector: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+export async function trainAnomalyFromFile(file: File, forceType?: string): Promise<{ success: boolean; detail: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (forceType) {
+    formData.append('forceType', forceType);
+  }
+
+  const response = await fetch(getApiUrl('/train-anomaly'), {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to train anomaly detector: ${response.statusText}`);
+  }
+
+  return response.json();
 }
 
 export async function parseLogsFromFile(file: File): Promise<ParseResponse> {
@@ -329,11 +367,11 @@ export async function analyzeLogWithAI(logEntry: string, logType: string): Promi
   return response.json();
 }
 
-export async function getSocAnalystChat(message: string, context: Array<{role: string, content: string}> = [], logData?: ParseResponse | CorrelateResponse): Promise<string> {
+export async function getSocAnalystChat(message: string, context: Array<{role: string, content: string}> = [], analysisContext?: any): Promise<string> {
   const response = await fetch(getApiUrl('/soc-chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, context, logData }),
+    body: JSON.stringify({ message, context, analysis_context: analysisContext }),
   });
 
   if (!response.ok) {
@@ -417,53 +455,78 @@ export async function checkSocAnalystHealth(): Promise<{status: string; llm_load
   }
 }
 
-// ============================================================================
-// Disk Forensics API
-// ============================================================================
-
-export interface ForensicStatus {
-  status: 'idle' | 'running' | 'completed' | 'error';
-  progress: number;
+// Forensic Analysis API
+export interface ForensicStartResponse {
+  task_id: string;
+  status: string;
   message: string;
 }
 
-export interface ForensicResults {
+export interface ForensicStatusResponse {
+  task_id: string;
   status: string;
-  results?: {
-    layered_analysis?: any;
-    timestomping?: any;
-    advanced_analysis?: any;
-    ai_analysis?: any;
-    ai_report_html?: string;
-    copied_files?: {
-      files: any[];
-      count: number;
-    };
-  };
-  error?: string;
+  progress: number;
+  stage: string;
+  message: string;
+  output_dir: string | null;
+  error: string | null;
 }
 
-export async function analyzeDiskImage(file: File): Promise<{analysisId: string; status: string; message: string}> {
-  const formData = new FormData();
-  formData.append('file', file);
+export interface ForensicFinding {
+  technique: string;
+  severity: string;
+  evidence: string;
+  explanation: string;
+  recommendation: string;
+  confidence: number;
+}
 
-  const response = await fetch(getApiUrl('/forensic/analyze'), {
+export interface ForensicResultsResponse {
+  task_id: string;
+  status: string;
+  output_dir: string;
+  findings: ForensicFinding[];
+  summary: string;
+  risk_level: string;
+  recommendations: string[];
+  timestamp: string;
+  model: string;
+  analysis_time_seconds: number;
+}
+
+export async function checkForensicHealth(): Promise<{
+  status: string;
+  pipeline_available: boolean;
+  api_key_configured: boolean;
+}> {
+  try {
+    const response = await fetch(getApiUrl('/forensics/health'));
+    if (response.ok) {
+      return await response.json();
+    }
+    return { status: 'unavailable', pipeline_available: false, api_key_configured: false };
+  } catch {
+    return { status: 'unavailable', pipeline_available: false, api_key_configured: false };
+  }
+}
+
+export async function startForensicAnalysis(imagePath: string): Promise<ForensicStartResponse> {
+  const response = await fetch(getApiUrl('/forensics/start'), {
     method: 'POST',
-    body: formData,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image_path: imagePath }),
   });
 
   if (!response.ok) {
-    if (response.status === 409) {
-      throw new Error('Analysis already in progress. Please wait for it to complete.');
-    }
-    throw new Error(`Failed to start analysis: ${response.statusText}`);
+    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(error.detail || `Failed to start analysis: ${response.statusText}`);
   }
 
   return response.json();
 }
 
-export async function getForensicStatus(): Promise<ForensicStatus> {
-  const response = await fetch(getApiUrl('/forensic/status'));
+export async function getForensicStatus(taskId: string): Promise<ForensicStatusResponse> {
+  const response = await fetch(getApiUrl(`/forensics/status/${taskId}`));
 
   if (!response.ok) {
     throw new Error(`Failed to get status: ${response.statusText}`);
@@ -472,22 +535,149 @@ export async function getForensicStatus(): Promise<ForensicStatus> {
   return response.json();
 }
 
-export async function getForensicResults(): Promise<ForensicResults> {
-  const response = await fetch(getApiUrl('/forensic/results'));
+export async function getForensicResults(taskId: string): Promise<ForensicResultsResponse> {
+  const response = await fetch(getApiUrl(`/forensics/results/${taskId}`));
 
   if (!response.ok) {
-    throw new Error(`Failed to get results: ${response.statusText}`);
+    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(error.detail || `Failed to get results: ${response.statusText}`);
   }
 
   return response.json();
 }
 
-export async function clearForensicState(): Promise<{status: string}> {
-  const response = await fetch(getApiUrl('/forensic/clear'));
+export async function downloadForensicPdf(taskId: string): Promise<void> {
+  const response = await fetch(getApiUrl(`/forensics/pdf/${taskId}`));
 
   if (!response.ok) {
-    throw new Error(`Failed to clear state: ${response.statusText}`);
+    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(error.detail || `Failed to download PDF: ${response.statusText}`);
   }
 
-  return response.json();
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `forensic_report_${taskId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function generateSiemReport(data: ParseResponse, socSummary?: string): Promise<void> {
+  console.log('Generating SIEM report...', { dataSize: data?.entries?.length, hasSocSummary: !!socSummary });
+  
+  const response = await fetch(getApiUrl('/generate-report'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data, soc_summary: socSummary }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Report generation failed:', response.status, errorText);
+    throw new Error(`Failed to generate report: ${response.statusText}`);
+  }
+
+  console.log('Report generated successfully, downloading...');
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `siem_report_${new Date().getTime()}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Smart Filtering API for AI Agent
+export interface FilterCriteria {
+  column?: string;
+  value?: string | number;
+  operator?: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan';
+  attackType?: string;
+  severity?: string;
+  logType?: string;
+}
+
+export interface SmartFilterResponse {
+  entries: (ParsedLogEntry | CorrelatedEvent)[];
+  totalCount: number;
+  filteredCount: number;
+  appliedFilters: FilterCriteria[];
+}
+
+export function smartFilterLogs(
+  data: ParseResponse | CorrelateResponse,
+  logType: 'single' | 'correlation',
+  criteria: FilterCriteria[]
+): SmartFilterResponse {
+  const entries = logType === 'single'
+    ? (data as ParseResponse).entries || []
+    : (data as CorrelateResponse).correlation?.attackChains?.flatMap(c => c.events) || [];
+
+  let filtered = [...entries];
+
+  for (const criterion of criteria) {
+    filtered = filtered.filter(entry => {
+      // Handle attack type filtering (only for ParsedLogEntry, not CorrelatedEvent)
+      if (criterion.attackType && 'attackType' in entry) {
+        if (criterion.attackType === 'any') {
+          return entry.attackType !== undefined && entry.attackType !== 'normal';
+        }
+        return entry.attackType === criterion.attackType;
+      }
+
+      // Handle severity filtering
+      if (criterion.severity) {
+        return entry.severity === criterion.severity;
+      }
+
+      // Handle log type filtering
+      if (criterion.logType) {
+        return entry.logType.toLowerCase().includes(criterion.logType.toLowerCase());
+      }
+
+      // Handle column-based filtering
+      if (criterion.column && criterion.value !== undefined) {
+        const value = getNestedValue(entry, criterion.column);
+        if (value === undefined) return false;
+
+        const strValue = String(value).toLowerCase();
+        const criterionValue = String(criterion.value).toLowerCase();
+
+        switch (criterion.operator) {
+          case 'contains':
+            return strValue.includes(criterionValue);
+          case 'startsWith':
+            return strValue.startsWith(criterionValue);
+          case 'endsWith':
+            return strValue.endsWith(criterionValue);
+          case 'greaterThan':
+            return Number(value) > Number(criterion.value);
+          case 'lessThan':
+            return Number(value) < Number(criterion.value);
+          default:
+            return strValue === criterionValue;
+        }
+      }
+
+      return true;
+    });
+  }
+
+  return {
+    entries: filtered,
+    totalCount: entries.length,
+    filteredCount: filtered.length,
+    appliedFilters: criteria
+  };
+}
+
+function getNestedValue(obj: any, path: string): any {
+  return path.split('.').reduce((current, key) => {
+    return current && current[key] !== undefined ? current[key] : undefined;
+  }, obj);
 }

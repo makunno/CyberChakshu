@@ -27,7 +27,7 @@ class LogDetector:
     IIS_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{1,3}(?:\.\d{1,3}){3}\s+(GET|POST|PUT|DELETE)\s+/\S*\s+.*\s+\d{3}\s*')
     ASPNET_CORE_RE = re.compile(r'microsoft\.aspnetcore', re.IGNORECASE)
 
-    POSTFIX_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+postfix\/(smtpd|smtp|cleanup|qmgr)\[\d+\]:\s+.+$')
+    POSTFIX_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+(postfix\/(smtpd|smtp|cleanup|qmgr|pipe|submission\/smtpd|10025\/smtpd|anvil|postscreen|bounce|dnsblog|amavis\/smtp)|amavis|opendkim|roundcube)\[?\d*\]?:\s+.+$')
     SENDMAIL_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+sendmail\[\d+\]:\s+.+$')
     EXIM_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+[A-Z0-9]{6,}\s+(<=|=>|\*\*)\s+\S+.*$')
     DOVECOT_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+dovecot:\s+(imap|pop3)-login:\s+.+$')
@@ -39,7 +39,7 @@ class LogDetector:
     SMTP_GENERIC_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+SMTP\s+(connect|disconnect|from=|to=).+$')
 
     WINDOWS_FW_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+(ALLOW|DROP|BLOCK)\s+(TCP|UDP|ICMP)\s+(?:\d{1,3}\.){3}\d{1,3}\s+(?:\d{1,3}\.){3}\d{1,3}\s+\d+\s+\d+.*$')
-    IPTABLES_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+kernel:\s*(?:\[[\d.]+\])?\s*iptables\s+(DROP|ACCEPT):\s+IN=\S*\s+OUT=\S*\s+.*SRC=(?:\d{1,3}\.){3}\d{1,3}\s+DST=(?:\d{1,3}\.){3}\d{1,3}.*PROTO=(TCP|UDP|ICMP).*$', re.IGNORECASE)
+    IPTABLES_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+kernel:\s*(?:\[[\d.]+\])?\s*IPTABLES-(DROP|ACCEPT):\s+IN=\S*\s+OUT=\S*\s+.*SRC=(?:\d{1,3}\.){3}\d{1,3}\s+DST=(?:\d{1,3}\.){3}\d{1,3}.*PROTO=(TCP|UDP|ICMP).*$', re.IGNORECASE)
     UFW_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+kernel:\s*\[\d+\.\d+\]\s*\[UFW (ALLOW|BLOCK)\]\s+IN=\S*\s+OUT=\S*\s+SRC=(?:\d{1,3}\.){3}\d{1,3}\s+DST=(?:\d{1,3}\.){3}\d{1,3}', re.IGNORECASE)
     NFTABLES_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+kernel:\s+nftables:\s+rule\s+(accept|drop|reject)\s+.*(tcp|udp|icmp).*$')
     FIREWALLD_RE = re.compile(r'^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+firewalld:\s+(INFO|WARNING|ERROR):\s+.*$')
@@ -64,18 +64,22 @@ class LogDetector:
     MYSQL_ERROR_RE = re.compile(r'(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)\s+(\d+)\s+\[(ERROR|Warning|Note)\]\s+\[MY-(\d+)\]\s+\[(\w+)\]\s+(.*)')
     MYSQL_QUERY_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\d+\s+(Query|Connect|Execute)\s+')
     MYSQL_SLOW_RE = re.compile(r'^# Time:')
-    POSTGRES_ERROR_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\[\d+\]\s+\S+\s+\S+\s+(LOG|ERROR|FATAL):')
-    POSTGRES_AUTH_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\[\d+\]\s+\S+\s+\S+\s+LOG:\s+connection received:')
-    POSTGRES_STATEMENT_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\[\d+\]\s+.*STATEMENT:\s+(.*);')
+    POSTGRES_ERROR_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+[\d:.]+\s+UTC\s+\[\d+\]\s+\S+\s+(LOG|ERROR|FATAL|PANIC):\s*(.*)$')
+    POSTGRES_AUTH_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+[\d:.]+\s+UTC\s+\[\d+\]\s+\S+\s+LOG:\s+connection received:.*host=(\d+\.\d+\.\d+\.\d+)\s+port=(\d+)')
+    POSTGRES_STATEMENT_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+[\d:.]+\s+[A-Za-z]{3,4}(?:/[A-Za-z]+)?\s+\[\d+\]\s+STATEMENT:\s+(.*);')
 
     ORACLE_ALERT_RE = re.compile(r'^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}')
     ORACLE_LISTENER_RE = re.compile(r'(.*?)\s+\*.*SERVICE_NAME=(\w+).*PROTOCOL=(\w+).*HOST=(\d+\.\d+\.\d+\.\d+).*PORT=(\d+).*\*\s+(\d+)')
     ORACLE_AUDIT_RE = re.compile(r'^Audit trail:')
     SQLSERVER_ERROR_RE = re.compile(r'(.*?) Server Error: (\d+), Severity: (\d+), State: (\d+)')
-    SQLSERVER_AUDIT_RE = re.compile(r'action_id=(\w+).*name=(\w+).*database_name=(\w+).*statement=(.*)')
+    SQLSERVER_AUDIT_RE = re.compile(r'action_id=\w+.*(?:name=\S+|database_name=\S+|statement=.*)', re.IGNORECASE)
     SQLSERVER_TRANSACTION_RE = re.compile(r'\((\d+):(\d+):(\d+)\).*Operation:\s+(.*)')
     MONGODB_SERVER_RE = re.compile(r'^\{.*"t".*:.*"s".*:.*"c".*:.*"msg".*.*\}$')
     MONGODB_AUDIT_RE = re.compile(r'^\{.*"atype".*:.*"ts".*.*\}$')
+
+    FILEZILLA_RE = re.compile(r'^\((\d+)\)(\d{2}/\d{2}/\d{4}) (\d{2}:\d{2}:\d{2}) - (\S+) \(([\d.]+)\)> (\d+) (.*)$')
+    VSFTPD_RE = re.compile(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+vsftpd\[(\d+)\]:\s+\[([^\]]+)\]\s+(OK|FAIL)\s+(\w+):\s+(.*)$')
+    XFERLOG_RE = re.compile(r'(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+\d+\s+([\d.]+)\s+\d+\s+(\S+)\s+[ab]\s+[_]\s+([io])\s+[ra]\s+(\S+)\s+\w+\s+[01]\s+\*\s+([ci])')
 
     LINUX_SSHD_FAILED_RE = re.compile(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+sshd\[\d+\]:\s+Failed\s+\w+\s+for\s+(?:invalid\s+user\s+)?(\S+)\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})\s+port\s+(\d+)')
     LINUX_SSHD_ACCEPTED_RE = re.compile(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+sshd\[\d+\]:\s+Accepted\s+\w+\s+for\s+(\S+)\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})\s+port\s+(\d+)')
@@ -83,21 +87,21 @@ class LogDetector:
     LINUX_SYSTEMD_RE = re.compile(r'(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+systemd\[(\d+)\]:\s+(.*)')
     LINUX_KERNEL_RE = re.compile(r'(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+kernel:\s+(.*)')
     LINUX_AUDIT_RE = re.compile(r'type=(\w+)\s+msg=audit\((\d+)\.\d+:(\d+)\):\s*(.*)')
-    LINUX_PACKAGE_RE = re.compile(r'(\d{4}-\d{2}-\d{2})\s+(.*)')
+    LINUX_PACKAGE_RE = re.compile(r'(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}:\d{2}\s+(status|configure|install|trigproc|upgrade)\s+')
 
     WINDOWS_TEXT_RE = re.compile(r'(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}),\s*([^,]+),\s*([^,]+),\s*(\d+),\s*(.*)')
-    FILEZILLA_RE = re.compile(r'\(\d+\)(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s+-\s+(\S+)\s+\(([\d\.]+)\)\s+>\s+(\d+)\s+(.*)')
     IIS_FTP_RE = re.compile(r'(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([\d\.]+)\s+([\w\-]+)\s+[\d\.]+\s+\d+\s+(\w+)\s+([\S]*)\s+(\d+)')
-    XFERLOG_RE = re.compile(r'(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})\s+\d+\s+([\d\.]+)\s+\d+\s+(\S+)\s+[ab]\s+[_]\s+[io]\s+[ra]\s+(\S+)\s+\w+\s+[01]\s+\*\s+([ci])')
     JSON_FTP_RE = re.compile(r'^\[\[.*\]\]$')  # JSON FTP logs format [[{timestamp:...}]]
+
+    LINUX_SSHD_PAM_RE = re.compile(r'^(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+sshd\(pam_unix\)\[\d+\]:\s+(authentication failure|check pass|session (?:opened|closed)).*$')
 
     DHCP_RE = re.compile(r'^(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+(.*)')
     DNS_RE = re.compile(r'^(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+(.*)')
     PROXY_RE = re.compile(r'^(\w{3})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+(.*)')
 
     FASTAPI_RE = re.compile(r'^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}\.\d+.*?(INFO|WARNING|ERROR|DEBUG).*?"(GET|POST|PUT|DELETE|PATCH)\s+\S+\s+HTTP/\d\.\d"\s+\d{3}')
-    AIOHTTP_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(INFO|WARNING|ERROR|DEBUG).*\"(GET|POST|PUT|DELETE)\s+\S+\s+\d{3}"')
-    STARLETTE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(INFO|WARNING|ERROR|DEBUG).*\"(GET|POST|PUT|DELETE|PATCH)\s+\S+\s+\d{3}"')
+    AIOHTTP_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(INFO|WARNING|ERROR|DEBUG).*\"(GET|POST|PUT|DELETE)\s+\S+\s+\d{3}\"')
+    STARLETTE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s+(INFO|WARNING|ERROR|DEBUG).*\"(GET|POST|PUT|DELETE|PATCH)\s+\S+\s+\d{3}\"')
 
     WINDOWS_EVENT_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s*,?\s*(INFO|WARNING|ERROR|DEBUG)\s*,?\s*(\S+)\s*,?\s*(\d+)\s*,?\s*(.*)')
     WINDOWS_SECURITY_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(INFO|WARNING|ERROR)\s+Security\s+(\d+)\s+(?:User:\s*(\S+))?\s*(.*)?')
@@ -107,14 +111,13 @@ class LogDetector:
     WINDOWS_EVENTVIEWER_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning) \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2} ')
     WINDOWS_EVENTVIEWER_TAB_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)|Success|Failure|Error|Warning)\t\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\t')
     WINDOWS_APPLICATION_TXT_RE = re.compile(r'^(Information|Warning|Error|Critical)\t\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\t')
-    WINDOWS_APPLICATION_CSV_RE = re.compile(r'^(Information|Warning|Error|Critical),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},')
-    WINDOWS_EVENTVIEWER_CSV_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},')
-    WINDOWS_SECURITY_CSV_RE = re.compile(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+,')
-    WINDOWS_APPLICATION_CSV_RE2 = re.compile(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+,(Information|Warning|Error|Critical),Application,')
+    WINDOWS_APPLICATION_CSV_RE = re.compile(r'^(Information|Warning|Error|Critical),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},[^,]+,\d+,[^,]+,')
+    WINDOWS_EVENTVIEWER_CSV_RE = re.compile(r'^(Audit (?:Success|Failure|Error|Warning)),\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2},[^,]+,\d+,[^,]+,')
+    WINDOWS_SECURITY_CSV_RE = re.compile(r'^TimeCreated,EventID,LevelDisplayName,LogName,MachineName,Message,AccountName,LogonType,IpAddress')
+    WINDOWS_SECURITY_CSV_LINE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d+,[^,]+,[^,]+,[^,]+,')
     WINDOWS_SETUP_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+Setup\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)')
     WINDOWS_FORWARDED_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+ForwardedEvents\s+\d+\s+(INFO|WARNING|ERROR|CRITICAL)')
 
-    VSFTPD_RE = re.compile(r'^(\w{3}\s+\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+\[pid\s+(\d+)\](?:\s+\[\s*\])?\s*(.*)')
     PROFTPD_RE = re.compile(r'^(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+(?:proftpd|pure-ftpd)\[\d+\]:\s+(.*)')
 
     FASTAPI_JSON_RE = re.compile(r'^\{"time":\s*".*?",\s*"framework":\s*"FastAPI"')
@@ -216,7 +219,7 @@ class LogDetector:
 
     @staticmethod
     def is_postfix(line: str) -> bool:
-        return bool(LogDetector.POSTFIX_RE.match(line))
+        return bool(LogDetector.POSTFIX_RE.match(line)) or "postfix/" in line or "amavis[" in line or "opendkim[" in line or "roundcube:" in line
 
     @staticmethod
     def is_sendmail(line: str) -> bool:
@@ -515,6 +518,10 @@ class LogDetector:
         return bool(LogDetector.LINUX_SSHD_ACCEPTED_RE.match(line))
 
     @staticmethod
+    def is_linux_sshd_pam(line: str) -> bool:
+        return bool(LogDetector.LINUX_SSHD_PAM_RE.match(line))
+
+    @staticmethod
     def is_syslog(line: str) -> bool:
         return bool(LogDetector.LINUX_SYSLOG_RE.match(line))
 
@@ -547,12 +554,12 @@ class LogDetector:
         return bool(LogDetector.IIS_FTP_RE.match(line))
 
     @staticmethod
-    def is_xferlog(line: str) -> bool:
-        return bool(LogDetector.XFERLOG_RE.match(line))
-
-    @staticmethod
     def is_json_ftp(line: str) -> bool:
         return bool(LogDetector.JSON_FTP_RE.match(line))
+
+    @staticmethod
+    def is_xferlog(line: str) -> bool:
+        return bool(LogDetector.XFERLOG_RE.match(line))
 
     @staticmethod
     def is_dhcp(line: str) -> bool:
@@ -618,7 +625,11 @@ class LogDetector:
 
     @staticmethod
     def is_windows_application_txt(line: str) -> bool:
-        return bool(LogDetector.WINDOWS_APPLICATION_TXT_RE.match(line))
+        if LogDetector.WINDOWS_APPLICATION_TXT_RE.match(line):
+            return True
+        if line.startswith('Level\tDate and Time\tSource\tEvent ID\tTask Category'):
+            return True
+        return False
 
     @staticmethod
     def is_windows_application_csv(line: str) -> bool:
@@ -628,11 +639,9 @@ class LogDetector:
             return True
         if LogDetector.WINDOWS_SECURITY_CSV_RE.match(line):
             return True
-        if LogDetector.WINDOWS_APPLICATION_CSV_RE2.match(line):
+        if LogDetector.WINDOWS_SECURITY_CSV_LINE_RE.match(line):
             return True
-        if line.startswith('Level,') or line.startswith('Keywords,'):
-            return True
-        if line.startswith('TimeCreated,'):
+        if line.startswith('Level,') or line.startswith('Keywords,') or line.startswith('TimeCreated,'):
             return True
         return False
 
@@ -657,6 +666,17 @@ class LogDetector:
         return bool(LogDetector.FASTAPI_JSON_RE.match(line))
 
     @staticmethod
+    def is_windows_security_csv(line: str) -> bool:
+        if LogDetector.WINDOWS_SECURITY_CSV_RE.match(line):
+            return True
+        if "Security" in line and "," in line and "TimeCreated" not in line:
+            # Check if it looks like security CSV line
+            parts = line.split(',')
+            if len(parts) >= 9 and parts[3] == "Security":
+                return True
+        return False
+
+    @staticmethod
     def get_priority_order() -> List[Tuple[str, Callable[[str], bool]]]:
         return [
             ("Apache", LogDetector.is_apache),
@@ -665,6 +685,7 @@ class LogDetector:
             ("Django", LogDetector.is_django),
             ("Flask", LogDetector.is_flask),
             ("Node.js", LogDetector.is_node),
+            ("MongoDB Server", LogDetector.is_mongodb_server),
             ("Express.js", LogDetector.is_express_json),
             ("Laravel", LogDetector.is_laravel),
             ("Ruby on Rails", LogDetector.is_rails),
@@ -692,6 +713,7 @@ class LogDetector:
             ("Windows Firewall", LogDetector.is_windows_fw),
             ("Windows Event Viewer", LogDetector.is_windows_event_viewer),
             ("Windows Application TXT", LogDetector.is_windows_application_txt),
+            ("Windows Security CSV", LogDetector.is_windows_security_csv),
             ("Windows Application CSV", LogDetector.is_windows_application_csv),
             ("Windows Event", LogDetector.is_windows_event),
             ("Windows Security", LogDetector.is_windows_security),
@@ -737,10 +759,15 @@ class LogDetector:
             ("Linux Kernel", LogDetector.is_kernel),
             ("Linux Audit", LogDetector.is_audit),
             ("Linux Package", LogDetector.is_linux_package),
+            ("Windows Text", LogDetector.is_windows_text),
             ("FileZilla FTP", LogDetector.is_filezilla),
             ("IIS FTP", LogDetector.is_iis_ftp),
             ("xferlog", LogDetector.is_xferlog),
-            ("JSON FTP Logs", LogDetector.is_json_ftp),
+            ("VSFTPD", LogDetector.is_vsftpd),
+            ("ProFTPD", LogDetector.is_proftpd),
+            ("DHCP", LogDetector.is_dhcp),
+            ("DNS", LogDetector.is_dns),
+            ("Proxy", LogDetector.is_proxy),
             ("Cloudflare", LogDetector.is_cloudflare),
             ("AWS CloudTrail", LogDetector.is_aws_cloudtrail),
             ("AWS GuardDuty", LogDetector.is_aws_guardduty),
@@ -772,6 +799,7 @@ class LogDetector:
             "Django": LogDetector.is_django,
             "Flask": LogDetector.is_flask,
             "Node.js": LogDetector.is_node,
+            "MongoDB Server": LogDetector.is_mongodb_server,
             "Express.js": LogDetector.is_express_json,
             "Laravel": LogDetector.is_laravel,
             "Ruby on Rails": LogDetector.is_rails,
@@ -799,6 +827,7 @@ class LogDetector:
             "Windows Firewall": LogDetector.is_windows_fw,
             "Windows Event Viewer": LogDetector.is_windows_event_viewer,
             "Windows Application TXT": LogDetector.is_windows_application_txt,
+            "Windows Security CSV": LogDetector.is_windows_security_csv,
             "Windows Application CSV": LogDetector.is_windows_application_csv,
             "Windows Event": LogDetector.is_windows_event,
             "Windows Security": LogDetector.is_windows_security,
@@ -839,15 +868,16 @@ class LogDetector:
             "MongoDB Audit": LogDetector.is_mongodb_audit,
             "Linux SSHD Failed": LogDetector.is_sshd_failed,
             "Linux SSHD Accepted": LogDetector.is_sshd_accepted,
+            "Linux SSHD PAM": LogDetector.is_linux_sshd_pam,
             "Linux Syslog": LogDetector.is_syslog,
             "Linux Systemd": LogDetector.is_systemd,
             "Linux Kernel": LogDetector.is_kernel,
             "Linux Audit": LogDetector.is_audit,
             "Linux Package": LogDetector.is_linux_package,
-            "Windows Text": LogDetector.is_windows_text,
             "FileZilla FTP": LogDetector.is_filezilla,
-            "IIS FTP": LogDetector.is_iis_ftp,
+            "VSFTPD": LogDetector.is_vsftpd,
             "xferlog": LogDetector.is_xferlog,
+            "IIS FTP": LogDetector.is_iis_ftp,
             "JSON FTP Logs": LogDetector.is_json_ftp,
             "Cloudflare": LogDetector.is_cloudflare,
             "AWS CloudTrail": LogDetector.is_aws_cloudtrail,
@@ -879,50 +909,47 @@ class LogDetector:
 
     @staticmethod
     def detect(content: str) -> str:
-        lines = [line.strip() for line in content.split('\n')][:LogDetector.SAMPLE_LINES]
+        all_lines = [line.strip() for line in content.split('\n') if line.strip()]
         
-        if not lines or not lines[0]:
+        if not all_lines:
             return 'Custom / Raw'
+
+        # Sample at most 100 lines for detection to avoid hanging on large files
+        sample_limit = min(100, len(all_lines))
+        lines = all_lines[:sample_limit]
 
         priority_order = LogDetector.get_priority_order()
         scores = {log_type: 0 for log_type, _ in priority_order}
         scores["Custom / Raw"] = 0
 
+        # Phase 1: Check initial candidates
         phase1_lines = min(LogDetector.CANDIDATE_SAMPLE_LINES, len(lines))
-        phase2_start = phase1_lines
-
+        
         for i in range(phase1_lines):
             line = lines[i]
-            if not line:
-                continue
-            
             for log_type, check_func in priority_order:
-                if check_func(line):
-                    scores[log_type] += 3
+                try:
+                    if check_func(line):
+                        scores[log_type] += 3
+                except:
+                    continue
 
-        if phase2_start >= len(lines):
-            best_type = 'Custom / Raw'
-            best_score = 0
-            for log_type, score in scores.items():
-                if score > best_score:
-                    best_score = score
-                    best_type = log_type
-            return best_type if best_score >= 3 else 'Custom / Raw'
-
+        # Phase 2: Refine with more sample lines for candidates
         candidate_types = [k for k, v in scores.items() if v > 0 and k != 'Custom / Raw']
-        candidate_types = candidate_types if candidate_types else ['Custom / Raw']
+        if not candidate_types:
+            candidate_types = [log_type for log_type, _ in priority_order]
 
-        for i in range(phase2_start, len(lines)):
+        for i in range(phase1_lines, len(lines)):
             line = lines[i]
-            if not line:
-                continue
-
             matched = False
             for log_type in candidate_types:
-                if LogDetector.check_line(line, log_type):
-                    scores[log_type] += 3
-                    matched = True
-                    break
+                try:
+                    if LogDetector.check_line(line, log_type):
+                        scores[log_type] += 3
+                        matched = True
+                        break
+                except:
+                    continue
 
             if not matched:
                 scores['Custom / Raw'] += 1
@@ -933,21 +960,32 @@ class LogDetector:
             if score > best_score:
                 best_score = score
                 best_type = log_type
+        
         return best_type if best_score >= 3 else 'Custom / Raw'
 
 
 def preprocess_json_array(content: str) -> str:
-    """Convert single-line JSON array to multiline format."""
+    """Convert single-line JSON array to multiline format for easier line-by-line parsing."""
     trimmed = content.strip()
-    if not trimmed.startswith('[[') or not trimmed.endswith(']]'):
+    if not (trimmed.startswith('[') and trimmed.endswith(']')):
         return content
 
     try:
         data = json.loads(trimmed)
         if not isinstance(data, list):
             return content
-
-        lines = [json.dumps(entry) for entry in data]
+            
+        # If it's a list of lists (nested), flatten it one level if needed
+        if len(data) > 0 and isinstance(data[0], list):
+            # Special case for some nested JSON formats
+            lines = [json.dumps(entry) for sublist in data for entry in sublist if isinstance(entry, dict)]
+            if not lines: # Try flattening just one level
+                lines = [json.dumps(sublist) for sublist in data]
+        else:
+            # Standard list of objects
+            lines = [json.dumps(entry) if isinstance(entry, (dict, list)) else str(entry) for entry in data]
+            
         return '\n'.join(lines)
-    except:
+    except Exception as e:
+        print(f"JSON preprocessing failed: {e}")
         return content

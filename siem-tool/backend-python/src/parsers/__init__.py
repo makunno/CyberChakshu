@@ -20,40 +20,131 @@ def detect_log_type(content: str) -> str:
 
 def auto_parse(content: str, force_type: Optional[str] = None) -> Dict[str, Any]:
     """Auto-parse log content with full field extraction"""
-    log_type = force_type or detect_log_type(content)
     processed = preprocess_json_array(content)
-    lines = [l for l in processed.split('\n') if l.strip()]
+    log_type = force_type or detect_log_type(processed)
+    
+    all_lines = [l for l in processed.split('\n') if l.strip()]
+    # Limit processing to 5000 lines to avoid hanging the backend
+    limit = 5000
+    lines = all_lines[:limit]
+    
+    if len(all_lines) > limit:
+        print(f"Auto-parse: TRUNCATED processing to {limit} lines (original: {len(all_lines)})")
+    
+    print(f"Auto-parse: Detected type '{log_type}', processing {len(lines)} lines")
     
     entries = []
-    for line in lines:
-        entry = parse_line(line, log_type)
-        if entry:
-            entries.append(entry)
+    ips_to_lookup = []
     
+    # Track failed lines to limit AI fallback
+    failed_lines_count = 0
+    max_ai_fallbacks = 3
+    
+    for i, line in enumerate(lines):
+        try:
+            # Pass a flag to parse_line to control AI fallback
+            use_ai = failed_lines_count < max_ai_fallbacks
+            entry = parse_line(line, log_type, allow_ai=use_ai)
+            
+            if entry:
+                entries.append(entry)
+                # If it was an AI-parsed entry or generic entry, count it as a "weak" match
+                if entry.get('fields', {}).get('_ai_parsed'):
+                    failed_lines_count += 1
+                
+                # Collect IPs for bulk lookup
+                ip = entry.get('source', {}).get('ip')
+                if ip and ip != 'LOCAL':
+                    ips_to_lookup.append(ip)
+            else:
+                failed_lines_count += 1
+        except Exception as e:
+            failed_lines_count += 1
+            if i < 5: # Only log first few errors to avoid spam
+                print(f"Error parsing line {i}: {e}")
+    
+    # Perform Bulk GeoIP Lookup
+    if ips_to_lookup:
+        try:
+            from utils.geoip import get_country_codes_bulk
+            # Limit bulk lookup to unique IPs and max 100 to avoid long hangs
+            unique_ips = list(set(ips_to_lookup))[:100]
+            geo_map = get_country_codes_bulk(unique_ips)
+            for entry in entries:
+                ip = entry.get('source', {}).get('ip')
+                if ip and ip in geo_map:
+                    entry['countryCode'] = geo_map[ip]
+        except Exception as e:
+            print(f"Bulk GeoIP lookup failed: {e}")
+    
+    print(f"Auto-parse: Successfully parsed {len(entries)}/{len(lines)} entries")
     stats = generate_stats(entries)
     
     return {
         'detectedType': log_type,
         'entries': entries,
-        'stats': stats
+        'stats': stats,
+        'totalLines': len(all_lines),
+        'parsedLines': len(entries),
+        'limitApplied': len(all_lines) > limit
     }
 
 
-def parse_line(line: str, log_type: str) -> Optional[Dict[str, Any]]:
-    """Parse a single log line with full field extraction"""
+def semantic_fallback_parse(line: str) -> Optional[Dict[str, Any]]:
+    """Use AI to parse a log line that regex failed to handle"""
+    # Safety check: if we are in a high-volume loop, this will kill performance
+    # The caller (auto_parse) should limit calls to this function.
+    
+    from ai_client import get_soc_client
+    
+    client = get_soc_client()
+    if not client:
+        return None
+        
+    print(f"AI Fallback: Attempting to parse line with LLM...")
+    prompt = f"""Parse the following raw log line into a JSON object with standard SIEM fields.
+Standard fields to include (if present): timestamp, ip, user, action, outcome, status, severity, service, message.
+Raw Log: {line}
+Output only the JSON object."""
+
+    try:
+        response = client.chat("Parse this log line", prompt)
+        # Try to find JSON in response
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group(0))
+            data['_ai_parsed'] = True
+            return data
+    except Exception as e:
+        print(f"Semantic fallback parse failed: {e}")
+    
+    return None
+
+
+def parse_line(line: str, log_type: str, allow_ai: bool = False) -> Optional[Dict[str, Any]]:
+    """Parse a single log line with regex and semantic fallbacks"""
     try:
         parsed_data = LogParsers.parse_by_type(line, log_type)
         
         # If no specific parser matched, try generic parsing
         if not parsed_data:
             parsed_data = generic_parse(line)
+            
+        # If generic parsing is still very empty, try semantic AI parsing (if allowed)
+        if allow_ai and (not parsed_data or len(parsed_data) <= 1):
+            ai_data = semantic_fallback_parse(line)
+            if ai_data:
+                parsed_data = ai_data
+        
+        source = extract_source(line, parsed_data)
         
         entry: Dict[str, Any] = {
             'id': str(uuid.uuid4()),
             'timestamp': extract_timestamp(line, parsed_data),
             'logType': map_log_type(log_type),
             'severity': extract_severity(line, log_type),
-            'source': extract_source(line, parsed_data),
+            'source': source,
+            'countryCode': '??', # Updated in bulk by auto_parse
             'user': extract_user(line, parsed_data),
             'action': extract_action(line, parsed_data, log_type),
             'outcome': extract_outcome(line, parsed_data, log_type),
@@ -69,69 +160,58 @@ def parse_line(line: str, log_type: str) -> Optional[Dict[str, Any]]:
 
 
 def generic_parse(line: str) -> Optional[Dict[str, Any]]:
-    """Generic parser for any log format - extracts common fields"""
+    """Enhanced generic parser for any log format - extracts common fields and structure"""
     result = {}
     
-    # Extract IP addresses
+    # 1. Try to extract Key-Value pairs (e.g., key=value, key:value, "key": "value")
+    kv_patterns = [
+        r'(\w+)=([^,\s]+)',
+        r'(\w+):\s*([^,\s]+)',
+        r'"(\w+)":\s*"([^"]+)"',
+        r'"(\w+)":\s*(\d+)',
+    ]
+    for pattern in kv_patterns:
+        matches = re.findall(pattern, line)
+        for key, value in matches:
+            if key.lower() not in result:
+                result[key.lower()] = value
+    
+    # 2. Extract IP addresses (source/destination)
     ip_patterns = [
-        r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',
-        r'from\s+(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',
-        r'src[=_]?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',
+        (r'SRC[=_](\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', 'src_ip'),
+        (r'DST[=_](\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', 'dst_ip'),
+        (r'from\s+(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', 'src_ip'),
+        (r'to\s+(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', 'dst_ip'),
+        (r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', 'ip'),
     ]
-    for pattern in ip_patterns:
-        match = re.search(pattern, line)
-        if match:
-            result['ip'] = match.group(1)
-            break
-    
-    # Extract port
-    port_match = re.search(r'port\s*[:=]?\s*(\d+)', line, re.IGNORECASE)
-    if port_match:
-        result['port'] = int(port_match.group(1))
-    
-    # Extract user
-    user_patterns = [
-        r'for\s+(\S+?)\s+from',
-        r'user[=:\s]+(\w+)',
-        r'User:\s*(\S+)',
-        r'account[=:\s]+(\w+)',
-    ]
-    for pattern in user_patterns:
+    for pattern, key in ip_patterns:
         match = re.search(pattern, line, re.IGNORECASE)
         if match:
-            result['user'] = match.group(1)
-            break
+            if key not in result:
+                result[key] = match.group(1)
     
-    # Extract status code
-    status_match = re.search(r'\s(\d{3})\s', line)
-    if status_match:
-        result['status'] = int(status_match.group(1))
-    
-    # Extract HTTP method
-    http_methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
-    for method in http_methods:
-        if f'"{method}' in line:
-            result['method'] = method
-            break
-    
-    # Extract request path
-    request_match = re.search(r'"(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(\S+)', line)
-    if request_match:
-        result['request'] = f"{request_match.group(1)} {request_match.group(2)}"
-    
-    # Extract service/program
-    service_match = re.search(r'(\w+)(?:\[\d+\])?:', line)
-    if service_match and not service_match.group(1).isdigit():
-        result['service'] = service_match.group(1)
-    
-    # Extract bytes
-    bytes_match = re.search(r'(\d+)\s*$', line)
-    if bytes_match and result.get('status'):
-        try:
-            result['bytes'] = int(bytes_match.group(1))
-        except:
-            pass
-    
+    # 3. Extract common fields if not already found
+    if 'user' not in result:
+        user_match = re.search(r'user[=:\s]+(\w+)|account[=:\s]+(\w+)|for\s+(\S+)\s+from', line, re.IGNORECASE)
+        if user_match:
+            result['user'] = next(g for g in user_match.groups() if g)
+            
+    if 'status' not in result:
+        status_match = re.search(r'\s(\d{3})\s|status[=:](\d+)', line)
+        if status_match:
+            result['status'] = int(next(g for g in status_match.groups() if g))
+            
+    if 'method' not in result:
+        method_match = re.search(r'(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)', line)
+        if method_match:
+            result['method'] = method_match.group(1)
+            
+    # 4. Extract service/process
+    if 'service' not in result:
+        service_match = re.search(r'(\w+)(?:\[\d+\])?:', line)
+        if service_match and not service_match.group(1).isdigit():
+            result['service'] = service_match.group(1)
+            
     return result if result else None
 
 
@@ -211,10 +291,20 @@ def extract_source(line: str, parsed: Optional[Dict[str, Any]]) -> Dict[str, Any
             source['hostname'] = parsed['host']
         if 'ip' in parsed:
             source['ip'] = parsed['ip']
+        if 'source_ip' in parsed:
+            source['ip'] = parsed['source_ip']
         if 'src_ip' in parsed:
             source['ip'] = parsed['src_ip']
         if 'server_ip' in parsed:
             source['ip'] = parsed['server_ip']
+        if 'service' in parsed:
+            source['service'] = parsed['service']
+    
+    # Generic IP fallback if still not found
+    if not source.get('ip'):
+        generic_ip = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', line)
+        if generic_ip:
+            source['ip'] = generic_ip.group(1)
     
     return source
 
@@ -227,6 +317,7 @@ def extract_user(line: str, parsed: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         r'for\s+(\S+)\s+from',
         r'user[=:\s]+(\w+)',
         r'User:\s*(\S+)',
+        r'server_principal_name=([^=,\s]+)',
     ]
     
     for pattern in user_patterns:
@@ -270,6 +361,9 @@ def extract_action(line: str, parsed: Optional[Dict[str, Any]], log_type: str) -
 
 def extract_outcome(line: str, parsed: Optional[Dict[str, Any]], log_type: str) -> str:
     """Extract outcome (success/failure)"""
+    if parsed and 'outcome' in parsed:
+        return parsed['outcome']
+        
     # Use status code from parsed data if available
     if parsed and 'status' in parsed:
         status = parsed['status']

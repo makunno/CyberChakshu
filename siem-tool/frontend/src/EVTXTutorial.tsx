@@ -34,7 +34,7 @@ export function EVTXTutorial({ fileName, onClose, onUploadAnother }: EVTXTutoria
     },
     {
       title: 'Upload the TXT File',
-      description: 'Upload the exported .txt file to FreeKhana SIEM for analysis',
+      description: 'Upload the exported .txt file to Cyber Chakshu SIEM for analysis',
       image: '/images/evtx/step5-upload.png'
     }
   ];

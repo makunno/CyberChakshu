@@ -11,7 +11,7 @@ New forensic detection techniques:
 6. Cross-Artifact Temporal Voting
 7. Journal Integrity Checks
 
-Author: FreeKhana SIEM Team
+Author: Cyber Chakshu SIEM Team
 """
 
 import struct

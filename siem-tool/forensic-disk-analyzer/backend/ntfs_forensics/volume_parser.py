@@ -6,7 +6,7 @@ Parses $Volume and boot sector to extract volume-level metadata.
 Critical for forensic analysis - provides volume creation time,
 serial number, and other volume-level timestamps.
 
-Author: FreeKhana SIEM Team
+Author: Cyber Chakshu SIEM Team
 """
 
 import struct

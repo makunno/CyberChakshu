@@ -44,6 +44,7 @@ export interface ParsedLogEntry {
   };
   action?: string;
   outcome?: 'success' | 'failure' | 'unknown';
+  countryCode?: string;
   message: string;
   rawLine: string;
   fields: Record<string, string | number | boolean | null>;
@@ -249,4 +250,81 @@ export interface CorrelateResponse {
   correlation: CorrelationResult;
   traditionalAlerts: Alert[];
   stats: ParseResponse['stats'];
+}
+
+// Agent and Report Types
+export type DataRequestType = 
+  | 'parse_logs'
+  | 'get_stats'
+  | 'get_timeline'
+  | 'get_attack_chains'
+  | 'get_ml_predictions'
+  | 'get_alerts'
+  | 'get_entries'
+  | 'get_top_sources'
+  | 'get_top_users'
+  | 'correlate_logs'
+  | 'analyze_log';
+
+export interface DataRequest {
+  id: string;
+  type: DataRequestType;
+  parameters?: Record<string, any>;
+  timestamp: string;
+}
+
+export interface DataResponse {
+  requestId: string;
+  success: boolean;
+  data: any;
+  error?: string;
+}
+
+export interface AgentMessage {
+  id: string;
+  role: 'user' | 'agent' | 'system';
+  content: string;
+  timestamp: string;
+  dataRequests?: DataRequest[];
+  dataResponses?: DataResponse[];
+}
+
+export interface AgentConversation {
+  id: string;
+  messages: AgentMessage[];
+  startedAt: string;
+  updatedAt: string;
+  context?: Record<string, any>;
+}
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  sections: ReportSection[];
+}
+
+export interface ReportSection {
+  id: string;
+  title: string;
+  type: 'summary' | 'timeline' | 'attack_chains' | 'stats' | 'recommendations' | 'custom';
+  content?: string;
+  dataRequest?: DataRequest;
+}
+
+export interface Report {
+  id: string;
+  name: string;
+  template: ReportTemplate;
+  sections: ReportSection[];
+  generatedAt: string;
+  format: 'pdf' | 'html';
+  content: string;
+}
+
+export interface ReportRequest {
+  logData: ParseResponse;
+  correlateData?: CorrelateResponse;
+  template?: ReportTemplate;
+  customInstructions?: string;
 }

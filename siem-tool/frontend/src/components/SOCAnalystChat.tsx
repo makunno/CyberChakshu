@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, X, ChevronDown, Shield, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { getSocAnalystChat, analyzeLogWithAI, submitFeedback, type FeedbackRequest } from '../api';
-import type { ParseResponse, CorrelateResponse } from '../types';
 
 interface Message {
   id: string;
@@ -22,11 +21,11 @@ interface LogContext {
 
 interface SOCAnalystChatProps {
   logContext?: LogContext | null;
-  logData?: ParseResponse | CorrelateResponse | null;
+  currentData?: any;
   onClose?: () => void;
 }
 
-export function SOCAnalystChat({ logContext, logData, onClose }: SOCAnalystChatProps) {
+export function SOCAnalystChat({ logContext, currentData, onClose }: SOCAnalystChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -134,7 +133,11 @@ export function SOCAnalystChat({ logContext, logData, onClose }: SOCAnalystChatP
     setIsLoading(true);
 
     try {
-      const response = await getSocAnalystChat(input, messages.map(m => ({role: m.role, content: m.content})), logData || undefined);
+      const response = await getSocAnalystChat(
+        input, 
+        messages.map(m => ({role: m.role, content: m.content})),
+        currentData
+      );
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -400,7 +403,7 @@ export function SOCAnalystChat({ logContext, logData, onClose }: SOCAnalystChatP
           </div>
           <div>
             <h3 style={{ fontWeight: 600, color: 'white', margin: 0, fontSize: '16px' }}>SOC Analyst AI</h3>
-            <p style={{ fontSize: '12px', color: '#d1d5db', margin: 0 }}>Powered by Gemini Flash</p>
+            <p style={{ fontSize: '12px', color: '#d1d5db', margin: 0 }}>Powered by TinyLlama-1.1B</p>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

@@ -359,6 +359,60 @@ def parse_windows_event_line(line: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def parse_windows_csv_line(line: str, log_type: str) -> Optional[Dict[str, Any]]:
+    """Parse Windows Security/Application CSV lines"""
+    if line.startswith('TimeCreated,') or line.startswith('EventID,') or line.startswith('Level,'):
+        return None
+    
+    parts = line.split(',')
+    if len(parts) < 6:
+        return None
+        
+    try:
+        timestamp = parse_timestamp(parts[0].strip())
+        event_id = parts[1].strip()
+        level = parts[2].strip().lower()
+        
+        severity = 'info'
+        if level in ['error', 'failure', 'audit failure']:
+            severity = 'error'
+        elif level in ['warning']:
+            severity = 'warning'
+            
+        if 'Security' in log_type or (len(parts) > 3 and parts[3] == 'Security'):
+            return create_entry(
+                log_type=log_type,
+                timestamp=timestamp,
+                message=parts[5].strip() if len(parts) > 5 else line,
+                user_name=parts[6].strip() if len(parts) > 6 else None,
+                source_ip=parts[8].strip() if len(parts) > 8 else None,
+                severity=severity,
+                fields={
+                    'event_id': event_id,
+                    'level': level,
+                    'log_name': parts[3].strip() if len(parts) > 3 else '',
+                    'machine_name': parts[4].strip() if len(parts) > 4 else '',
+                    'logon_type': parts[7].strip() if len(parts) > 7 else '',
+                }
+            )
+        else:
+            return create_entry(
+                log_type=log_type,
+                timestamp=timestamp,
+                message=parts[6].strip() if len(parts) > 6 else line,
+                severity=severity,
+                fields={
+                    'event_id': event_id,
+                    'level': level,
+                    'log_name': parts[3].strip() if len(parts) > 3 else '',
+                    'machine_name': parts[4].strip() if len(parts) > 4 else '',
+                    'provider_name': parts[5].strip() if len(parts) > 5 else '',
+                }
+            )
+    except:
+        return None
+
+
 PARSERS = {
     'ssh_auth': parse_ssh_line,
     'Linux SSHD Failed': parse_ssh_line,
@@ -378,6 +432,8 @@ PARSERS = {
     'windows_event_viewer': parse_windows_event_line,
     'windows_application_txt': parse_windows_event_line,
     'Windows Event Viewer': parse_windows_event_line,
+    'Windows Security CSV': lambda line: parse_windows_csv_line(line, 'Windows Security CSV'),
+    'Windows Application CSV': lambda line: parse_windows_csv_line(line, 'Windows Application CSV'),
 }
 
 

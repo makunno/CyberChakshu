@@ -1,5 +1,5 @@
 Timestamp Analysis for Partition 0
-Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/jo-favorites-usb-2009-12-11.E01
+Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/jo-favorites-usb-2009-12-11.E01
 ================================================================================
 
 Full file listing with timestamps:

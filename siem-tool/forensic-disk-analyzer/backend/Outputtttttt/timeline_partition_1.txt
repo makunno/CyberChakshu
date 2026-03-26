@@ -1,5 +1,5 @@
 Full Timeline for Partition 1
-Image: /home/utsav/Github/FreeKhana/siem-tool/imageProcessor/2020JimmyWilson.E01
+Image: /home/utsav/Github/Cyber Chakshu/siem-tool/imageProcessor/2020JimmyWilson.E01
 Offset: 65664 bytes
 ================================================================================
 
